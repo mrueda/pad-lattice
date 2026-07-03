@@ -1,8 +1,8 @@
-# PadLattice
+# Pad-Lattice
 
 ## Vision
 
-PadLattice is a proof-of-concept that transforms a Novation Launchpad Pro into a hardware control surface for autonomous coding agents.
+Pad-Lattice is a proof-of-concept that transforms a Novation Launchpad Pro into a hardware control surface for autonomous coding agents.
 
 The goal is **not** to build another macro keyboard or replace keyboard shortcuts. Instead, it explores a new interaction model where AI agents are supervised through a spatial, visual, always-on interface.
 
@@ -227,7 +227,7 @@ It should know nothing about Codex specifically.
 
 # Long-Term Vision
 
-PadLattice should evolve into a generic hardware interface for AI coding agents rather than a Codex-specific project.
+Pad-Lattice should evolve into a generic hardware interface for AI coding agents rather than a Codex-specific project.
 
 The Launchpad is simply the first supported device.
 
@@ -250,4 +250,4 @@ The key question is:
 
 > Can a spatial, LED-based hardware interface make supervising autonomous coding agents easier than constantly watching terminal output?
 
-If the answer is yes, PadLattice has discovered a new interaction model—not just another macro keyboard.
+If the answer is yes, Pad-Lattice has discovered a new interaction model—not just another macro keyboard.

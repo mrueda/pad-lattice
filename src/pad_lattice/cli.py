@@ -1,4 +1,4 @@
-"""Command-line entrypoint for PadLattice."""
+"""Command-line entrypoint for Pad-Lattice."""
 
 from __future__ import annotations
 

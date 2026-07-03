@@ -1,4 +1,4 @@
-"""PadLattice hardware control surface primitives."""
+"""Pad-Lattice hardware control surface primitives."""
 
 from pad_lattice.events import AgentEvent, AgentState, ControlAction
 
