@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pad-lattice"
+version = "0.1.0"
+description = "Launchpad control surface for autonomous coding agents."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "mido>=1.3",
+  "python-rtmidi>=1.5",
+]
+
+[project.scripts]
+pad-lattice = "pad_lattice.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
