@@ -247,6 +247,7 @@ def open_launchpad(
     input_name: str | None = None,
     output_name: str | None = None,
     layout: PadLayout | None = None,
+    startup_greeting: str | None = "HELLO FROM CODEX CLI",
     scroll_delay: float = 0.08,
 ) -> LaunchpadSurface:
     mido = _import_mido()
@@ -257,6 +258,7 @@ def open_launchpad(
         output_port=mido.open_output(selected_output),
         input_port=mido.open_input(selected_input),
         layout=layout,
+        startup_greeting=startup_greeting,
         scroll_delay=scroll_delay,
     )
 

@@ -11,3 +11,13 @@ class CliTest(TestCase):
 
         self.assertEqual(args.command, "demo")
         self.assertEqual(args.greeting_delay, 0.12)
+
+    def test_codex_accepts_pass_through_args(self) -> None:
+        args = build_parser().parse_args(
+            ["codex", "--approve-keys", "y\\n", "--no-greeting", "--", "resume", "--last"]
+        )
+
+        self.assertEqual(args.command, "codex")
+        self.assertEqual(args.approve_keys, "y\\n")
+        self.assertTrue(args.no_greeting)
+        self.assertEqual(args.codex_args, ["--", "resume", "--last"])

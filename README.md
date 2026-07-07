@@ -117,6 +117,41 @@ If auto-detection picks the wrong MIDI port, pass explicit names:
 pad-lattice demo --input "Launchpad Pro" --output "Launchpad Pro"
 ```
 
+Run Codex CLI under Launchpad control:
+
+```bash
+pad-lattice codex
+```
+
+Pass arguments through to Codex after `--`:
+
+```bash
+pad-lattice codex -- resume --last
+```
+
+The Codex bridge runs Codex in a terminal PTY, keeps normal keyboard input
+working, and maps Launchpad controls to Codex input:
+
+| Control | Default behavior |
+|----------|------------------|
+| Approve | Send Enter |
+| Reject | Send Escape |
+| Retry | Send `r` then Enter |
+| Stop | Send Ctrl-C to Codex |
+
+The approval keys are configurable because Codex prompt bindings can vary by
+version or terminal mode:
+
+```bash
+pad-lattice codex --approve-keys "y\n" --reject-keys "n\n" -- resume --last
+```
+
+Skip the hardware greeting for everyday Codex use:
+
+```bash
+pad-lattice codex --no-greeting -- resume --last
+```
+
 The current pad layout assumes Launchpad Pro programmer-style grid notes:
 
 | Control | Pad | Action |
