@@ -10,6 +10,7 @@ class AgentState(str, Enum):
     """High-level states rendered by the Launchpad MVP."""
 
     RUNNING = "running"
+    WAITING_FOR_REPLY = "waiting_for_reply"
     WAITING_FOR_APPROVAL = "waiting_for_approval"
     SUCCESS = "success"
     ERROR = "error"

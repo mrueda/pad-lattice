@@ -45,6 +45,7 @@ class LaunchpadPalette:
 
     OFF = 0
     BLUE = 45
+    CYAN = 37
     YELLOW = 13
     GREEN = 21
     RED = 5
@@ -56,6 +57,7 @@ class LaunchpadPalette:
 
     STATE_COLORS: dict[AgentState, int] = {
         AgentState.RUNNING: BLUE,
+        AgentState.WAITING_FOR_REPLY: CYAN,
         AgentState.WAITING_FOR_APPROVAL: YELLOW,
         AgentState.SUCCESS: GREEN,
         AgentState.ERROR: RED,
@@ -144,6 +146,8 @@ class LaunchpadSurface:
         self.clear_status_area()
         if state is AgentState.RUNNING:
             self._render_running(frame)
+        elif state is AgentState.WAITING_FOR_REPLY:
+            self._render_waiting_for_reply()
         elif state is AgentState.WAITING_FOR_APPROVAL:
             self._render_waiting()
         elif state is AgentState.SUCCESS:
@@ -201,6 +205,19 @@ class LaunchpadSurface:
 
         for x, y in ((3, 2), (4, 2), (5, 3), (4, 4), (4, 6)):
             self._set_grid_pad(x, y, self.palette.YELLOW)
+
+    def _render_waiting_for_reply(self) -> None:
+        for x, y in (
+            (2, 1),
+            (3, 0),
+            (4, 0),
+            (5, 1),
+            (5, 2),
+            (4, 3),
+            (3, 4),
+            (3, 6),
+        ):
+            self._set_grid_pad(x, y, self.palette.CYAN)
 
     def _render_success(self) -> None:
         for x, y in ((1, 4), (2, 5), (3, 6), (4, 4), (5, 3), (6, 2)):

@@ -31,6 +31,14 @@ APPROVAL_PATTERNS = (
     "waiting for approval",
     "requires approval",
 )
+REPLY_PATTERNS = (
+    "waiting for your reply",
+    "waiting for reply",
+    "your response",
+    "please respond",
+    "what would you like",
+    "how would you like",
+)
 
 
 @dataclass(frozen=True)
@@ -62,7 +70,12 @@ def detect_codex_state(output: bytes, current_state: AgentState) -> AgentState:
     text = ANSI_ESCAPE_RE.sub(b"", output).decode("utf-8", "ignore").lower()
     if any(pattern in text for pattern in APPROVAL_PATTERNS):
         return AgentState.WAITING_FOR_APPROVAL
-    if current_state is AgentState.WAITING_FOR_APPROVAL and text.strip():
+    if any(pattern in text for pattern in REPLY_PATTERNS):
+        return AgentState.WAITING_FOR_REPLY
+    if current_state in (
+        AgentState.WAITING_FOR_APPROVAL,
+        AgentState.WAITING_FOR_REPLY,
+    ) and text.strip():
         return AgentState.RUNNING
     return current_state
 

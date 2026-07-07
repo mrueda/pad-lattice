@@ -36,9 +36,21 @@ class CodexCliTest(TestCase):
             AgentState.WAITING_FOR_APPROVAL,
         )
 
+    def test_detect_codex_state_finds_reply_prompt(self) -> None:
+        self.assertIs(
+            detect_codex_state(b"What would you like to do next?", AgentState.RUNNING),
+            AgentState.WAITING_FOR_REPLY,
+        )
+
     def test_detect_codex_state_returns_to_running_after_prompt_output(self) -> None:
         self.assertIs(
             detect_codex_state(b"running command", AgentState.WAITING_FOR_APPROVAL),
+            AgentState.RUNNING,
+        )
+
+    def test_detect_codex_state_returns_to_running_after_reply_prompt_output(self) -> None:
+        self.assertIs(
+            detect_codex_state(b"working again", AgentState.WAITING_FOR_REPLY),
             AgentState.RUNNING,
         )
 
