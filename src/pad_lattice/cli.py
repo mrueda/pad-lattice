@@ -60,6 +60,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="skip the Launchpad startup greeting",
     )
     codex.add_argument(
+        "--detect-state",
+        action="store_true",
+        help="experimentally infer Codex state from terminal output",
+    )
+    codex.add_argument(
         "--approve-keys",
         default="\\n",
         help="key sequence sent to Codex for approve, using Python escapes",
@@ -124,6 +129,7 @@ def main(argv: list[str] | None = None) -> int:
                     reject=decode_key_sequence(args.reject_keys),
                     retry=decode_key_sequence(args.retry_keys),
                 ),
+                detect_state=args.detect_state,
             )
             return supervisor.run()
     except KeyboardInterrupt:

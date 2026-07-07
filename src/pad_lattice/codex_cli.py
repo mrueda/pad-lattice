@@ -116,11 +116,13 @@ class CodexSupervisor:
         surface: Any | None = None,
         keymap: CodexKeymap | None = None,
         poll_interval: float = 0.03,
+        detect_state: bool = False,
     ) -> None:
         self.command = command
         self.surface = surface
         self.keymap = keymap or CodexKeymap()
         self.poll_interval = poll_interval
+        self.detect_state = detect_state
         self.state = AgentState.RUNNING
         self._master_fd: int | None = None
         self._process: subprocess.Popen[bytes] | None = None
@@ -240,7 +242,8 @@ class CodexSupervisor:
             return False
 
         os.write(stdout_fd, data)
-        self.state = detect_codex_state(data, self.state)
+        if self.detect_state:
+            self.state = detect_codex_state(data, self.state)
         return True
 
     def _write_to_codex(self, data: bytes) -> None:

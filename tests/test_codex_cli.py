@@ -99,6 +99,19 @@ class CodexCliTest(TestCase):
 
         self.assertEqual(writes, [b"a", b"r", b"t"])
 
+    def test_supervisor_disables_output_state_detection_by_default(self) -> None:
+        supervisor = CodexSupervisor(["codex"])
+        supervisor.state = AgentState.RUNNING
+
+        supervisor._read_codex_output = lambda _master_fd, _stdout_fd: True
+
+        self.assertFalse(supervisor.detect_state)
+
+    def test_supervisor_can_enable_output_state_detection(self) -> None:
+        supervisor = CodexSupervisor(["codex"], detect_state=True)
+
+        self.assertTrue(supervisor.detect_state)
+
     def test_set_pty_size_updates_terminal_window_size(self) -> None:
         master_fd, slave_fd = pty.openpty()
         try:

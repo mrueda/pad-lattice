@@ -141,6 +141,15 @@ working, and maps Launchpad controls to Codex input:
 | Retry | Send `r` then Enter |
 | Stop | Send Ctrl-C to Codex |
 
+By default, the bridge does not infer approval/reply state from Codex terminal
+output. Resumed chats can contain old words like `approval required`, which
+would otherwise create false yellow approval states. Experimental terminal
+state detection can be enabled explicitly:
+
+```bash
+pad-lattice codex --detect-state -- resume --last
+```
+
 The approval keys are configurable because Codex prompt bindings can vary by
 version or terminal mode:
 

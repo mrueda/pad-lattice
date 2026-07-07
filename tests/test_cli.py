@@ -21,3 +21,8 @@ class CliTest(TestCase):
         self.assertEqual(args.approve_keys, "y\\n")
         self.assertTrue(args.no_greeting)
         self.assertEqual(args.codex_args, ["--", "resume", "--last"])
+
+    def test_codex_state_detection_is_explicit(self) -> None:
+        args = build_parser().parse_args(["codex", "--detect-state"])
+
+        self.assertTrue(args.detect_state)
