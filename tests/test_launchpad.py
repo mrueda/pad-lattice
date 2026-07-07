@@ -4,7 +4,12 @@ from types import SimpleNamespace
 from unittest import TestCase
 
 from pad_lattice.events import AgentState, ControlAction
-from pad_lattice.launchpad import LaunchpadPalette, LaunchpadSurface, PadLayout
+from pad_lattice.launchpad import (
+    LaunchpadPalette,
+    LaunchpadSurface,
+    PadLayout,
+    _pick_port,
+)
 
 
 class FakeOutput:
@@ -83,3 +88,31 @@ class MessagePatchTest(TestCase):
         surface.render_controls()
 
         self.assertEqual([message.note for message in output.messages], [11, 12, 18, 17])
+
+
+class PortSelectionTest(TestCase):
+    def test_pick_port_prefers_launchpad_pro_live_port(self) -> None:
+        self.assertEqual(
+            _pick_port(
+                [
+                    "Launchpad Pro:Launchpad Pro Standalone Port 20:1",
+                    "Launchpad Pro:Launchpad Pro Live Port 20:0",
+                    "Launchpad Pro:Launchpad Pro MIDI Port 20:2",
+                ],
+                "output",
+            ),
+            "Launchpad Pro:Launchpad Pro Live Port 20:0",
+        )
+
+    def test_initialize_enters_host_mode_before_rendering_controls(self) -> None:
+        output = FakeOutput()
+        surface = LaunchpadSurface(
+            output, layout=PadLayout(), message_factory=fake_message
+        )
+
+        surface.initialize()
+
+        self.assertEqual(output.messages[0].type, "sysex")
+        self.assertEqual(output.messages[0].data, [0, 32, 41, 2, 16, 33, 0])
+        self.assertEqual(output.messages[1].type, "sysex")
+        self.assertEqual(output.messages[1].data, [0, 32, 41, 2, 16, 34, 0])

@@ -81,8 +81,15 @@ class LaunchpadSurface:
         self._message_factory = message_factory or _message
 
     def initialize(self) -> None:
+        self.enter_host_mode()
         self.clear()
         self.render_controls()
+
+    def enter_host_mode(self) -> None:
+        """Put the original Launchpad Pro into host-controlled LED mode."""
+
+        self._send_sysex([0, 32, 41, 2, 16, 33, 0])
+        self._send_sysex([0, 32, 41, 2, 16, 34, 0])
 
     def clear(self) -> None:
         self._send_control_change(0, self.palette.OFF)
@@ -123,6 +130,9 @@ class LaunchpadSurface:
         self.output_port.send(
             self._message_factory("control_change", control=control, value=value)
         )
+
+    def _send_sysex(self, data: list[int]) -> None:
+        self.output_port.send(self._message_factory("sysex", data=data))
 
 
 def list_midi_ports() -> tuple[list[str], list[str]]:
@@ -176,6 +186,9 @@ def _pick_port(names: list[str], direction: str) -> str:
         raise LaunchpadError(f"No MIDI {direction} ports found.")
 
     launchpad_names = [name for name in names if "launchpad" in name.lower()]
+    live_names = [name for name in launchpad_names if "live port" in name.lower()]
+    if live_names:
+        return live_names[0]
     if launchpad_names:
         return launchpad_names[0]
     return names[0]
