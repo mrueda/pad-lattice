@@ -112,7 +112,7 @@ class LaunchpadSurfaceTest(TestCase):
         self.assertIn(_grid_note(0, 6), lit_notes)
         self.assertIn(_grid_note(7, 6), lit_notes)
 
-    def test_render_running_state_animates_scanline(self) -> None:
+    def test_render_running_state_uses_steady_symbol(self) -> None:
         output = FakeOutput()
         surface = LaunchpadSurface(output, layout=PadLayout(), message_factory=fake_message)
 
@@ -125,7 +125,15 @@ class LaunchpadSurfaceTest(TestCase):
         }
         self.assertEqual(
             blue_notes,
-            {_grid_note(2, y) for y in range(7)},
+            {
+                _grid_note(2, 1),
+                _grid_note(3, 1),
+                _grid_note(4, 2),
+                _grid_note(5, 3),
+                _grid_note(4, 4),
+                _grid_note(3, 5),
+                _grid_note(2, 5),
+            },
         )
 
 

@@ -93,13 +93,11 @@ class CodexSupervisor:
         surface: Any | None = None,
         keymap: CodexKeymap | None = None,
         poll_interval: float = 0.03,
-        animation_interval: float = 0.12,
     ) -> None:
         self.command = command
         self.surface = surface
         self.keymap = keymap or CodexKeymap()
         self.poll_interval = poll_interval
-        self.animation_interval = animation_interval
         self.state = AgentState.RUNNING
         self._master_fd: int | None = None
         self._process: subprocess.Popen[bytes] | None = None
@@ -148,19 +146,18 @@ class CodexSupervisor:
             selector.register(stdin_fd, selectors.EVENT_READ, "stdin")
 
         frame = 0
-        next_render = 0.0
+        last_rendered_state: AgentState | None = None
 
         if self.surface is not None:
             self.surface.initialize()
 
         try:
             while True:
-                now = time.monotonic()
-                if self.surface is not None and now >= next_render:
+                if self.surface is not None and self.state != last_rendered_state:
                     self.surface.render_state_frame(self.state, frame)
                     self.surface.render_controls()
                     frame += 1
-                    next_render = now + self.animation_interval
+                    last_rendered_state = self.state
 
                 for key, _ in selector.select(timeout=self.poll_interval):
                     if key.data == "codex":

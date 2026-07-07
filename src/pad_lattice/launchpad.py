@@ -177,10 +177,15 @@ class LaunchpadSurface:
                 self._set_grid_pad(x, y, color if lit else self.palette.OFF)
 
     def _render_running(self, frame: int) -> None:
-        x = frame % GRID_WIDTH
-        previous_x = (x - 1) % GRID_WIDTH
-        for y in range(STATUS_ROWS):
-            self._set_grid_pad(previous_x, y, self.palette.DIM_BLUE)
+        for x, y in (
+            (2, 1),
+            (3, 1),
+            (4, 2),
+            (5, 3),
+            (4, 4),
+            (3, 5),
+            (2, 5),
+        ):
             self._set_grid_pad(x, y, self.palette.BLUE)
 
     def _render_waiting(self) -> None:
@@ -269,25 +274,19 @@ def run_surface(
     on_action: Callable[[ControlAction], None],
     *,
     poll_interval: float = 0.03,
-    animation_interval: float = 0.12,
 ) -> None:
     """Run the blocking render/input loop."""
 
     surface.initialize()
     last_state: AgentState | None = None
-    frame = 0
-    next_render = 0.0
 
     try:
         while True:
-            now = time.monotonic()
             state = state_source()
-            if state != last_state or now >= next_render:
-                surface.render_state_frame(state, frame)
+            if state != last_state:
+                surface.render_state(state)
                 surface.render_controls()
                 last_state = state
-                frame += 1
-                next_render = now + animation_interval
             surface.poll_controls(on_action)
             time.sleep(poll_interval)
     finally:
