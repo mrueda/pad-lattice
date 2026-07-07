@@ -72,11 +72,6 @@ def detect_codex_state(output: bytes, current_state: AgentState) -> AgentState:
         return AgentState.WAITING_FOR_APPROVAL
     if any(pattern in text for pattern in REPLY_PATTERNS):
         return AgentState.WAITING_FOR_REPLY
-    if current_state in (
-        AgentState.WAITING_FOR_APPROVAL,
-        AgentState.WAITING_FOR_REPLY,
-    ) and text.strip():
-        return AgentState.RUNNING
     return current_state
 
 
@@ -191,6 +186,11 @@ class CodexSupervisor:
                         data = os.read(stdin_fd, 4096)
                         if data:
                             os.write(master_fd, data)
+                            if self.state in (
+                                AgentState.WAITING_FOR_APPROVAL,
+                                AgentState.WAITING_FOR_REPLY,
+                            ):
+                                self.state = AgentState.RUNNING
 
                 if self.surface is not None:
                     self.surface.poll_controls(self.handle_action)

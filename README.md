@@ -101,7 +101,7 @@ and motion, not color alone:
 | State | Display |
 |--------|---------|
 | Running | Steady blue symbol with one slow activity dot |
-| Waiting for reply | Steady cyan question mark |
+| Waiting for reply | Steady white question mark |
 | Waiting for approval | Steady yellow frame |
 | Success | Green checkmark |
 | Error | Red X |

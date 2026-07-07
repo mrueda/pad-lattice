@@ -112,20 +112,23 @@ class LaunchpadSurfaceTest(TestCase):
         self.assertIn(_grid_note(0, 6), lit_notes)
         self.assertIn(_grid_note(7, 6), lit_notes)
 
-    def test_render_waiting_for_reply_uses_cyan_question_mark(self) -> None:
+    def test_render_waiting_for_reply_uses_white_question_mark(self) -> None:
         output = FakeOutput()
         surface = LaunchpadSurface(output, layout=PadLayout(), message_factory=fake_message)
 
         surface.render_state_frame(AgentState.WAITING_FOR_REPLY, 0)
 
-        cyan_notes = {
+        white_notes = {
             message.note
             for message in output.messages
-            if message.velocity == LaunchpadPalette.CYAN
+            if message.velocity == LaunchpadPalette.WHITE
         }
-        self.assertIn(_grid_note(3, 0), cyan_notes)
-        self.assertIn(_grid_note(5, 2), cyan_notes)
-        self.assertIn(_grid_note(3, 6), cyan_notes)
+        self.assertIn(_grid_note(2, 0), white_notes)
+        self.assertIn(_grid_note(3, 0), white_notes)
+        self.assertIn(_grid_note(5, 0), white_notes)
+        self.assertIn(_grid_note(5, 2), white_notes)
+        self.assertIn(_grid_note(3, 6), white_notes)
+        self.assertIn(_grid_note(4, 6), white_notes)
 
     def test_render_running_state_uses_steady_symbol_with_activity_dot(self) -> None:
         output = FakeOutput()
