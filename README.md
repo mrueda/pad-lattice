@@ -1,80 +1,43 @@
+<div align="center">
+  <a href="https://github.com/mrueda/pad-lattice">
+    <img src="assets/pad-lattice-logo.svg" width="180" alt="Pad-Lattice logo">
+  </a>
+  <p><em>Launchpad control surface for coding agents</em></p>
+</div>
+
+![version](https://img.shields.io/badge/version-0.1.0-28a745)
+![python](https://img.shields.io/badge/python-%3E%3D3.10-blue)
+[![License](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE)
+
+---
+
 # Pad-Lattice
 
-## Vision
+**Pad-Lattice** turns a Novation Launchpad Pro into a hardware control surface
+for autonomous coding agents. It provides visible agent state, dedicated
+approval controls, and a local socket protocol that agent integrations can use
+without owning the MIDI device directly.
 
-Pad-Lattice is a proof-of-concept that transforms a Novation Launchpad Pro into a hardware control surface for autonomous coding agents.
+Pad-Lattice is not a macro keyboard. The useful part is the always-on LED
+surface: a spatial status display for supervising agents while they read,
+edit, test, wait for input, or require approval.
 
-The goal is **not** to build another macro keyboard or replace keyboard shortcuts. Instead, it explores a new interaction model where AI agents are supervised through a spatial, visual, always-on interface.
+# Table of contents
 
-Initially the backend will be **Codex CLI**, but the architecture should remain agent-agnostic so it can later support Claude Code, Aider, Gemini CLI, Goose, or future coding agents.
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [CLI](#cli)
+- [Socket Protocol](#socket-protocol)
+- [Current Layout](#current-layout)
+- [Architecture](#architecture)
+- [Hardware and Environment](#hardware-and-environment)
+- [Development](#development)
+- [Roadmap](#roadmap)
+- [Citation](#citation)
+- [Author](#author)
+- [Copyright and license](#copyright-and-license)
 
----
-
-# Environment
-
-- macOS host
-- Ubuntu VM in Parallels
-- Codex CLI running inside the VM
-- Launchpad Pro connected directly to the VM through USB passthrough
-- Python implementation
-- Libraries:
-  - `mido`
-  - `python-rtmidi`
-
----
-
-# Design Philosophy
-
-This is **not** a macro pad.
-
-Buttons that simply emulate keyboard shortcuts provide very little value.
-
-Instead, the Launchpad should become a **live dashboard** for an autonomous coding agent.
-
-The LEDs are the primary feature.
-
-The buttons are secondary.
-
-The project should answer a broader UX question:
-
-> How should humans supervise autonomous coding agents?
-
----
-
-# MVP
-
-Implement only four agent states:
-
-| State | Color |
-|--------|-------|
-| Running | Blue |
-| Waiting for approval | Yellow |
-| Success | Green |
-| Error | Red |
-
-Display these using one LED or a small dedicated area.
-
-Implement only four controls:
-
-- Approve
-- Reject
-- Stop
-- Retry
-
-The objective of the MVP is **not** feature completeness.
-
-It is to determine whether a physical status display is genuinely more useful than watching a terminal.
-
----
-
-# Current Implementation
-
-This repository now contains the first Python MVP skeleton:
-
-- `pad_lattice.events` defines agent-agnostic states and control actions.
-- `pad_lattice.launchpad` maps states to Launchpad LEDs and pad presses to actions.
-- `pad_lattice.demo_agent` cycles through the four MVP states for hardware testing.
-- `pad-lattice` provides a CLI for listing MIDI ports and running the demo loop.
+# Installation
 
 Install locally from the repository root:
 
@@ -82,7 +45,14 @@ Install locally from the repository root:
 python3 -m pip install -e .
 ```
 
-List MIDI ports:
+Pad-Lattice requires Python 3.10 or newer and uses:
+
+- `mido`
+- `python-rtmidi`
+
+# Quick Start
+
+List available MIDI ports:
 
 ```bash
 pad-lattice ports
@@ -94,20 +64,42 @@ Run the hardware demo:
 pad-lattice demo
 ```
 
-The demo starts by scrolling `HELLO FROM CODEX CLI` across the Launchpad,
-then switches to the MVP state and control display. The state area uses shape
-and motion, not color alone:
+Run the durable sidecar daemon:
 
-| State | Display |
-|--------|---------|
-| Running | Steady blue center block with one slow activity dot |
-| Waiting for reply | Steady white question mark |
-| User typing | Steady white input line |
-| Waiting for approval | Steady yellow frame |
-| Success | Green checkmark |
-| Error | Red X |
+```bash
+pad-lattice daemon
+```
 
-Tune the greeting speed if needed:
+Send a state to the daemon from another process:
+
+```bash
+pad-lattice send-state waiting_for_reply
+pad-lattice send-state running
+pad-lattice send-state waiting_for_approval
+pad-lattice send-state success
+pad-lattice send-state error
+```
+
+Listen for Launchpad button actions:
+
+```bash
+pad-lattice listen-actions
+```
+
+# CLI
+
+| Command | Purpose |
+| --- | --- |
+| `pad-lattice ports` | List MIDI input and output ports. |
+| `pad-lattice demo` | Run the standalone hardware demo loop. |
+| `pad-lattice daemon` | Own the Launchpad and expose the local socket API. |
+| `pad-lattice send-state STATE` | Send an agent state to the daemon. |
+| `pad-lattice listen-actions` | Print Launchpad actions emitted by the daemon. |
+
+The demo starts by scrolling `HELLO FROM CODEX CLI` across the Launchpad, then
+switches to the state and control display.
+
+Tune the greeting speed:
 
 ```bash
 pad-lattice demo --greeting-delay 0.12
@@ -117,195 +109,152 @@ If auto-detection picks the wrong MIDI port, pass explicit names:
 
 ```bash
 pad-lattice demo --input "Launchpad Pro" --output "Launchpad Pro"
+pad-lattice daemon --input "Launchpad Pro" --output "Launchpad Pro"
 ```
 
-Run the durable sidecar daemon:
-
-```bash
-pad-lattice daemon
-```
+# Socket Protocol
 
 The daemon owns the Launchpad MIDI ports and exposes a local Unix socket. Other
-processes send structured state messages to that socket:
+processes send newline-delimited JSON messages to that socket.
 
-```bash
-pad-lattice send-state waiting_for_reply
-pad-lattice send-state running
-```
-
-Listen for Launchpad actions from another terminal:
-
-```bash
-pad-lattice listen-actions
-```
-
-The socket protocol uses newline-delimited JSON:
+State message:
 
 ```json
 {"type":"state","state":"waiting_for_reply"}
+```
+
+Action message:
+
+```json
 {"type":"action","action":"approve"}
 ```
 
-The daemon broadcasts Launchpad controls to action subscribers:
+Subscribe to action messages:
 
-| Control | Default behavior |
-|----------|------------------|
-| Approve | Emit `{"type":"action","action":"approve"}` |
-| Reject | Emit `{"type":"action","action":"reject"}` |
-| Retry | Emit `{"type":"action","action":"retry"}` |
-| Stop | Emit `{"type":"action","action":"stop"}` |
+```json
+{"type":"subscribe_actions"}
+```
 
-Codex integration should target this socket via hooks, remote-control, or a
-small adapter.
+By default, the socket path is selected in this order:
 
-The current pad layout assumes Launchpad Pro programmer-style grid notes:
+1. `PAD_LATTICE_SOCKET`
+2. `$XDG_RUNTIME_DIR/pad-lattice.sock`
+3. `/tmp/pad-lattice-$UID.sock`
+
+Codex integration should target this socket via hooks, remote control, or a
+small adapter. The protocol is intentionally agent-agnostic so other coding
+agents can use the same daemon.
+
+# Current Layout
+
+The state area uses shape and motion, not color alone:
+
+| State | Display |
+| --- | --- |
+| Running | Steady blue center block with one slow activity dot. |
+| Waiting for reply | Steady white question mark. |
+| User typing | Steady white input line. |
+| Waiting for approval | Steady yellow frame. |
+| Success | Green checkmark. |
+| Error | Red X. |
+
+The current control layout assumes Launchpad Pro programmer-style grid notes:
 
 | Control | Pad | Action |
-|----------|-----|--------|
-| Approve | 11 | approve |
-| Reject | 12 | reject |
-| Retry | 17 | retry |
-| Stop | 18 | stop |
+| --- | --- | --- |
+| Approve | `11` | `approve` |
+| Reject | `12` | `reject` |
+| Retry | `17` | `retry` |
+| Stop | `18` | `stop` |
 
-The four center pads `44`, `45`, `54`, and `55` display the current agent state.
-
----
-
-# Future Ideas
-
-## Repository Map
-
-Represent repository modules spatially.
-
-Example:
-
-```
-API
-DB
-CLI
-UI
-TESTS
-DOCS
-CI
-SCRIPTS
-```
-
-Modules illuminate whenever the agent is working inside them.
-
----
-
-## Workflow Visualization
-
-Display the current phase of execution.
-
-```
-PLAN
- ↓
-READ
- ↓
-EDIT
- ↓
-TEST
- ↓
-REVIEW
- ↓
-COMMIT
-```
-
-Each phase has a unique color or animation.
-
----
-
-## Progress Visualization
-
-Rather than showing a spinner, animate the Launchpad to indicate progress through a task.
-
----
-
-## Confidence Visualization
-
-Instead of simply indicating "approval required", estimate the confidence or risk level of the proposed changes.
-
-Example:
-
-- 🟢 Low risk
-- 🟡 Medium risk
-- 🔴 High risk
-
-This could help users decide when a careful review is necessary.
-
----
-
-## Repository Activity
-
-Show where activity is occurring.
-
-Examples:
-
-- Files being read
-- Files being modified
-- Tests currently executing
-- Git status
-- Build failures
-
-The Launchpad should feel alive while the agent works.
-
----
+The four center pads `44`, `45`, `54`, and `55` display the current agent
+state.
 
 # Architecture
 
-```
-Agent Backend
-      │
-      ▼
-Agent Events
-      │
-      ▼
-Launchpad Renderer
-      │
-      ▼
-Launchpad LEDs + Controls
+Pad-Lattice separates hardware ownership from agent integration:
+
+```text
+Agent backend
+  -> Pad-Lattice socket protocol
+  -> Pad-Lattice daemon
+  -> Launchpad renderer
+  -> Launchpad LEDs and controls
 ```
 
-The renderer should only receive abstract events.
+The renderer receives abstract events and actions. It does not need to know
+whether the backend is Codex CLI, Claude Code, Aider, Gemini CLI, Goose, or a
+future coding agent.
 
-Examples:
+Main modules:
 
-- running
-- reading_files
-- editing_files
-- running_tests
-- waiting_for_approval
-- completed
-- failed
+| Module | Purpose |
+| --- | --- |
+| `pad_lattice.events` | Agent-agnostic states and control actions. |
+| `pad_lattice.launchpad` | Launchpad LED rendering and pad press mapping. |
+| `pad_lattice.daemon` | Local sidecar daemon and action broadcaster. |
+| `pad_lattice.protocol` | JSON-line socket protocol helpers. |
+| `pad_lattice.demo_agent` | Demo state cycle for hardware testing. |
+| `pad_lattice.cli` | Command-line interface. |
 
-It should know nothing about Codex specifically.
+# Hardware and Environment
 
----
+The initial development setup is:
 
-# Long-Term Vision
+- macOS host
+- Ubuntu VM in Parallels
+- Launchpad Pro connected directly to the VM through USB passthrough
+- Codex CLI running inside the VM
 
-Pad-Lattice should evolve into a generic hardware interface for AI coding agents rather than a Codex-specific project.
+Only one process can own the Launchpad MIDI ports at a time. Stop any existing
+`pad-lattice demo` or `pad-lattice daemon` process before starting another one.
 
-The Launchpad is simply the first supported device.
+# Development
 
-Eventually the backend could support:
+Run the test suite:
 
-- Codex CLI
-- Claude Code
-- Aider
-- Gemini CLI
-- Goose
-- Future autonomous coding agents
+```bash
+python3 -m unittest discover -s tests
+```
 
----
+Run bytecode compilation checks:
 
-# Success Criteria
+```bash
+python3 -m py_compile src/pad_lattice/*.py tests/*.py
+```
 
-The project succeeds if the Launchpad becomes a genuinely useful supervision interface rather than a novelty.
+# Roadmap
 
-The key question is:
+Near-term goals:
 
-> Can a spatial, LED-based hardware interface make supervising autonomous coding agents easier than constantly watching terminal output?
+- Add a first Codex CLI adapter that uses the daemon socket.
+- Expand the action model for common approval and interruption workflows.
+- Make the LED states more readable under normal desk lighting.
+- Add documentation for Launchpad Pro setup and troubleshooting.
 
-If the answer is yes, Pad-Lattice has discovered a new interaction model—not just another macro keyboard.
+Longer-term ideas:
+
+- Repository activity map.
+- Workflow phase visualization.
+- Risk or confidence display for approvals.
+- Support for additional coding agents.
+- Support for additional MIDI grid controllers.
+
+# Citation
+
+No formal citation is available yet. For now, cite the GitHub repository:
+
+Pad-Lattice: Launchpad control surface for coding agents.
+https://github.com/mrueda/pad-lattice
+
+# Author
+
+Written by Manuel Rueda (mrueda). GitHub repository:
+[https://github.com/mrueda/pad-lattice](https://github.com/mrueda/pad-lattice).
+
+# Copyright and license
+
+Copyright (C) 2026 Manuel Rueda.
+
+Please see the included [LICENSE](LICENSE) file for distribution and usage
+terms.
