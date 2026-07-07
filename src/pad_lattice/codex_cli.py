@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from pad_lattice.events import AgentState, ControlAction
+from pad_lattice.launchpad import RUNNING_ACTIVITY_INTERVAL
 
 ANSI_ESCAPE_RE = re.compile(rb"\x1b\[[0-?]*[ -/]*[@-~]")
 APPROVAL_PATTERNS = (
@@ -147,17 +148,27 @@ class CodexSupervisor:
 
         frame = 0
         last_rendered_state: AgentState | None = None
+        next_activity_render = 0.0
 
         if self.surface is not None:
             self.surface.initialize()
 
         try:
             while True:
-                if self.surface is not None and self.state != last_rendered_state:
+                now = time.monotonic()
+                refresh_running = (
+                    self.state is AgentState.RUNNING
+                    and last_rendered_state is AgentState.RUNNING
+                    and now >= next_activity_render
+                )
+                if self.surface is not None and (
+                    self.state != last_rendered_state or refresh_running
+                ):
                     self.surface.render_state_frame(self.state, frame)
                     self.surface.render_controls()
                     frame += 1
                     last_rendered_state = self.state
+                    next_activity_render = now + RUNNING_ACTIVITY_INTERVAL
 
                 for key, _ in selector.select(timeout=self.poll_interval):
                     if key.data == "codex":

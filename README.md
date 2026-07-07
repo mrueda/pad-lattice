@@ -100,7 +100,7 @@ and motion, not color alone:
 
 | State | Display |
 |--------|---------|
-| Running | Steady blue running symbol |
+| Running | Steady blue symbol with one slow activity dot |
 | Waiting for approval | Steady yellow frame |
 | Success | Green checkmark |
 | Error | Red X |

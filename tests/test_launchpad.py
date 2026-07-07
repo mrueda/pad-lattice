@@ -112,7 +112,7 @@ class LaunchpadSurfaceTest(TestCase):
         self.assertIn(_grid_note(0, 6), lit_notes)
         self.assertIn(_grid_note(7, 6), lit_notes)
 
-    def test_render_running_state_uses_steady_symbol(self) -> None:
+    def test_render_running_state_uses_steady_symbol_with_activity_dot(self) -> None:
         output = FakeOutput()
         surface = LaunchpadSurface(output, layout=PadLayout(), message_factory=fake_message)
 
@@ -135,6 +135,12 @@ class LaunchpadSurfaceTest(TestCase):
                 _grid_note(2, 5),
             },
         )
+        white_notes = {
+            message.note
+            for message in output.messages
+            if message.velocity == LaunchpadPalette.WHITE
+        }
+        self.assertEqual(white_notes, {_grid_note(2, 0)})
 
 
 class MessagePatchTest(TestCase):

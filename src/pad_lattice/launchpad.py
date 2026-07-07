@@ -64,6 +64,7 @@ class LaunchpadPalette:
 
 STATUS_ROWS = 7
 GRID_WIDTH = 8
+RUNNING_ACTIVITY_INTERVAL = 1.5
 
 FONT_5X7: dict[str, tuple[str, ...]] = {
     " ": ("00000", "00000", "00000", "00000", "00000", "00000", "00000"),
@@ -177,6 +178,7 @@ class LaunchpadSurface:
                 self._set_grid_pad(x, y, color if lit else self.palette.OFF)
 
     def _render_running(self, frame: int) -> None:
+        self._set_grid_pad(frame % GRID_WIDTH, 0, self.palette.WHITE)
         for x, y in (
             (2, 1),
             (3, 1),
@@ -279,14 +281,24 @@ def run_surface(
 
     surface.initialize()
     last_state: AgentState | None = None
+    frame = 0
+    next_activity_render = 0.0
 
     try:
         while True:
+            now = time.monotonic()
             state = state_source()
-            if state != last_state:
-                surface.render_state(state)
+            refresh_running = (
+                state is AgentState.RUNNING
+                and last_state is AgentState.RUNNING
+                and now >= next_activity_render
+            )
+            if state != last_state or refresh_running:
+                surface.render_state_frame(state, frame)
                 surface.render_controls()
                 last_state = state
+                frame += 1
+                next_activity_render = now + RUNNING_ACTIVITY_INTERVAL
             surface.poll_controls(on_action)
             time.sleep(poll_interval)
     finally:
