@@ -7,6 +7,7 @@ import json
 import socket
 import sys
 
+from pad_lattice.codex_exec import run_codex_exec
 from pad_lattice.demo_agent import DemoAgent
 from pad_lattice.events import AgentState
 from pad_lattice.daemon import PadLatticeDaemon
@@ -74,6 +75,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     listen_actions.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
 
+    codex_exec = subparsers.add_parser(
+        "codex-exec", help="run `codex exec --json` and mirror state to the daemon"
+    )
+    codex_exec.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
+    codex_exec.add_argument("--codex", default="codex", help="Codex CLI executable")
+    codex_exec.add_argument("prompt", nargs=argparse.REMAINDER, help="prompt passed to Codex")
+
     return parser
 
 
@@ -117,6 +125,15 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command == "listen-actions":
             return listen_actions(args.socket)
+
+        if args.command == "codex-exec":
+            prompt = args.prompt
+            if prompt and prompt[0] == "--":
+                prompt = prompt[1:]
+            return run_codex_exec(prompt, args.socket, codex_binary=args.codex)
+    except ValueError as exc:
+        print(f"pad-lattice: {exc}", file=sys.stderr)
+        return 2
     except KeyboardInterrupt:
         return 130
     except (ConnectionError, FileNotFoundError, OSError) as exc:

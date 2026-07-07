@@ -34,3 +34,12 @@ class CliTest(TestCase):
 
         self.assertEqual(args.command, "listen-actions")
         self.assertEqual(args.socket, "/tmp/pad-lattice.sock")
+
+    def test_codex_exec_accepts_prompt(self) -> None:
+        args = build_parser().parse_args(
+            ["codex-exec", "--socket", "/tmp/pad-lattice.sock", "say", "hello"]
+        )
+
+        self.assertEqual(args.command, "codex-exec")
+        self.assertEqual(args.socket, "/tmp/pad-lattice.sock")
+        self.assertEqual(args.prompt, ["say", "hello"])

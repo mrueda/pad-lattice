@@ -7,7 +7,7 @@
 
 ![version](https://img.shields.io/badge/version-0.1.0-28a745)
 ![python](https://img.shields.io/badge/python-%3E%3D3.10-blue)
-[![License](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 ---
 
