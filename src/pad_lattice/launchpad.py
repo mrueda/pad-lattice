@@ -57,6 +57,7 @@ class LaunchpadPalette:
     STATE_COLORS: dict[AgentState, int] = {
         AgentState.RUNNING: BLUE,
         AgentState.WAITING_FOR_REPLY: WHITE,
+        AgentState.USER_TYPING: WHITE,
         AgentState.WAITING_FOR_APPROVAL: YELLOW,
         AgentState.SUCCESS: GREEN,
         AgentState.ERROR: RED,
@@ -147,6 +148,8 @@ class LaunchpadSurface:
             self._render_running(frame)
         elif state is AgentState.WAITING_FOR_REPLY:
             self._render_waiting_for_reply()
+        elif state is AgentState.USER_TYPING:
+            self._render_user_typing()
         elif state is AgentState.WAITING_FOR_APPROVAL:
             self._render_waiting()
         elif state is AgentState.SUCCESS:
@@ -182,15 +185,7 @@ class LaunchpadSurface:
 
     def _render_running(self, frame: int) -> None:
         self._set_grid_pad(frame % GRID_WIDTH, 0, self.palette.WHITE)
-        for x, y in (
-            (2, 1),
-            (3, 1),
-            (4, 2),
-            (5, 3),
-            (4, 4),
-            (3, 5),
-            (2, 5),
-        ):
+        for x, y in ((3, 2), (4, 2), (3, 3), (4, 3)):
             self._set_grid_pad(x, y, self.palette.BLUE)
 
     def _render_waiting(self) -> None:
@@ -222,6 +217,11 @@ class LaunchpadSurface:
             (4, 6),
         ):
             self._set_grid_pad(x, y, self.palette.WHITE)
+
+    def _render_user_typing(self) -> None:
+        for x in range(1, 7):
+            self._set_grid_pad(x, 5, self.palette.WHITE)
+        self._set_grid_pad(6, 4, self.palette.WHITE)
 
     def _render_success(self) -> None:
         for x, y in ((1, 4), (2, 5), (3, 6), (4, 4), (5, 3), (6, 2)):

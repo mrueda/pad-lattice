@@ -11,6 +11,7 @@ class AgentState(str, Enum):
 
     RUNNING = "running"
     WAITING_FOR_REPLY = "waiting_for_reply"
+    USER_TYPING = "user_typing"
     WAITING_FOR_APPROVAL = "waiting_for_approval"
     SUCCESS = "success"
     ERROR = "error"

@@ -15,6 +15,7 @@ from pad_lattice.codex_cli import (
     decode_key_sequence,
     detect_codex_state,
     set_pty_size,
+    state_after_user_input,
 )
 from pad_lattice.events import AgentState, ControlAction
 
@@ -52,6 +53,18 @@ class CodexCliTest(TestCase):
         self.assertIs(
             detect_codex_state(b"working again", AgentState.WAITING_FOR_REPLY),
             AgentState.WAITING_FOR_REPLY,
+        )
+
+    def test_state_after_user_input_marks_reply_as_typing_before_enter(self) -> None:
+        self.assertIs(
+            state_after_user_input(AgentState.WAITING_FOR_REPLY, b"h"),
+            AgentState.USER_TYPING,
+        )
+
+    def test_state_after_user_input_marks_typing_as_running_on_enter(self) -> None:
+        self.assertIs(
+            state_after_user_input(AgentState.USER_TYPING, b"\r"),
+            AgentState.RUNNING,
         )
 
     def test_handle_action_writes_configured_keys(self) -> None:

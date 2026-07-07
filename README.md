@@ -100,8 +100,9 @@ and motion, not color alone:
 
 | State | Display |
 |--------|---------|
-| Running | Steady blue symbol with one slow activity dot |
+| Running | Steady blue center block with one slow activity dot |
 | Waiting for reply | Steady white question mark |
+| User typing | Steady white input line |
 | Waiting for approval | Steady yellow frame |
 | Success | Green checkmark |
 | Error | Red X |

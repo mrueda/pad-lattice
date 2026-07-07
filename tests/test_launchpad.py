@@ -144,13 +144,10 @@ class LaunchpadSurfaceTest(TestCase):
         self.assertEqual(
             blue_notes,
             {
-                _grid_note(2, 1),
-                _grid_note(3, 1),
+                _grid_note(3, 2),
                 _grid_note(4, 2),
-                _grid_note(5, 3),
-                _grid_note(4, 4),
-                _grid_note(3, 5),
-                _grid_note(2, 5),
+                _grid_note(3, 3),
+                _grid_note(4, 3),
             },
         )
         white_notes = {
@@ -159,6 +156,22 @@ class LaunchpadSurfaceTest(TestCase):
             if message.velocity == LaunchpadPalette.WHITE
         }
         self.assertEqual(white_notes, {_grid_note(2, 0)})
+
+    def test_render_user_typing_uses_input_line(self) -> None:
+        output = FakeOutput()
+        surface = LaunchpadSurface(output, layout=PadLayout(), message_factory=fake_message)
+
+        surface.render_state_frame(AgentState.USER_TYPING, 0)
+
+        white_notes = {
+            message.note
+            for message in output.messages
+            if message.velocity == LaunchpadPalette.WHITE
+        }
+        self.assertEqual(
+            white_notes,
+            {_grid_note(x, 5) for x in range(1, 7)} | {_grid_note(6, 4)},
+        )
 
 
 class MessagePatchTest(TestCase):

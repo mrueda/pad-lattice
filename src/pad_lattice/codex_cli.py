@@ -75,6 +75,20 @@ def detect_codex_state(output: bytes, current_state: AgentState) -> AgentState:
     return current_state
 
 
+def state_after_user_input(current_state: AgentState, data: bytes) -> AgentState:
+    if current_state not in (
+        AgentState.WAITING_FOR_APPROVAL,
+        AgentState.WAITING_FOR_REPLY,
+        AgentState.USER_TYPING,
+    ):
+        return current_state
+    if b"\r" in data or b"\n" in data:
+        return AgentState.RUNNING
+    if current_state is AgentState.WAITING_FOR_REPLY:
+        return AgentState.USER_TYPING
+    return current_state
+
+
 def get_terminal_size(fd: int) -> TerminalSize:
     if os.isatty(fd):
         try:
@@ -186,11 +200,7 @@ class CodexSupervisor:
                         data = os.read(stdin_fd, 4096)
                         if data:
                             os.write(master_fd, data)
-                            if self.state in (
-                                AgentState.WAITING_FOR_APPROVAL,
-                                AgentState.WAITING_FOR_REPLY,
-                            ):
-                                self.state = AgentState.RUNNING
+                            self.state = state_after_user_input(self.state, data)
 
                 if self.surface is not None:
                     self.surface.poll_controls(self.handle_action)
