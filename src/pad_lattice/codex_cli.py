@@ -24,12 +24,12 @@ from pad_lattice.launchpad import RUNNING_ACTIVITY_INTERVAL
 
 ANSI_ESCAPE_RE = re.compile(rb"\x1b\[[0-?]*[ -/]*[@-~]")
 APPROVAL_PATTERNS = (
-    "approval",
-    "approve",
-    "allow",
-    "do you want to",
-    "waiting for approval",
-    "requires approval",
+    re.compile(r"\bdo you want to (allow|approve|run|execute)\b"),
+    re.compile(r"\bwaiting for approval\b"),
+    re.compile(r"\brequires approval\b"),
+    re.compile(r"\bapproval required\b"),
+    re.compile(r"\bapprove\?\b"),
+    re.compile(r"\ballow\?\b"),
 )
 REPLY_PATTERNS = (
     "waiting for your reply",
@@ -68,7 +68,7 @@ def build_codex_command(args: list[str]) -> list[str]:
 
 def detect_codex_state(output: bytes, current_state: AgentState) -> AgentState:
     text = ANSI_ESCAPE_RE.sub(b"", output).decode("utf-8", "ignore").lower()
-    if any(pattern in text for pattern in APPROVAL_PATTERNS):
+    if any(pattern.search(text) for pattern in APPROVAL_PATTERNS):
         return AgentState.WAITING_FOR_APPROVAL
     if any(pattern in text for pattern in REPLY_PATTERNS):
         return AgentState.WAITING_FOR_REPLY

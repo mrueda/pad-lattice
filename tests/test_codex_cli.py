@@ -37,6 +37,24 @@ class CodexCliTest(TestCase):
             AgentState.WAITING_FOR_APPROVAL,
         )
 
+    def test_detect_codex_state_does_not_treat_approve_word_as_prompt(self) -> None:
+        self.assertIs(
+            detect_codex_state(
+                b"Press approve later if needed, but no approval is required now.",
+                AgentState.RUNNING,
+            ),
+            AgentState.RUNNING,
+        )
+
+    def test_detect_codex_state_does_not_treat_allow_word_as_prompt(self) -> None:
+        self.assertIs(
+            detect_codex_state(
+                b"This option will allow the command to run after you decide.",
+                AgentState.RUNNING,
+            ),
+            AgentState.RUNNING,
+        )
+
     def test_detect_codex_state_finds_reply_prompt(self) -> None:
         self.assertIs(
             detect_codex_state(b"What would you like to do next?", AgentState.RUNNING),
