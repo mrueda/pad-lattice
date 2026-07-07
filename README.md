@@ -13,10 +13,10 @@
 
 # Pad-Lattice
 
-**Pad-Lattice** turns a Novation Launchpad Pro into a hardware control surface
-for autonomous coding agents. It provides visible agent state, dedicated
-approval controls, and a local socket protocol that agent integrations can use
-without owning the MIDI device directly.
+**Pad-Lattice** turns a Novation Launchpad Pro Mk1 into a hardware control
+surface for autonomous coding agents. It provides visible agent state,
+dedicated approval controls, and a local socket protocol that agent
+integrations can use without owning the MIDI device directly.
 
 Pad-Lattice is not a macro keyboard. The useful part is the always-on LED
 surface: a spatial status display for supervising agents while they read,
@@ -199,11 +199,16 @@ Main modules:
 
 # Hardware and Environment
 
+Pad-Lattice currently targets the **Novation Launchpad Pro Mk1**. Other
+Launchpad models or MIDI grid controllers may work later, but they are not the
+current tested hardware target.
+
 The initial development setup is:
 
 - macOS host
 - Ubuntu VM in Parallels
-- Launchpad Pro connected directly to the VM through USB passthrough
+- Novation Launchpad Pro Mk1 connected directly to the VM through USB
+  passthrough
 - Codex CLI running inside the VM
 
 Only one process can own the Launchpad MIDI ports at a time. Stop any existing

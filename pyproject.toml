@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pad-lattice"
 version = "0.1.0"
-description = "Launchpad control surface for autonomous coding agents."
+description = "Novation Launchpad Pro Mk1 control surface for autonomous coding agents."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "GPL-3.0-only"
