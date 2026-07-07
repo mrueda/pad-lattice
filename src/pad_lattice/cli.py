@@ -27,6 +27,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=4.0,
         help="seconds before the demo advances to the next state",
     )
+    demo.add_argument(
+        "--greeting-delay",
+        type=float,
+        default=0.08,
+        help="seconds between greeting scroll frames",
+    )
 
     return parser
 
@@ -47,7 +53,11 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command == "demo":
             agent = DemoAgent(seconds_per_state=args.seconds_per_state)
-            surface = open_launchpad(input_name=args.input, output_name=args.output)
+            surface = open_launchpad(
+                input_name=args.input,
+                output_name=args.output,
+                scroll_delay=args.greeting_delay,
+            )
             run_surface(surface, agent.current_state, agent.action_logger())
             return 0
     except KeyboardInterrupt:

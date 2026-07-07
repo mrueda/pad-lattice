@@ -94,6 +94,15 @@ Run the hardware demo:
 pad-lattice demo
 ```
 
+The demo starts by scrolling `HELLO FROM CODEX CLI` across the Launchpad,
+then switches to the MVP state and control display.
+
+Tune the greeting speed if needed:
+
+```bash
+pad-lattice demo --greeting-delay 0.12
+```
+
 If auto-detection picks the wrong MIDI port, pass explicit names:
 
 ```bash

@@ -8,7 +8,9 @@ from pad_lattice.launchpad import (
     LaunchpadPalette,
     LaunchpadSurface,
     PadLayout,
+    _grid_note,
     _pick_port,
+    _text_columns,
 )
 
 
@@ -107,7 +109,10 @@ class PortSelectionTest(TestCase):
     def test_initialize_enters_host_mode_before_rendering_controls(self) -> None:
         output = FakeOutput()
         surface = LaunchpadSurface(
-            output, layout=PadLayout(), message_factory=fake_message
+            output,
+            layout=PadLayout(),
+            message_factory=fake_message,
+            startup_greeting=None,
         )
 
         surface.initialize()
@@ -116,3 +121,26 @@ class PortSelectionTest(TestCase):
         self.assertEqual(output.messages[0].data, [0, 32, 41, 2, 16, 33, 0])
         self.assertEqual(output.messages[1].type, "sysex")
         self.assertEqual(output.messages[1].data, [0, 32, 41, 2, 16, 34, 0])
+
+    def test_text_columns_build_a_scrollable_glyph(self) -> None:
+        columns = _text_columns("I")
+
+        self.assertEqual(len(columns), 6)
+        self.assertNotEqual(columns[0], 0)
+        self.assertEqual(columns[-1], 0)
+
+    def test_render_text_frame_maps_pixels_to_grid_notes(self) -> None:
+        output = FakeOutput()
+        surface = LaunchpadSurface(
+            output,
+            layout=PadLayout(),
+            message_factory=fake_message,
+            startup_greeting=None,
+        )
+
+        surface.render_text_frame([0b01000000, 0, 0, 0, 0, 0, 0, 0], LaunchpadPalette.GREEN)
+
+        lit_messages = [message for message in output.messages if message.velocity]
+        self.assertEqual(len(lit_messages), 1)
+        self.assertEqual(lit_messages[0].note, _grid_note(0, 1))
+        self.assertEqual(lit_messages[0].velocity, LaunchpadPalette.GREEN)
