@@ -3,16 +3,21 @@
 from __future__ import annotations
 
 import argparse
+import json
+import socket
 import sys
 
-from pad_lattice.codex_cli import (
-    CodexKeymap,
-    CodexSupervisor,
-    build_codex_command,
-    decode_key_sequence,
-)
 from pad_lattice.demo_agent import DemoAgent
+from pad_lattice.events import AgentState
+from pad_lattice.daemon import PadLatticeDaemon
 from pad_lattice.launchpad import LaunchpadError, list_midi_ports, open_launchpad, run_surface
+from pad_lattice.protocol import (
+    default_socket_path,
+    decode_message,
+    send_message,
+    state_message,
+    subscribe_actions_message,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -40,50 +45,34 @@ def build_parser() -> argparse.ArgumentParser:
         help="seconds between greeting scroll frames",
     )
 
-    codex = subparsers.add_parser("codex", help="run Codex CLI under Launchpad control")
-    codex.add_argument("--input", help="MIDI input port name")
-    codex.add_argument("--output", help="MIDI output port name")
-    codex.add_argument(
-        "--no-launchpad",
-        action="store_true",
-        help="run the Codex PTY bridge without opening MIDI hardware",
-    )
-    codex.add_argument(
+    daemon = subparsers.add_parser("daemon", help="run the Launchpad sidecar daemon")
+    daemon.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
+    daemon.add_argument("--input", help="MIDI input port name")
+    daemon.add_argument("--output", help="MIDI output port name")
+    daemon.add_argument(
         "--greeting-delay",
         type=float,
         default=0.08,
         help="seconds between greeting scroll frames",
     )
-    codex.add_argument(
+    daemon.add_argument(
         "--no-greeting",
         action="store_true",
         help="skip the Launchpad startup greeting",
     )
-    codex.add_argument(
-        "--detect-state",
-        action="store_true",
-        help="experimentally infer Codex state from terminal output",
+
+    send_state = subparsers.add_parser("send-state", help="send a state to the daemon")
+    send_state.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
+    send_state.add_argument(
+        "state",
+        choices=[state.value for state in AgentState],
+        help="state to render on the Launchpad",
     )
-    codex.add_argument(
-        "--approve-keys",
-        default="\\n",
-        help="key sequence sent to Codex for approve, using Python escapes",
+
+    listen_actions = subparsers.add_parser(
+        "listen-actions", help="print Launchpad actions from the daemon"
     )
-    codex.add_argument(
-        "--reject-keys",
-        default="\\x1b",
-        help="key sequence sent to Codex for reject, using Python escapes",
-    )
-    codex.add_argument(
-        "--retry-keys",
-        default="r\\n",
-        help="key sequence sent to Codex for retry, using Python escapes",
-    )
-    codex.add_argument(
-        "codex_args",
-        nargs=argparse.REMAINDER,
-        help="arguments passed to Codex CLI; prefix with -- before Codex flags",
-    )
+    listen_actions.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
 
     return parser
 
@@ -112,33 +101,48 @@ def main(argv: list[str] | None = None) -> int:
             run_surface(surface, agent.current_state, agent.action_logger())
             return 0
 
-        if args.command == "codex":
-            surface = None
-            if not args.no_launchpad:
-                surface = open_launchpad(
-                    input_name=args.input,
-                    output_name=args.output,
-                    startup_greeting=None if args.no_greeting else "HELLO FROM CODEX CLI",
-                    scroll_delay=args.greeting_delay,
-                )
-            supervisor = CodexSupervisor(
-                build_codex_command(args.codex_args),
-                surface=surface,
-                keymap=CodexKeymap(
-                    approve=decode_key_sequence(args.approve_keys),
-                    reject=decode_key_sequence(args.reject_keys),
-                    retry=decode_key_sequence(args.retry_keys),
-                ),
-                detect_state=args.detect_state,
+        if args.command == "daemon":
+            surface = open_launchpad(
+                input_name=args.input,
+                output_name=args.output,
+                startup_greeting=None if args.no_greeting else "HELLO FROM CODEX CLI",
+                scroll_delay=args.greeting_delay,
             )
-            return supervisor.run()
+            PadLatticeDaemon(surface, args.socket).run()
+            return 0
+
+        if args.command == "send-state":
+            send_message(args.socket, state_message(AgentState(args.state)))
+            return 0
+
+        if args.command == "listen-actions":
+            return listen_actions(args.socket)
     except KeyboardInterrupt:
         return 130
+    except (ConnectionError, FileNotFoundError, OSError) as exc:
+        print(f"pad-lattice: {exc}", file=sys.stderr)
+        return 1
     except LaunchpadError as exc:
         print(f"pad-lattice: {exc}", file=sys.stderr)
         return 1
 
     raise AssertionError(f"unhandled command: {args.command}")
+
+
+def listen_actions(socket_path: str) -> int:
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+        client.connect(socket_path)
+        client.sendall(json.dumps(subscribe_actions_message()).encode("utf-8") + b"\n")
+        buffer = b""
+        while True:
+            data = client.recv(4096)
+            if not data:
+                return 0
+            buffer += data
+            while b"\n" in buffer:
+                line, buffer = buffer.split(b"\n", 1)
+                if line.strip():
+                    print(json.dumps(decode_message(line), separators=(",", ":")), flush=True)
 
 
 if __name__ == "__main__":

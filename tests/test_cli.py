@@ -12,17 +12,25 @@ class CliTest(TestCase):
         self.assertEqual(args.command, "demo")
         self.assertEqual(args.greeting_delay, 0.12)
 
-    def test_codex_accepts_pass_through_args(self) -> None:
+    def test_daemon_accepts_socket_and_no_greeting(self) -> None:
         args = build_parser().parse_args(
-            ["codex", "--approve-keys", "y\\n", "--no-greeting", "--", "resume", "--last"]
+            ["daemon", "--socket", "/tmp/pad-lattice.sock", "--no-greeting"]
         )
 
-        self.assertEqual(args.command, "codex")
-        self.assertEqual(args.approve_keys, "y\\n")
+        self.assertEqual(args.command, "daemon")
+        self.assertEqual(args.socket, "/tmp/pad-lattice.sock")
         self.assertTrue(args.no_greeting)
-        self.assertEqual(args.codex_args, ["--", "resume", "--last"])
 
-    def test_codex_state_detection_is_explicit(self) -> None:
-        args = build_parser().parse_args(["codex", "--detect-state"])
+    def test_send_state_accepts_agent_state(self) -> None:
+        args = build_parser().parse_args(["send-state", "waiting_for_reply"])
 
-        self.assertTrue(args.detect_state)
+        self.assertEqual(args.command, "send-state")
+        self.assertEqual(args.state, "waiting_for_reply")
+
+    def test_listen_actions_accepts_socket(self) -> None:
+        args = build_parser().parse_args(
+            ["listen-actions", "--socket", "/tmp/pad-lattice.sock"]
+        )
+
+        self.assertEqual(args.command, "listen-actions")
+        self.assertEqual(args.socket, "/tmp/pad-lattice.sock")

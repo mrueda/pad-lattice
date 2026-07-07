@@ -119,49 +119,44 @@ If auto-detection picks the wrong MIDI port, pass explicit names:
 pad-lattice demo --input "Launchpad Pro" --output "Launchpad Pro"
 ```
 
-Run Codex CLI under Launchpad control:
+Run the durable sidecar daemon:
 
 ```bash
-pad-lattice codex
+pad-lattice daemon
 ```
 
-Pass arguments through to Codex after `--`:
+The daemon owns the Launchpad MIDI ports and exposes a local Unix socket. Other
+processes send structured state messages to that socket:
 
 ```bash
-pad-lattice codex -- resume --last
+pad-lattice send-state waiting_for_reply
+pad-lattice send-state running
 ```
 
-The Codex bridge runs Codex in a terminal PTY, keeps normal keyboard input
-working, and maps Launchpad controls to Codex input:
+Listen for Launchpad actions from another terminal:
+
+```bash
+pad-lattice listen-actions
+```
+
+The socket protocol uses newline-delimited JSON:
+
+```json
+{"type":"state","state":"waiting_for_reply"}
+{"type":"action","action":"approve"}
+```
+
+The daemon broadcasts Launchpad controls to action subscribers:
 
 | Control | Default behavior |
 |----------|------------------|
-| Approve | Send Enter |
-| Reject | Send Escape |
-| Retry | Send `r` then Enter |
-| Stop | Send Ctrl-C to Codex |
+| Approve | Emit `{"type":"action","action":"approve"}` |
+| Reject | Emit `{"type":"action","action":"reject"}` |
+| Retry | Emit `{"type":"action","action":"retry"}` |
+| Stop | Emit `{"type":"action","action":"stop"}` |
 
-By default, the bridge does not infer approval/reply state from Codex terminal
-output. Resumed chats can contain old words like `approval required`, which
-would otherwise create false yellow approval states. Experimental terminal
-state detection can be enabled explicitly:
-
-```bash
-pad-lattice codex --detect-state -- resume --last
-```
-
-The approval keys are configurable because Codex prompt bindings can vary by
-version or terminal mode:
-
-```bash
-pad-lattice codex --approve-keys "y\n" --reject-keys "n\n" -- resume --last
-```
-
-Skip the hardware greeting for everyday Codex use:
-
-```bash
-pad-lattice codex --no-greeting -- resume --last
-```
+Codex integration should target this socket via hooks, remote-control, or a
+small adapter.
 
 The current pad layout assumes Launchpad Pro programmer-style grid notes:
 
