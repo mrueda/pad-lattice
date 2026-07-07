@@ -30,6 +30,7 @@ controllers through device profiles.
 
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [Production Use](#production-use)
 - [CLI](#cli)
 - [Socket Protocol](#socket-protocol)
 - [Cheat Sheet](#cheat-sheet)
@@ -96,6 +97,40 @@ Run a real Codex CLI task and mirror Codex JSON events to the Launchpad:
 ```bash
 pad-lattice codex-exec "summarize this repository in one sentence"
 ```
+
+# Production Use
+
+Use one terminal for the long-running Pad-Lattice daemon and another terminal
+for Codex or agent commands. Set an explicit socket path in both terminals so
+they agree on the same daemon.
+
+Terminal 1:
+
+```bash
+cd /media/mrueda/2TBS/music/pad-lattice
+export PAD_LATTICE_SOCKET=/tmp/pad-lattice.sock
+.venv/bin/pad-lattice daemon --no-greeting --terminal-hold 1.5
+```
+
+Terminal 2:
+
+```bash
+cd /media/mrueda/2TBS/music/pad-lattice
+export PAD_LATTICE_SOCKET=/tmp/pad-lattice.sock
+codex resume 019f28ff-78ad-7c52-b7e4-1d2f4544cda5
+```
+
+For non-interactive Codex tasks, run through the Pad-Lattice adapter:
+
+```bash
+.venv/bin/pad-lattice codex-exec "run a small repository check"
+```
+
+During `codex-exec`, pad `18` sends `stop` and terminates the running Codex
+process. Pads `11`, `12`, and `17` emit `approve`, `reject`, and `retry`
+actions for listeners. Interactive Codex CLI sessions can receive lifecycle
+state updates through hooks, but direct approval/stop control for an already
+running interactive TUI requires a listener or future app-server integration.
 
 # CLI
 
@@ -349,7 +384,10 @@ python3 -m py_compile src/pad_lattice/*.py tests/*.py
 
 Near-term goals:
 
-- Package live Codex CLI hook setup for interactive sessions, not only `codex exec`.
+- Ship a sample Codex `hooks.json` that users can copy into Codex config so
+  normal `codex` / `codex resume` sessions update Pad-Lattice automatically.
+- Use hooks for turn-level states such as submitted, running, approval needed,
+  and waiting again.
 - Introduce an explicit device-profile API for controller-specific behavior.
 - Investigate app-server or terminal integration for true live typing state.
 - Map Launchpad actions directly to Codex approvals and interruptions.

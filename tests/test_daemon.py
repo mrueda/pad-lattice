@@ -65,6 +65,20 @@ class DaemonTest(TestCase):
         self.assertIn(b'"type":"action"', client.socket.sent)
         self.assertIn(b'"action":"approve"', client.socket.sent)
 
+    def test_handle_action_debounces_repeated_actions(self) -> None:
+        daemon = PadLatticeDaemon(
+            FakeSurface(),
+            "/tmp/pad-lattice-test.sock",
+            action_debounce=60.0,
+        )
+        client = Client(FakeSocket(), subscribed_to_actions=True)
+        daemon._clients[client.socket.fileno()] = client
+
+        daemon._handle_action(ControlAction.STOP)
+        daemon._handle_action(ControlAction.STOP)
+
+        self.assertEqual(client.socket.sent.count(b'"action":"stop"'), 1)
+
     def test_terminal_state_returns_to_waiting_for_reply(self) -> None:
         surface = FakeSurface()
         daemon = PadLatticeDaemon(surface, "/tmp/pad-lattice-test.sock")

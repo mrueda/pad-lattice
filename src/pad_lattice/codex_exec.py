@@ -3,13 +3,22 @@
 from __future__ import annotations
 
 import json
+import socket
 import subprocess
 import sys
+import threading
 from collections.abc import Callable, Sequence
 from typing import Any, TextIO
 
-from pad_lattice.events import AgentState
-from pad_lattice.protocol import send_message, state_message
+from pad_lattice.events import AgentState, ControlAction
+from pad_lattice.protocol import (
+    decode_message,
+    encode_message,
+    parse_action,
+    send_message,
+    state_message,
+    subscribe_actions_message,
+)
 
 StateSender = Callable[[str, dict[str, str]], None]
 
@@ -48,6 +57,12 @@ def run_codex_exec(
         stderr=stderr,
         text=True,
     )
+    action_thread = threading.Thread(
+        target=_stop_process_on_pad_action,
+        args=(socket_path, process, stderr),
+        daemon=True,
+    )
+    action_thread.start()
 
     assert process.stdout is not None
     for line in process.stdout:
@@ -77,3 +92,37 @@ def run_codex_exec(
     if return_code != 0:
         sender(socket_path, state_message(AgentState.ERROR))
     return return_code
+
+
+def _stop_process_on_pad_action(
+    socket_path: str,
+    process: subprocess.Popen[str],
+    stderr: TextIO,
+) -> None:
+    """Terminate Codex when the daemon emits a stop action."""
+
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+            client.connect(socket_path)
+            client.sendall(encode_message(subscribe_actions_message()))
+            buffer = b""
+            while process.poll() is None:
+                data = client.recv(4096)
+                if not data:
+                    return
+                buffer += data
+                while b"\n" in buffer:
+                    line, buffer = buffer.split(b"\n", 1)
+                    if not line.strip():
+                        continue
+                    try:
+                        message = decode_message(line)
+                        action = parse_action(message.get("action"))
+                    except ValueError:
+                        continue
+                    if action is ControlAction.STOP and process.poll() is None:
+                        print("pad-lattice: stop requested from Launchpad", file=stderr)
+                        process.terminate()
+                        return
+    except OSError:
+        return

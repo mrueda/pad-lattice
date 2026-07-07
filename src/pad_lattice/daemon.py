@@ -37,11 +37,13 @@ class PadLatticeDaemon:
         *,
         poll_interval: float = 0.03,
         terminal_hold: float = 2.0,
+        action_debounce: float = 0.25,
     ) -> None:
         self.surface = surface
         self.socket_path = socket_path
         self.poll_interval = poll_interval
         self.terminal_hold = terminal_hold
+        self.action_debounce = action_debounce
         self.state = AgentState.WAITING_FOR_REPLY
         self._selector = selectors.DefaultSelector()
         self._server: socket.socket | None = None
@@ -50,6 +52,7 @@ class PadLatticeDaemon:
         self._last_rendered_state: AgentState | None = None
         self._next_activity_render = 0.0
         self._terminal_state_until: float | None = None
+        self._last_action_at: dict[ControlAction, float] = {}
 
     def run(self) -> None:
         self._server = self._open_server()
@@ -140,6 +143,11 @@ class PadLatticeDaemon:
                 self._send(client, {"type": "error", "error": str(exc)})
 
     def _handle_action(self, action: ControlAction) -> None:
+        now = time.monotonic()
+        if now - self._last_action_at.get(action, 0.0) < self.action_debounce:
+            return
+        self._last_action_at[action] = now
+
         message = action_message(action)
         for client in list(self._clients.values()):
             if client.subscribed_to_actions:
