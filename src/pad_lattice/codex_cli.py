@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import codecs
+import fcntl
 import os
 import pty
 import re
 import selectors
 import signal
+import shutil
 import subprocess
+import struct
 import sys
 import termios
 import time
@@ -27,6 +30,12 @@ APPROVAL_PATTERNS = (
     "waiting for approval",
     "requires approval",
 )
+
+
+@dataclass(frozen=True)
+class TerminalSize:
+    rows: int
+    columns: int
 
 
 @dataclass(frozen=True)
@@ -57,6 +66,25 @@ def detect_codex_state(output: bytes, current_state: AgentState) -> AgentState:
     return current_state
 
 
+def get_terminal_size(fd: int) -> TerminalSize:
+    if os.isatty(fd):
+        try:
+            packed = fcntl.ioctl(fd, termios.TIOCGWINSZ, b"\0" * 8)
+            rows, columns, _, _ = struct.unpack("HHHH", packed)
+            if rows > 0 and columns > 0:
+                return TerminalSize(rows=rows, columns=columns)
+        except OSError:
+            pass
+
+    fallback = shutil.get_terminal_size(fallback=(120, 40))
+    return TerminalSize(rows=fallback.lines, columns=fallback.columns)
+
+
+def set_pty_size(fd: int, size: TerminalSize) -> None:
+    packed = struct.pack("HHHH", size.rows, size.columns, 0, 0)
+    fcntl.ioctl(fd, termios.TIOCSWINSZ, packed)
+
+
 class CodexSupervisor:
     def __init__(
         self,
@@ -77,8 +105,16 @@ class CodexSupervisor:
         self._process: subprocess.Popen[bytes] | None = None
 
     def run(self) -> int:
+        stdin_fd = sys.stdin.fileno()
+        stdout_fd = sys.stdout.fileno()
+        terminal_size = get_terminal_size(stdout_fd)
+
         master_fd, slave_fd = pty.openpty()
+        set_pty_size(slave_fd, terminal_size)
         self._master_fd = master_fd
+        env = os.environ.copy()
+        env["LINES"] = str(terminal_size.rows)
+        env["COLUMNS"] = str(terminal_size.columns)
         self._process = subprocess.Popen(
             self.command,
             stdin=slave_fd,
@@ -86,16 +122,25 @@ class CodexSupervisor:
             stderr=slave_fd,
             close_fds=True,
             preexec_fn=os.setsid,
+            env=env,
         )
         os.close(slave_fd)
 
         old_termios = None
-        stdin_fd = sys.stdin.fileno()
-        stdout_fd = sys.stdout.fileno()
         stdin_is_tty = os.isatty(stdin_fd)
         if stdin_is_tty:
             old_termios = termios.tcgetattr(stdin_fd)
             tty.setraw(stdin_fd)
+
+        previous_winch_handler = signal.getsignal(signal.SIGWINCH)
+
+        def handle_resize(_signum: int, _frame: Any) -> None:
+            size = get_terminal_size(stdout_fd)
+            set_pty_size(master_fd, size)
+            if self._process is not None and self._process.poll() is None:
+                os.killpg(self._process.pid, signal.SIGWINCH)
+
+        signal.signal(signal.SIGWINCH, handle_resize)
 
         selector = selectors.DefaultSelector()
         selector.register(master_fd, selectors.EVENT_READ, "codex")
@@ -132,6 +177,7 @@ class CodexSupervisor:
                 if self._process.poll() is not None:
                     return self._finish()
         finally:
+            signal.signal(signal.SIGWINCH, previous_winch_handler)
             selector.close()
             if old_termios is not None:
                 termios.tcsetattr(stdin_fd, termios.TCSADRAIN, old_termios)

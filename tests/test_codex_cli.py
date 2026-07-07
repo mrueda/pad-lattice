@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+import fcntl
+import os
+import pty
+import struct
+import termios
 from unittest import TestCase
 
 from pad_lattice.codex_cli import (
     CodexKeymap,
     CodexSupervisor,
+    TerminalSize,
     build_codex_command,
     decode_key_sequence,
     detect_codex_state,
+    set_pty_size,
 )
 from pad_lattice.events import AgentState, ControlAction
 
@@ -48,3 +55,15 @@ class CodexCliTest(TestCase):
         supervisor.handle_action(ControlAction.RETRY)
 
         self.assertEqual(writes, [b"a", b"r", b"t"])
+
+    def test_set_pty_size_updates_terminal_window_size(self) -> None:
+        master_fd, slave_fd = pty.openpty()
+        try:
+            set_pty_size(slave_fd, TerminalSize(rows=33, columns=111))
+            packed = fcntl.ioctl(slave_fd, termios.TIOCGWINSZ, b"\0" * 8)
+            rows, columns, _, _ = struct.unpack("HHHH", packed)
+
+            self.assertEqual((rows, columns), (33, 111))
+        finally:
+            os.close(master_fd)
+            os.close(slave_fd)
