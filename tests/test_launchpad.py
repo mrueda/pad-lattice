@@ -98,6 +98,20 @@ class LaunchpadSurfaceTest(TestCase):
         self.assertIn(_grid_note(3, 3), red_notes)
         self.assertIn(_grid_note(4, 3), red_notes)
 
+    def test_render_waiting_state_uses_steady_frame(self) -> None:
+        output = FakeOutput()
+        surface = LaunchpadSurface(output, layout=PadLayout(), message_factory=fake_message)
+
+        surface.render_state_frame(AgentState.WAITING_FOR_APPROVAL, 0)
+
+        lit_velocities = {message.velocity for message in output.messages if message.velocity}
+        self.assertEqual(lit_velocities, {LaunchpadPalette.YELLOW})
+        lit_notes = {message.note for message in output.messages if message.velocity}
+        self.assertIn(_grid_note(0, 0), lit_notes)
+        self.assertIn(_grid_note(7, 0), lit_notes)
+        self.assertIn(_grid_note(0, 6), lit_notes)
+        self.assertIn(_grid_note(7, 6), lit_notes)
+
     def test_render_running_state_animates_scanline(self) -> None:
         output = FakeOutput()
         surface = LaunchpadSurface(output, layout=PadLayout(), message_factory=fake_message)

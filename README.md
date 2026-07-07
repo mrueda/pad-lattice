@@ -101,7 +101,7 @@ and motion, not color alone:
 | State | Display |
 |--------|---------|
 | Running | Blue moving scan line |
-| Waiting for approval | Yellow pulsing frame |
+| Waiting for approval | Steady yellow frame |
 | Success | Green checkmark |
 | Error | Red X |
 

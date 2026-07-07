@@ -144,7 +144,7 @@ class LaunchpadSurface:
         if state is AgentState.RUNNING:
             self._render_running(frame)
         elif state is AgentState.WAITING_FOR_APPROVAL:
-            self._render_waiting(frame)
+            self._render_waiting()
         elif state is AgentState.SUCCESS:
             self._render_success()
         elif state is AgentState.ERROR:
@@ -183,8 +183,8 @@ class LaunchpadSurface:
             self._set_grid_pad(previous_x, y, self.palette.DIM_BLUE)
             self._set_grid_pad(x, y, self.palette.BLUE)
 
-    def _render_waiting(self, frame: int) -> None:
-        color = self.palette.YELLOW if frame % 6 < 3 else self.palette.DIM_YELLOW
+    def _render_waiting(self) -> None:
+        color = self.palette.YELLOW
         for x in range(GRID_WIDTH):
             self._set_grid_pad(x, 0, color)
             self._set_grid_pad(x, STATUS_ROWS - 1, color)
