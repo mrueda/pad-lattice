@@ -11,7 +11,13 @@ from pad_lattice.codex_exec import run_codex_exec
 from pad_lattice.demo_agent import DemoAgent
 from pad_lattice.events import AgentState
 from pad_lattice.daemon import PadLatticeDaemon
-from pad_lattice.launchpad import LaunchpadError, list_midi_ports, open_launchpad, run_surface
+from pad_lattice.launchpad import (
+    LaunchpadError,
+    list_midi_ports,
+    monitor_midi_input,
+    open_launchpad,
+    run_surface,
+)
 from pad_lattice.protocol import (
     default_socket_path,
     decode_message,
@@ -61,6 +67,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="skip the Launchpad startup greeting",
     )
+    daemon.add_argument(
+        "--terminal-hold",
+        type=float,
+        default=2.0,
+        help="seconds to show success/error before returning to waiting",
+    )
 
     send_state = subparsers.add_parser("send-state", help="send a state to the daemon")
     send_state.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
@@ -70,10 +82,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="state to render on the Launchpad",
     )
 
+    hook_state = subparsers.add_parser(
+        "hook-state", help="send a state from a Codex hook without failing the hook"
+    )
+    hook_state.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
+    hook_state.add_argument(
+        "state",
+        choices=[state.value for state in AgentState],
+        help="state to render on the Launchpad",
+    )
+
     listen_actions = subparsers.add_parser(
         "listen-actions", help="print Launchpad actions from the daemon"
     )
     listen_actions.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
+
+    monitor_midi = subparsers.add_parser(
+        "monitor-midi", help="print raw MIDI input messages for pad mapping"
+    )
+    monitor_midi.add_argument("--input", help="MIDI input port name")
+    monitor_midi.add_argument(
+        "--seconds",
+        type=float,
+        default=None,
+        help="seconds to monitor before exiting",
+    )
 
     codex_exec = subparsers.add_parser(
         "codex-exec", help="run `codex exec --json` and mirror state to the daemon"
@@ -116,15 +149,26 @@ def main(argv: list[str] | None = None) -> int:
                 startup_greeting=None if args.no_greeting else "HELLO FROM CODEX CLI",
                 scroll_delay=args.greeting_delay,
             )
-            PadLatticeDaemon(surface, args.socket).run()
+            PadLatticeDaemon(surface, args.socket, terminal_hold=args.terminal_hold).run()
             return 0
 
         if args.command == "send-state":
             send_message(args.socket, state_message(AgentState(args.state)))
             return 0
 
+        if args.command == "hook-state":
+            try:
+                send_message(args.socket, state_message(AgentState(args.state)))
+            except (ConnectionError, FileNotFoundError, OSError):
+                pass
+            return 0
+
         if args.command == "listen-actions":
             return listen_actions(args.socket)
+
+        if args.command == "monitor-midi":
+            monitor_midi_input(input_name=args.input, seconds=args.seconds)
+            return 0
 
         if args.command == "codex-exec":
             prompt = args.prompt

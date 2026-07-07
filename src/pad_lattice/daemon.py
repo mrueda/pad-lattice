@@ -36,17 +36,20 @@ class PadLatticeDaemon:
         socket_path: str,
         *,
         poll_interval: float = 0.03,
+        terminal_hold: float = 2.0,
     ) -> None:
         self.surface = surface
         self.socket_path = socket_path
         self.poll_interval = poll_interval
-        self.state = AgentState.RUNNING
+        self.terminal_hold = terminal_hold
+        self.state = AgentState.WAITING_FOR_REPLY
         self._selector = selectors.DefaultSelector()
         self._server: socket.socket | None = None
         self._clients: dict[int, Client] = {}
         self._frame = 0
         self._last_rendered_state: AgentState | None = None
         self._next_activity_render = 0.0
+        self._terminal_state_until: float | None = None
 
     def run(self) -> None:
         self._server = self._open_server()
@@ -83,7 +86,7 @@ class PadLatticeDaemon:
     def handle_message(self, client: Client, message: dict[str, Any]) -> None:
         message_type = message.get("type")
         if message_type == "state":
-            self.state = parse_state(message.get("state"))
+            self.set_state(parse_state(message.get("state")))
             return
         if message_type == "subscribe_actions":
             client.subscribed_to_actions = True
@@ -92,6 +95,13 @@ class PadLatticeDaemon:
             self._send(client, {"type": "pong"})
             return
         raise ProtocolError(f"unknown message type: {message_type}")
+
+    def set_state(self, state: AgentState) -> None:
+        self.state = state
+        if state in {AgentState.SUCCESS, AgentState.ERROR}:
+            self._terminal_state_until = time.monotonic() + self.terminal_hold
+        else:
+            self._terminal_state_until = None
 
     def _open_server(self) -> socket.socket:
         try:
@@ -137,6 +147,13 @@ class PadLatticeDaemon:
 
     def _render_if_needed(self) -> None:
         now = time.monotonic()
+        if (
+            self._terminal_state_until is not None
+            and now >= self._terminal_state_until
+        ):
+            self.state = AgentState.WAITING_FOR_REPLY
+            self._terminal_state_until = None
+
         refresh_running = (
             self.state is AgentState.RUNNING
             and self._last_rendered_state is AgentState.RUNNING

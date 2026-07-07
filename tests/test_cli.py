@@ -14,18 +14,32 @@ class CliTest(TestCase):
 
     def test_daemon_accepts_socket_and_no_greeting(self) -> None:
         args = build_parser().parse_args(
-            ["daemon", "--socket", "/tmp/pad-lattice.sock", "--no-greeting"]
+            [
+                "daemon",
+                "--socket",
+                "/tmp/pad-lattice.sock",
+                "--no-greeting",
+                "--terminal-hold",
+                "1.5",
+            ]
         )
 
         self.assertEqual(args.command, "daemon")
         self.assertEqual(args.socket, "/tmp/pad-lattice.sock")
         self.assertTrue(args.no_greeting)
+        self.assertEqual(args.terminal_hold, 1.5)
 
     def test_send_state_accepts_agent_state(self) -> None:
         args = build_parser().parse_args(["send-state", "waiting_for_reply"])
 
         self.assertEqual(args.command, "send-state")
         self.assertEqual(args.state, "waiting_for_reply")
+
+    def test_hook_state_accepts_agent_state(self) -> None:
+        args = build_parser().parse_args(["hook-state", "running"])
+
+        self.assertEqual(args.command, "hook-state")
+        self.assertEqual(args.state, "running")
 
     def test_listen_actions_accepts_socket(self) -> None:
         args = build_parser().parse_args(
@@ -43,3 +57,12 @@ class CliTest(TestCase):
         self.assertEqual(args.command, "codex-exec")
         self.assertEqual(args.socket, "/tmp/pad-lattice.sock")
         self.assertEqual(args.prompt, ["say", "hello"])
+
+    def test_monitor_midi_accepts_input_and_timeout(self) -> None:
+        args = build_parser().parse_args(
+            ["monitor-midi", "--input", "Launchpad Pro", "--seconds", "3"]
+        )
+
+        self.assertEqual(args.command, "monitor-midi")
+        self.assertEqual(args.input, "Launchpad Pro")
+        self.assertEqual(args.seconds, 3.0)

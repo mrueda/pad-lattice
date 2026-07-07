@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TextIO
 
 from pad_lattice.events import AgentState, ControlAction
 
@@ -189,15 +189,7 @@ class LaunchpadSurface:
             self._set_grid_pad(x, y, self.palette.BLUE)
 
     def _render_waiting(self) -> None:
-        color = self.palette.YELLOW
-        for x in range(GRID_WIDTH):
-            self._set_grid_pad(x, 0, color)
-            self._set_grid_pad(x, STATUS_ROWS - 1, color)
-        for y in range(STATUS_ROWS):
-            self._set_grid_pad(0, y, color)
-            self._set_grid_pad(GRID_WIDTH - 1, y, color)
-
-        for x, y in ((3, 2), (4, 2), (5, 3), (4, 4), (4, 6)):
+        for x, y in ((3, 1), (4, 1), (5, 2), (4, 3), (4, 5), (3, 5)):
             self._set_grid_pad(x, y, self.palette.YELLOW)
 
     def _render_waiting_for_reply(self) -> None:
@@ -224,7 +216,16 @@ class LaunchpadSurface:
         self._set_grid_pad(6, 4, self.palette.WHITE)
 
     def _render_success(self) -> None:
-        for x, y in ((1, 4), (2, 5), (3, 6), (4, 4), (5, 3), (6, 2)):
+        for x, y in (
+            (2, 1),
+            (5, 1),
+            (1, 4),
+            (2, 5),
+            (3, 5),
+            (4, 5),
+            (5, 5),
+            (6, 4),
+        ):
             self._set_grid_pad(x, y, self.palette.GREEN)
 
     def _render_error(self) -> None:
@@ -268,6 +269,28 @@ class LaunchpadSurface:
 def list_midi_ports() -> tuple[list[str], list[str]]:
     mido = _import_mido()
     return list(mido.get_input_names()), list(mido.get_output_names())
+
+
+def monitor_midi_input(
+    *,
+    input_name: str | None = None,
+    seconds: float | None = None,
+    output: TextIO | None = None,
+    poll_interval: float = 0.03,
+) -> None:
+    """Print raw MIDI messages from the selected input port."""
+
+    mido = _import_mido()
+    selected_input = input_name or _pick_port(mido.get_input_names(), "input")
+    stream = output or __import__("sys").stdout
+    print(f"Monitoring MIDI input: {selected_input}", file=stream, flush=True)
+
+    deadline = None if seconds is None else time.monotonic() + seconds
+    with mido.open_input(selected_input) as input_port:
+        while deadline is None or time.monotonic() < deadline:
+            for message in input_port.iter_pending():
+                print(message, file=stream, flush=True)
+            time.sleep(poll_interval)
 
 
 def open_launchpad(

@@ -67,7 +67,7 @@ class LaunchpadSurfaceTest(TestCase):
             surface.action_from_message(FakeMessage("note_on", note=99, velocity=127))
         )
 
-    def test_render_success_state_uses_checkmark_shape(self) -> None:
+    def test_render_success_state_uses_happy_face_shape(self) -> None:
         output = FakeOutput()
         surface = LaunchpadSurface(output, layout=PadLayout(), message_factory=fake_message)
 
@@ -77,12 +77,14 @@ class LaunchpadSurfaceTest(TestCase):
         self.assertEqual(
             green_notes,
             {
+                _grid_note(2, 1),
+                _grid_note(5, 1),
                 _grid_note(1, 4),
                 _grid_note(2, 5),
-                _grid_note(3, 6),
-                _grid_note(4, 4),
-                _grid_note(5, 3),
-                _grid_note(6, 2),
+                _grid_note(3, 5),
+                _grid_note(4, 5),
+                _grid_note(5, 5),
+                _grid_note(6, 4),
             },
         )
 
@@ -107,10 +109,17 @@ class LaunchpadSurfaceTest(TestCase):
         lit_velocities = {message.velocity for message in output.messages if message.velocity}
         self.assertEqual(lit_velocities, {LaunchpadPalette.YELLOW})
         lit_notes = {message.note for message in output.messages if message.velocity}
-        self.assertIn(_grid_note(0, 0), lit_notes)
-        self.assertIn(_grid_note(7, 0), lit_notes)
-        self.assertIn(_grid_note(0, 6), lit_notes)
-        self.assertIn(_grid_note(7, 6), lit_notes)
+        self.assertEqual(
+            lit_notes,
+            {
+                _grid_note(3, 1),
+                _grid_note(4, 1),
+                _grid_note(5, 2),
+                _grid_note(4, 3),
+                _grid_note(4, 5),
+                _grid_note(3, 5),
+            },
+        )
 
     def test_render_waiting_for_reply_uses_white_question_mark(self) -> None:
         output = FakeOutput()

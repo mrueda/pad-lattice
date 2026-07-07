@@ -21,8 +21,18 @@ class FakeSocket:
 
 
 class FakeSurface:
+    def __init__(self) -> None:
+        self.states = []
+        self.controls_rendered = 0
+
     def clear(self) -> None:
         pass
+
+    def render_state_frame(self, state, frame) -> None:
+        self.states.append((state, frame))
+
+    def render_controls(self) -> None:
+        self.controls_rendered += 1
 
 
 class DaemonTest(TestCase):
@@ -54,3 +64,14 @@ class DaemonTest(TestCase):
 
         self.assertIn(b'"type":"action"', client.socket.sent)
         self.assertIn(b'"action":"approve"', client.socket.sent)
+
+    def test_terminal_state_returns_to_waiting_for_reply(self) -> None:
+        surface = FakeSurface()
+        daemon = PadLatticeDaemon(surface, "/tmp/pad-lattice-test.sock")
+
+        daemon.set_state(AgentState.SUCCESS)
+        daemon._terminal_state_until = 0.0
+        daemon._render_if_needed()
+
+        self.assertIs(daemon.state, AgentState.WAITING_FOR_REPLY)
+        self.assertEqual(surface.states[-1][0], AgentState.WAITING_FOR_REPLY)
