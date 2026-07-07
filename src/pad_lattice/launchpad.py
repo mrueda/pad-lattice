@@ -62,6 +62,9 @@ class LaunchpadPalette:
     }
 
 
+STATUS_ROWS = 7
+GRID_WIDTH = 8
+
 FONT_5X7: dict[str, tuple[str, ...]] = {
     " ": ("00000", "00000", "00000", "00000", "00000", "00000", "00000"),
     "A": ("01110", "10001", "10001", "11111", "10001", "10001", "10001"),
@@ -134,9 +137,23 @@ class LaunchpadSurface:
         self._send_control_change(0, self.palette.OFF)
 
     def render_state(self, state: AgentState) -> None:
-        color = self.palette.STATE_COLORS[state]
-        for note in self.layout.status_pads:
-            self._send_note_on(note, color)
+        self.render_state_frame(state, 0)
+
+    def render_state_frame(self, state: AgentState, frame: int) -> None:
+        self.clear_status_area()
+        if state is AgentState.RUNNING:
+            self._render_running(frame)
+        elif state is AgentState.WAITING_FOR_APPROVAL:
+            self._render_waiting(frame)
+        elif state is AgentState.SUCCESS:
+            self._render_success()
+        elif state is AgentState.ERROR:
+            self._render_error()
+
+    def clear_status_area(self) -> None:
+        for y in range(STATUS_ROWS):
+            for x in range(GRID_WIDTH):
+                self._set_grid_pad(x, y, self.palette.OFF)
 
     def render_controls(self) -> None:
         self._send_note_on(self.layout.approve, self.palette.DIM_GREEN)
@@ -157,7 +174,38 @@ class LaunchpadSurface:
         for y in range(8):
             for x in range(8):
                 lit = y > 0 and bool(columns[x] & (1 << (7 - y)))
-                self._send_note_on(_grid_note(x, y), color if lit else self.palette.OFF)
+                self._set_grid_pad(x, y, color if lit else self.palette.OFF)
+
+    def _render_running(self, frame: int) -> None:
+        x = frame % GRID_WIDTH
+        previous_x = (x - 1) % GRID_WIDTH
+        for y in range(STATUS_ROWS):
+            self._set_grid_pad(previous_x, y, self.palette.DIM_BLUE)
+            self._set_grid_pad(x, y, self.palette.BLUE)
+
+    def _render_waiting(self, frame: int) -> None:
+        color = self.palette.YELLOW if frame % 6 < 3 else self.palette.DIM_YELLOW
+        for x in range(GRID_WIDTH):
+            self._set_grid_pad(x, 0, color)
+            self._set_grid_pad(x, STATUS_ROWS - 1, color)
+        for y in range(STATUS_ROWS):
+            self._set_grid_pad(0, y, color)
+            self._set_grid_pad(GRID_WIDTH - 1, y, color)
+
+        for x, y in ((3, 2), (4, 2), (5, 3), (4, 4), (4, 6)):
+            self._set_grid_pad(x, y, self.palette.YELLOW)
+
+    def _render_success(self) -> None:
+        for x, y in ((1, 4), (2, 5), (3, 6), (4, 4), (5, 3), (6, 2)):
+            self._set_grid_pad(x, y, self.palette.GREEN)
+
+    def _render_error(self) -> None:
+        for y in range(STATUS_ROWS):
+            self._set_grid_pad(y, y, self.palette.RED)
+            self._set_grid_pad(GRID_WIDTH - 1 - y, y, self.palette.RED)
+
+    def _set_grid_pad(self, x: int, y: int, color: int) -> None:
+        self._send_note_on(_grid_note(x, y), color)
 
     def poll_controls(self, on_action: Callable[[ControlAction], None]) -> None:
         if self.input_port is None:
@@ -218,19 +266,26 @@ def run_surface(
     state_source: Callable[[], AgentState],
     on_action: Callable[[ControlAction], None],
     *,
-    poll_interval: float = 0.05,
+    poll_interval: float = 0.03,
+    animation_interval: float = 0.12,
 ) -> None:
     """Run the blocking render/input loop."""
 
     surface.initialize()
     last_state: AgentState | None = None
+    frame = 0
+    next_render = 0.0
 
     try:
         while True:
+            now = time.monotonic()
             state = state_source()
-            if state != last_state:
-                surface.render_state(state)
+            if state != last_state or now >= next_render:
+                surface.render_state_frame(state, frame)
+                surface.render_controls()
                 last_state = state
+                frame += 1
+                next_render = now + animation_interval
             surface.poll_controls(on_action)
             time.sleep(poll_interval)
     finally:

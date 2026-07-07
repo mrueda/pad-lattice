@@ -95,7 +95,15 @@ pad-lattice demo
 ```
 
 The demo starts by scrolling `HELLO FROM CODEX CLI` across the Launchpad,
-then switches to the MVP state and control display.
+then switches to the MVP state and control display. The state area uses shape
+and motion, not color alone:
+
+| State | Display |
+|--------|---------|
+| Running | Blue moving scan line |
+| Waiting for approval | Yellow pulsing frame |
+| Success | Green checkmark |
+| Error | Red X |
 
 Tune the greeting speed if needed:
 

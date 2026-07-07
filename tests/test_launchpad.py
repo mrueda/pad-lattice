@@ -67,15 +67,51 @@ class LaunchpadSurfaceTest(TestCase):
             surface.action_from_message(FakeMessage("note_on", note=99, velocity=127))
         )
 
-    def test_render_state_uses_expected_state_color(self) -> None:
+    def test_render_success_state_uses_checkmark_shape(self) -> None:
         output = FakeOutput()
         surface = LaunchpadSurface(output, layout=PadLayout(), message_factory=fake_message)
 
-        surface.render_state(AgentState.WAITING_FOR_APPROVAL)
+        surface.render_state(AgentState.SUCCESS)
 
-        self.assertEqual(len(output.messages), 4)
-        self.assertTrue(
-            all(message.velocity == LaunchpadPalette.YELLOW for message in output.messages)
+        green_notes = {message.note for message in output.messages if message.velocity}
+        self.assertEqual(
+            green_notes,
+            {
+                _grid_note(1, 4),
+                _grid_note(2, 5),
+                _grid_note(3, 6),
+                _grid_note(4, 4),
+                _grid_note(5, 3),
+                _grid_note(6, 2),
+            },
+        )
+
+    def test_render_error_state_uses_x_shape(self) -> None:
+        output = FakeOutput()
+        surface = LaunchpadSurface(output, layout=PadLayout(), message_factory=fake_message)
+
+        surface.render_state(AgentState.ERROR)
+
+        red_notes = {message.note for message in output.messages if message.velocity}
+        self.assertIn(_grid_note(0, 0), red_notes)
+        self.assertIn(_grid_note(7, 0), red_notes)
+        self.assertIn(_grid_note(3, 3), red_notes)
+        self.assertIn(_grid_note(4, 3), red_notes)
+
+    def test_render_running_state_animates_scanline(self) -> None:
+        output = FakeOutput()
+        surface = LaunchpadSurface(output, layout=PadLayout(), message_factory=fake_message)
+
+        surface.render_state_frame(AgentState.RUNNING, 2)
+
+        blue_notes = {
+            message.note
+            for message in output.messages
+            if message.velocity == LaunchpadPalette.BLUE
+        }
+        self.assertEqual(
+            blue_notes,
+            {_grid_note(2, y) for y in range(7)},
         )
 
 
