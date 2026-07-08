@@ -1,3 +1,10 @@
+<div align="center">
+  <a href="https://github.com/mrueda/pad-lattice">
+    <img src="assets/pad-lattice-logo.svg" width="220" alt="Pad-Lattice logo">
+  </a>
+  <p><em>Launchpad control surface for coding agents</em></p>
+</div>
+
 # Pad-Lattice
 
 **Pad-Lattice: a hardware control surface for coding agents, using a Novation
