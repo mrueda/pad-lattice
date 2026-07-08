@@ -100,7 +100,7 @@ class LaunchpadSurfaceTest(TestCase):
         self.assertIn(_grid_note(3, 3), red_notes)
         self.assertIn(_grid_note(4, 3), red_notes)
 
-    def test_render_waiting_state_uses_steady_frame(self) -> None:
+    def test_render_waiting_for_approval_uses_exclamation_shape(self) -> None:
         output = FakeOutput()
         surface = LaunchpadSurface(output, layout=PadLayout(), message_factory=fake_message)
 
@@ -114,7 +114,11 @@ class LaunchpadSurfaceTest(TestCase):
             {
                 _grid_note(3, 1),
                 _grid_note(4, 1),
-                _grid_note(5, 2),
+                _grid_note(3, 0),
+                _grid_note(4, 0),
+                _grid_note(3, 2),
+                _grid_note(4, 2),
+                _grid_note(3, 3),
                 _grid_note(4, 3),
                 _grid_note(4, 5),
                 _grid_note(3, 5),

@@ -1,0 +1,187 @@
+:root {
+  --ifm-color-primary: #2563eb;
+  --ifm-color-primary-dark: #1d4ed8;
+  --ifm-color-primary-darker: #1e40af;
+  --ifm-color-primary-darkest: #1e3a8a;
+  --ifm-color-primary-light: #3b82f6;
+  --ifm-color-primary-lighter: #60a5fa;
+  --ifm-color-primary-lightest: #93c5fd;
+  --ifm-code-font-size: 95%;
+  --ifm-heading-letter-spacing: 0;
+  --pl-ink: #111827;
+  --pl-muted: #4b5563;
+  --pl-line: rgba(37, 99, 235, 0.18);
+  --pl-wash: #eff6ff;
+  --pl-accent: #eab308;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #60a5fa;
+  --ifm-color-primary-dark: #3b82f6;
+  --ifm-color-primary-darker: #2563eb;
+  --ifm-color-primary-darkest: #1d4ed8;
+  --ifm-color-primary-light: #93c5fd;
+  --ifm-color-primary-lighter: #bfdbfe;
+  --ifm-color-primary-lightest: #dbeafe;
+}
+
+.markdown img {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown figure {
+  margin: 1.5rem auto 2rem;
+  text-align: center;
+}
+
+.markdown figure img {
+  display: block;
+  margin: 0 auto 0.65rem;
+}
+
+.markdown figcaption {
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.theme-doc-sidebar-container {
+  border-right: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.navbar__logo {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 999px;
+  box-shadow: 0 1px 8px rgba(17, 24, 39, 0.14);
+  display: inline-flex;
+  height: 34px;
+  justify-content: center;
+  margin-right: 0.45rem;
+  padding: 3px;
+  width: 34px;
+}
+
+.navbar__logo img {
+  height: 28px;
+  width: 28px;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.matrixDiagram {
+  max-width: 620px;
+  margin: 1rem 0 2rem;
+}
+
+.matrixGrid,
+.miniMatrix {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.matrixCell,
+.miniMatrix span {
+  aspect-ratio: 1;
+  border-radius: 7px;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  background: var(--ifm-background-surface-color);
+  color: var(--ifm-font-color-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.72rem;
+  line-height: 1.05;
+  font-weight: 700;
+  min-width: 0;
+}
+
+.matrixCell.note {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.matrixCell.idle,
+.miniMatrix span {
+  background: #101418;
+  border-color: #29313a;
+  color: #9ca3af;
+}
+
+.matrixCell.state {
+  background: #2563eb;
+  border-color: #60a5fa;
+  color: #ffffff;
+}
+
+.matrixCell.approve,
+.miniMatrix .approve {
+  background: #16a34a;
+  border-color: #86efac;
+  color: #ffffff;
+}
+
+.matrixCell.reject,
+.miniMatrix .reject {
+  background: #dc2626;
+  border-color: #fca5a5;
+  color: #ffffff;
+}
+
+.matrixCell.retry,
+.miniMatrix .retry {
+  background: #2563eb;
+  border-color: #93c5fd;
+  color: #ffffff;
+}
+
+.matrixCell.stop,
+.miniMatrix .stop {
+  background: #991b1b;
+  border-color: #f87171;
+  color: #ffffff;
+}
+
+.stateExampleGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin: 1rem 0 2rem;
+}
+
+.miniMatrix {
+  max-width: 220px;
+}
+
+.miniMatrix .white {
+  background: #f8fafc;
+  border-color: #ffffff;
+}
+
+.miniMatrix .yellow {
+  background: #eab308;
+  border-color: #fde047;
+}
+
+.miniMatrix .green {
+  background: #16a34a;
+  border-color: #86efac;
+}
+
+@media (max-width: 768px) {
+  .featureGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .stateExampleGrid {
+    grid-template-columns: 1fr;
+  }
+}

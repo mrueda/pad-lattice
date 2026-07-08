@@ -19,6 +19,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/mrueda/pad-lattice"
+Documentation = "https://mrueda.github.io/pad-lattice/"
 Repository = "https://github.com/mrueda/pad-lattice"
 Issues = "https://github.com/mrueda/pad-lattice/issues"
 

@@ -151,7 +151,7 @@ class LaunchpadSurface:
         elif state is AgentState.USER_TYPING:
             self._render_user_typing()
         elif state is AgentState.WAITING_FOR_APPROVAL:
-            self._render_waiting()
+            self._render_waiting_for_approval()
         elif state is AgentState.SUCCESS:
             self._render_success()
         elif state is AgentState.ERROR:
@@ -188,8 +188,19 @@ class LaunchpadSurface:
         for x, y in ((3, 2), (4, 2), (3, 3), (4, 3)):
             self._set_grid_pad(x, y, self.palette.BLUE)
 
-    def _render_waiting(self) -> None:
-        for x, y in ((3, 1), (4, 1), (5, 2), (4, 3), (4, 5), (3, 5)):
+    def _render_waiting_for_approval(self) -> None:
+        for x, y in (
+            (3, 0),
+            (4, 0),
+            (3, 1),
+            (4, 1),
+            (3, 2),
+            (4, 2),
+            (3, 3),
+            (4, 3),
+            (3, 5),
+            (4, 5),
+        ):
             self._set_grid_pad(x, y, self.palette.YELLOW)
 
     def _render_waiting_for_reply(self) -> None:
