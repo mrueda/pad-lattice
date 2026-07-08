@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from unittest.mock import patch
 from unittest import TestCase
 
 from pad_lattice.daemon import Client, PadLatticeDaemon
@@ -76,6 +77,20 @@ class DaemonTest(TestCase):
 
         daemon._handle_action(ControlAction.STOP)
         daemon._handle_action(ControlAction.STOP)
+
+        self.assertEqual(client.socket.sent.count(b'"action":"stop"'), 1)
+
+    def test_handle_action_allows_first_action_when_monotonic_is_low(self) -> None:
+        daemon = PadLatticeDaemon(
+            FakeSurface(),
+            "/tmp/pad-lattice-test.sock",
+            action_debounce=60.0,
+        )
+        client = Client(FakeSocket(), subscribed_to_actions=True)
+        daemon._clients[client.socket.fileno()] = client
+
+        with patch("pad_lattice.daemon.time.monotonic", return_value=1.0):
+            daemon._handle_action(ControlAction.STOP)
 
         self.assertEqual(client.socket.sent.count(b'"action":"stop"'), 1)
 

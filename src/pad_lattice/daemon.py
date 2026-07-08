@@ -144,7 +144,11 @@ class PadLatticeDaemon:
 
     def _handle_action(self, action: ControlAction) -> None:
         now = time.monotonic()
-        if now - self._last_action_at.get(action, 0.0) < self.action_debounce:
+        last_action_at = self._last_action_at.get(action)
+        if (
+            last_action_at is not None
+            and now - last_action_at < self.action_debounce
+        ):
             return
         self._last_action_at[action] = now
 
