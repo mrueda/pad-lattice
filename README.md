@@ -5,7 +5,7 @@ Launchpad as a local state display and action pad.**
 
 [![Build](https://github.com/mrueda/pad-lattice/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/mrueda/pad-lattice/actions/workflows/build-and-test.yml)
 [![Documentation Status](https://github.com/mrueda/pad-lattice/actions/workflows/documentation.yml/badge.svg)](https://github.com/mrueda/pad-lattice/actions/workflows/documentation.yml)
-[![Documentation](https://img.shields.io/badge/docs-Docusaurus-blue)](https://mrueda.github.io/pad-lattice/)
+[![Documentation](https://img.shields.io/badge/docs-online-blue)](https://mrueda.github.io/pad-lattice/)
 [![Python](https://img.shields.io/badge/python-%3E%3D3.10-blue)](pyproject.toml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
@@ -24,22 +24,11 @@ reply, waiting for approval, success, error, approve, reject, retry, and stop.
 
 **Documentation:** <a href="https://mrueda.github.io/pad-lattice/" target="_blank">https://mrueda.github.io/pad-lattice/</a>
 
-## Documentation
+**Quick Start:** <a href="https://mrueda.github.io/pad-lattice/docs/usage/quickstart" target="_blank">https://mrueda.github.io/pad-lattice/docs/usage/quickstart</a>
 
-The documentation site lives in [`docs-site/`](docs-site/) and uses Docusaurus.
+**Production Use:** <a href="https://mrueda.github.io/pad-lattice/docs/usage/production" target="_blank">https://mrueda.github.io/pad-lattice/docs/usage/production</a>
 
-- Documentation site: <https://mrueda.github.io/pad-lattice/>
-- Quick start: <https://mrueda.github.io/pad-lattice/docs/usage/quickstart>
-- Production use: <https://mrueda.github.io/pad-lattice/docs/usage/production>
-- CLI reference: <https://mrueda.github.io/pad-lattice/docs/reference/cli>
-
-Build the documentation locally:
-
-```bash
-cd docs-site
-npm install
-npm run build
-```
+**GitHub Repository:** <a href="https://github.com/mrueda/pad-lattice" target="_blank">https://github.com/mrueda/pad-lattice</a>
 
 ## Quick Start
 
@@ -114,6 +103,7 @@ Run the docs checks:
 
 ```bash
 cd docs-site
+npm install
 npm run typecheck
 npm run build
 ```
