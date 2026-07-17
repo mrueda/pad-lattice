@@ -22,12 +22,13 @@ from pad_lattice.devices.profiles import DeviceProfile
 from pad_lattice.events import AgentState, ControlAction
 
 VISUAL_STATES: tuple[tuple[AgentState, str], ...] = (
-    (AgentState.RUNNING, "blue running symbol with a white activity dot"),
+    (AgentState.RUNNING, "steady blue ellipsis"),
     (AgentState.WAITING_FOR_REPLY, "white question mark"),
-    (AgentState.USER_TYPING, "white input line"),
-    (AgentState.WAITING_FOR_APPROVAL, "yellow exclamation mark"),
+    (AgentState.USER_TYPING, "cyan chevron"),
+    (AgentState.WAITING_FOR_APPROVAL, "restrained amber exclamation mark"),
     (AgentState.SUCCESS, "green happy face"),
     (AgentState.ERROR, "red X"),
+    (AgentState.CANCELLED, "gray hollow square"),
 )
 
 
@@ -43,7 +44,11 @@ def run_profile_test(
 ) -> dict[str, Any]:
     """Exercise output and input mappings and write a sanitized JSON report."""
 
-    visual_checks = {state.value: False for state, _ in VISUAL_STATES}
+    visual_checks = {
+        **{state.value: False for state, _ in VISUAL_STATES},
+        "idle": False,
+        "overflow": False,
+    }
     action_checks = {action.value: False for action in ControlAction}
     selector_checks = {
         str(slot + 1): False for slot in range(surface.selector_capacity)
@@ -55,6 +60,13 @@ def run_profile_test(
     try:
         surface.initialize()
         stage = "visual"
+        surface.render(SurfaceView(selected_state=None))
+        time.sleep(settle_delay)
+        visual_checks["idle"] = _confirm(
+            "Do you see a dim two-pad idle dash? [y/N] ",
+            input_stream,
+            output_stream,
+        )
         for state, description in VISUAL_STATES:
             surface.render(
                 SurfaceView(
@@ -68,6 +80,18 @@ def run_profile_test(
                 input_stream,
                 output_stream,
             )
+        surface.render(
+            SurfaceView(
+                selected_state=AgentState.WAITING_FOR_REPLY,
+                overflow_count=1,
+            )
+        )
+        time.sleep(settle_delay)
+        visual_checks["overflow"] = _confirm(
+            "Do you see one steady amber overflow indicator? [y/N] ",
+            input_stream,
+            output_stream,
+        )
 
         stage = "actions"
         surface.render(
@@ -93,6 +117,7 @@ def run_profile_test(
             SessionIndicator(
                 slot=slot,
                 state=VISUAL_STATES[slot % len(VISUAL_STATES)][0],
+                accent=surface.accent_names[slot],
             )
             for slot in range(surface.selector_capacity)
         )
@@ -105,6 +130,7 @@ def run_profile_test(
                             slot=indicator.slot,
                             state=indicator.state,
                             selected=indicator.slot == slot,
+                            accent=indicator.accent,
                         )
                         for indicator in indicators
                     ),
@@ -194,6 +220,8 @@ def _profile_test_report(
         "device": {
             "profile_id": profile.id,
             "profile_status": profile.status,
+            "visual_protocol": profile.visual_protocol,
+            "conformance": sorted(profile.conformance),
             "input_port": surface.input_name,
             "output_port": surface.output_name,
         },

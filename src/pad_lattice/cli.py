@@ -35,12 +35,16 @@ from pad_lattice.devices.profiles import (
 )
 from pad_lattice.devices.testing import run_profile_test
 from pad_lattice.events import AgentIdentity, AgentState
+from pad_lattice.identity_store import IdentityStore, default_identity_store_path
 from pad_lattice.protocol import (
     default_socket_path,
     decode_message,
     encode_message,
+    request_message,
     send_message,
+    session_end_message,
     state_message,
+    status_message,
     subscribe_actions_message,
 )
 
@@ -101,6 +105,27 @@ def build_parser() -> argparse.ArgumentParser:
         default=2.0,
         help="seconds to show success/error before returning to waiting",
     )
+    daemon.add_argument(
+        "--session-ttl",
+        type=float,
+        default=24 * 60 * 60.0,
+        help="seconds before quiet background sessions expire; 0 disables expiry",
+    )
+    daemon.add_argument(
+        "--activity-motion",
+        action="store_true",
+        help="enable the optional slow running-state activity marker",
+    )
+    daemon.add_argument(
+        "--identity-store",
+        type=Path,
+        default=default_identity_store_path(),
+        help="path for persistent session accent preferences",
+    )
+
+    status = subparsers.add_parser("status", help="show daemon and session status")
+    status.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
+    status.add_argument("--json", action="store_true", help="emit machine-readable JSON")
 
     send_state = subparsers.add_parser("send-state", help="send a state to the daemon")
     send_state.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
@@ -121,6 +146,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="state to render on the control surface",
     )
     _add_agent_arguments(hook_state)
+
+    end_session = subparsers.add_parser(
+        "end-session", help="remove one agent session from the daemon"
+    )
+    end_session.add_argument(
+        "--socket", default=default_socket_path(), help="Unix socket path"
+    )
+    _add_agent_arguments(end_session)
 
     codex_hook = subparsers.add_parser(
         "codex-hook", help="process one Codex lifecycle hook event from stdin"
@@ -261,7 +294,22 @@ def main(argv: list[str] | None = None) -> int:
                 startup_greeting=None if args.no_greeting else "HELLO FROM CODEX CLI",
                 scroll_delay=args.greeting_delay,
             )
-            PadLatticeDaemon(surface, args.socket, terminal_hold=args.terminal_hold).run()
+            PadLatticeDaemon(
+                surface,
+                args.socket,
+                terminal_hold=args.terminal_hold,
+                session_ttl=args.session_ttl,
+                activity_motion=args.activity_motion,
+                identity_store=IdentityStore(args.identity_store),
+            ).run()
+            return 0
+
+        if args.command == "status":
+            status_payload = request_message(args.socket, status_message())
+            if args.json:
+                print(json.dumps(status_payload, indent=2, sort_keys=True))
+            else:
+                _print_status(status_payload)
             return 0
 
         if args.command == "send-state":
@@ -279,6 +327,10 @@ def main(argv: list[str] | None = None) -> int:
                 )
             except (ConnectionError, FileNotFoundError, OSError):
                 pass
+            return 0
+
+        if args.command == "end-session":
+            send_message(args.socket, session_end_message(_agent_from_args(args)))
             return 0
 
         if args.command == "codex-hook":
@@ -415,11 +467,39 @@ def _profile_summary(profile: DeviceProfile) -> dict[str, object]:
         "model": profile.model,
         "status": profile.status,
         "driver": profile.driver,
+        "visual_protocol": profile.visual_protocol,
+        "conformance": sorted(profile.conformance),
         "input_patterns": profile.input_patterns,
         "output_patterns": profile.output_patterns,
         "selector_slots": profile.selector_capacity,
         "text_scroll": profile.text_scroll,
     }
+
+
+def _print_status(payload: dict[str, object]) -> None:
+    selected = payload.get("selected")
+    selected_label = "none"
+    if isinstance(selected, dict):
+        selected_label = f"{selected.get('backend')}/{selected.get('session_id')}"
+    print(f"Device: {payload.get('profile')} (Visual Protocol {payload.get('visual_protocol')})")
+    print(f"Selected: {selected_label}")
+    print(f"Overflow: {payload.get('overflow_count', 0)}")
+    sessions = payload.get("sessions")
+    if not isinstance(sessions, list) or not sessions:
+        print("Sessions: none")
+        return
+    print("Sessions:")
+    for session in sessions:
+        if not isinstance(session, dict):
+            continue
+        marker = "*" if session.get("selected") else "-"
+        slot = session.get("slot")
+        slot_label = str(int(slot) + 1) if isinstance(slot, int) else "overflow"
+        print(
+            f"  {marker} slot={slot_label} accent={session.get('accent')} "
+            f"state={session.get('state')} "
+            f"agent={session.get('backend')}/{session.get('session_id')}"
+        )
 
 
 if __name__ == "__main__":

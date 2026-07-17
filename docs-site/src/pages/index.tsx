@@ -24,9 +24,9 @@ const featureLinks = [
   },
   {
     label: 'Protocol',
-    title: 'Supervise multiple agents',
-    text: 'See how session identity, stable accent colors, selection, and targeted actions fit one physical surface.',
-    to: '/docs/technical-details/multi-agent-design',
+    title: 'Read the visual protocol',
+    text: 'See how eight identity accents, state glyphs, selection, actions, and overflow form one physical language.',
+    to: '/docs/usage/visual-language',
   },
 ];
 

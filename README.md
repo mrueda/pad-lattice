@@ -25,6 +25,10 @@ AI agents.** A local daemon owns the controller, renders agent state with
 steady RGB feedback, and routes physical actions through a small Unix-socket
 protocol. No browser or graphical agent UI is required.
 
+It also defines **Visual Protocol 0.1**: a hardware-independent grammar for
+agent identity, state, selection, action availability, and overflow. Device
+profiles translate that grammar to MIDI without redefining it.
+
 The first integration is **Codex CLI**. Interactive `codex` and `codex resume`
 sessions report lifecycle state through hooks, while `codex-exec` supports
 non-interactive tasks and a hardware Stop action.
@@ -43,8 +47,8 @@ reject, and retry actions to an interactive Codex terminal remains planned.
 
 The generic `midi.palette-grid` driver reads declarative JSON profiles. New
 controllers can define port matching, programmer-mode messages, note maps,
-static palette colors, action controls, and agent selectors without changing
-the agent protocol.
+static palette colors, Agent Scene controls, actions, and overflow indicators
+without changing the agent or visual protocols.
 
 ## Installation
 
@@ -77,6 +81,7 @@ Start the daemon and install Codex lifecycle hooks:
 ```bash
 pad-lattice daemon --no-greeting
 pad-lattice install-codex-hooks
+pad-lattice status
 ```
 
 Start a new Codex session, run `/hooks`, and review and trust the installed
@@ -96,30 +101,48 @@ pad-lattice profile test novation/launchpad/mini-mk3 \
   --report mini-mk3-report.json
 ```
 
-## Surface
+## Surface Cheat Sheet
 
-The top six rows show the selected agent state. The bottom two rows expose
-four session slots and four actions:
+**Common Launchpad surface:** the eight top controls carry actions and system
+state; the eight right-side controls are Agent Scenes. The rightmost square in
+each row is that agent's state. The remaining 7x8 matrix is the selected
+agent's glyph. This example has agent 1 selected and **waiting for approval**:
 
-```text
-selected agent state                                     rows 81-38
---  -- [S1][S2][S3][S4] --  --                         status LEDs
-AP  NO [A1][A2][A3][A4] RE  ST                         actions/selectors
-11  12  13  14  15  16  17  18
-```
+| ⬛ | ⬛ | ⬛ | 🟨 | ⬛ | ⬛ | ⬛ | 🟨 S1 | 🩵 A1 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ⬛ | ⬛ | ⬛ | 🟨 | ⬛ | ⬛ | ⬛ | 🔵 S2 | 🟪 A2 |
+| ⬛ | ⬛ | ⬛ | 🟨 | ⬛ | ⬛ | ⬛ | ⚪ S3 | 🟢 A3 |
+| ⬛ | ⬛ | ⬛ | 🟨 | ⬛ | ⬛ | ⬛ | 🟢 S4 | 🟠 A4 |
+| ⬛ | ⬛ | ⬛ | 🟨 | ⬛ | ⬛ | ⬛ | 🔴 S5 | 🟣 A5 |
+| ⬛ | ⬛ | ⬛ | ⬛ | ⬛ | ⬛ | ⬛ | 🩵 S6 | 🔷 A6 |
+| ⬛ | ⬛ | ⬛ | ⬛ | ⬛ | ⬛ | ⬛ | ◻️ S7 | 🩷 A7 |
+| ⬛ | ⬛ | ⬛ | 🟨 | ⬛ | ⬛ | ⬛ | 🔵 S8 | 🔵 A8 |
+
+Top controls are common across the Launchpad profiles:
+
+| 🟢 approve | 🔴 reject | ⚫ | ⚫ | 🟨 overflow | ⚫ | 🔵 retry | 🔴 stop |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `CC91` | `CC92` | `CC93` | `CC94` | `CC95` | `CC96` | `CC97` | `CC98` |
 
 | Visual | Meaning |
 | --- | --- |
-| Blue symbol + white activity dot | Running |
+| Blue ellipsis | Running; optional slow motion is off by default |
 | White `?` | Waiting for reply |
-| Yellow `!` | Waiting for approval |
+| Cyan chevron | User typing |
+| Restrained amber `!` | Waiting for approval |
 | Green happy face | Success |
 | Red X | Error |
+| Gray hollow square | Cancelled |
+| Dim two-pad dash | No session selected |
 
-Agent selectors use distinct accent colors. The selected slot is bright; other
-occupied slots are dim. Each status pad keeps the semantic state color of its
-session. Hardware actions are sent only to the selected session and only when
-that session has a live subscriber for the action.
+The selected accent is bright; other occupied Agent Scenes are dim. Hardware
+actions are sent only to the selected session and only when both its state and
+live adapter permit that action. See the [full visual protocol](https://mrueda.github.io/pad-lattice/docs/usage/visual-language).
+
+The Launchpad-family common surface is **8x8 plus eight top and eight right
+controls**. The Pro Mk1 has 16 additional controls on its left and bottom
+rails; Protocol 0.1 leaves them reserved so the core interaction remains
+portable across Launchpad models.
 
 ## Development
 

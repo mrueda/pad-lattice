@@ -16,9 +16,12 @@ class DemoAgent:
         self.seconds_per_state = seconds_per_state
         self._states = (
             AgentState.RUNNING,
+            AgentState.WAITING_FOR_REPLY,
+            AgentState.USER_TYPING,
             AgentState.WAITING_FOR_APPROVAL,
             AgentState.SUCCESS,
             AgentState.ERROR,
+            AgentState.CANCELLED,
         )
         self._index = 0
         self._last_change = time.monotonic()
@@ -36,7 +39,7 @@ class DemoAgent:
         elif action is ControlAction.REJECT:
             self._set_state(AgentState.ERROR)
         elif action is ControlAction.STOP:
-            self._set_state(AgentState.ERROR)
+            self._set_state(AgentState.CANCELLED)
         elif action is ControlAction.RETRY:
             self._set_state(AgentState.RUNNING)
 
@@ -60,25 +63,21 @@ def run_demo_surface(
 ) -> None:
     """Run the hardware demo against any configured control surface."""
 
-    frame = 0
-    last_running_frame = time.monotonic()
+    last_state: AgentState | None = None
     on_action = agent.action_logger()
     try:
         surface.initialize()
         while True:
             state = agent.current_state()
-            now = time.monotonic()
-            if state is AgentState.RUNNING and now - last_running_frame >= 1.5:
-                frame += 1
-                last_running_frame = now
-            surface.render(
-                SurfaceView(
-                    selected_state=state,
-                    frame=frame,
-                    sessions=(),
-                    available_actions=frozenset(ControlAction),
+            if state is not last_state:
+                surface.render(
+                    SurfaceView(
+                        selected_state=state,
+                        sessions=(),
+                        available_actions=frozenset(ControlAction),
+                    )
                 )
-            )
+                last_state = state
             for event in surface.poll_events():
                 if isinstance(event, ActionPressed):
                     on_action(event.action)

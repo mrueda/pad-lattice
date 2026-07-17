@@ -37,9 +37,10 @@ pad-lattice profile test novation/launchpad/mini-mk3 \
   --report mini-mk3-report.json
 ```
 
-The test enters Programmer mode, asks you to confirm six steady state visuals,
-and requests each action and agent selector in turn. It clears the surface and
-returns the Mini Mk3 to Live mode on exit, including most failure paths.
+The test enters Programmer mode, asks you to confirm the idle mark, seven
+steady state glyphs, and overflow warning, then requests each action and all
+eight agent selectors in turn. It clears the surface and returns the Mini Mk3
+to Live mode on exit, including most failure paths.
 
 Use explicit ports if several names match:
 

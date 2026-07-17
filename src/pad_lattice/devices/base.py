@@ -15,16 +15,19 @@ class SessionIndicator:
     slot: int
     state: AgentState
     selected: bool = False
+    accent: str = "cyan"
 
 
 @dataclass(frozen=True)
 class SurfaceView:
     """Hardware-independent state rendered by a control surface."""
 
-    selected_state: AgentState
+    selected_state: AgentState | None
     frame: int = 0
     sessions: tuple[SessionIndicator, ...] = ()
     available_actions: frozenset[ControlAction] = field(default_factory=frozenset)
+    overflow_count: int = 0
+    activity_motion: bool = False
 
 
 @dataclass(frozen=True)
@@ -47,6 +50,8 @@ class ControlSurface(Protocol):
     input_name: str
     output_name: str
     selector_capacity: int
+    accent_names: tuple[str, ...]
+    visual_protocol: str
 
     def initialize(self) -> None: ...
 

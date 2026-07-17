@@ -14,6 +14,7 @@ from pad_lattice.devices.profiles import (
     load_profile_file,
     parse_profile,
 )
+from pad_lattice.events import ControlAction
 
 
 def valid_profile_data() -> dict:
@@ -36,21 +37,64 @@ class DeviceProfileTest(TestCase):
         )
         self.assertEqual(catalog.get("novation/launchpad/pro-mk1").status, "supported")
         self.assertEqual(
+            catalog.get("novation/launchpad/pro-mk1").name,
+            "Novation Launchpad Pro Mk1",
+        )
+        self.assertEqual(
             catalog.get("novation/launchpad/mini-mk3").status,
             "experimental",
         )
 
-    def test_profiles_define_four_multi_agent_slots(self) -> None:
+    def test_profiles_define_eight_multi_agent_slots(self) -> None:
         catalog = ProfileCatalog.load(include_user=False)
 
         for profile in catalog.profiles:
             with self.subTest(profile=profile.id):
-                self.assertEqual(profile.selector_capacity, 4)
+                self.assertEqual(profile.schema_version, 1)
+                self.assertEqual(profile.visual_protocol, "0.1")
+                self.assertEqual(profile.selector_capacity, 8)
                 self.assertEqual(
                     [address.number for address in profile.selectors],
-                    [13, 14, 15, 16],
+                    [89, 79, 69, 59, 49, 39, 29, 19],
                 )
-                self.assertEqual([address.number for address in profile.statuses], [23, 24, 25, 26])
+                self.assertEqual(
+                    [address.number for address in profile.statuses],
+                    [88, 78, 68, 58, 48, 38, 28, 18],
+                )
+                self.assertEqual(profile.state_region.x, 0)
+                self.assertEqual(profile.state_region.y, 0)
+                self.assertEqual(profile.state_region.width, 7)
+                self.assertEqual(profile.state_region.height, 8)
+                self.assertEqual(
+                    profile.conformance,
+                    frozenset({"core-state", "multi-agent", "actions"}),
+                )
+
+    def test_pro_profile_uses_standalone_programmer_mode(self) -> None:
+        profile = ProfileCatalog.load(include_user=False).get(
+            "novation/launchpad/pro-mk1"
+        )
+
+        self.assertIn("Standalone Port", profile.input_patterns[0])
+        self.assertEqual(profile.startup[0].data, (0, 32, 41, 2, 16, 33, 1))
+        self.assertEqual(profile.startup[1].data, (0, 32, 41, 2, 16, 44, 3))
+        self.assertEqual(profile.shutdown[-1].data, (0, 32, 41, 2, 16, 33, 0))
+        self.assertEqual(
+            {
+                action: profile.controls[action].number
+                for action in ControlAction
+            },
+            {
+                ControlAction.APPROVE: 91,
+                ControlAction.REJECT: 92,
+                ControlAction.RETRY: 97,
+                ControlAction.STOP: 98,
+            },
+        )
+        self.assertEqual(
+            {address.kind for address in profile.controls.values()},
+            {"cc"},
+        )
 
     def test_mini_profile_restores_live_mode_on_shutdown(self) -> None:
         profile = ProfileCatalog.load(include_user=False).get(
@@ -59,6 +103,22 @@ class DeviceProfileTest(TestCase):
 
         self.assertEqual(profile.startup[0].data, (0, 32, 41, 2, 13, 14, 1))
         self.assertEqual(profile.shutdown[0].data, (0, 32, 41, 2, 13, 14, 0))
+        self.assertEqual(
+            {
+                action: profile.controls[action].number
+                for action in ControlAction
+            },
+            {
+                ControlAction.APPROVE: 91,
+                ControlAction.REJECT: 92,
+                ControlAction.RETRY: 97,
+                ControlAction.STOP: 98,
+            },
+        )
+        self.assertEqual(
+            {address.kind for address in profile.controls.values()},
+            {"cc"},
+        )
 
     def test_profile_file_loader_reports_invalid_json(self) -> None:
         with TemporaryDirectory() as directory:
@@ -84,7 +144,7 @@ class DeviceProfileTest(TestCase):
 
     def test_profile_requires_matching_selector_and_status_counts(self) -> None:
         data = valid_profile_data()
-        data["controls"]["statuses"].pop()
+        data["surface"]["agent_statuses"].pop()
 
         with self.assertRaisesRegex(ProfileError, "equal lengths"):
             parse_profile(data)
@@ -107,7 +167,28 @@ class DeviceProfileTest(TestCase):
         data = valid_profile_data()
         data["accents"].pop()
 
-        with self.assertRaisesRegex(ProfileError, "exactly 4 color pairs"):
+        with self.assertRaisesRegex(ProfileError, "exactly 8 named color pairs"):
+            parse_profile(data)
+
+    def test_profile_rejects_unknown_visual_protocol(self) -> None:
+        data = valid_profile_data()
+        data["visual_protocol"] = "9.9"
+
+        with self.assertRaisesRegex(ProfileError, "unsupported visual_protocol"):
+            parse_profile(data)
+
+    def test_profile_rejects_state_control_overlap(self) -> None:
+        data = valid_profile_data()
+        data["surface"]["actions"]["approve"] = {"kind": "note", "number": 71}
+
+        with self.assertRaisesRegex(ProfileError, "state region overlaps"):
+            parse_profile(data)
+
+    def test_multi_agent_conformance_requires_overflow_indicator(self) -> None:
+        data = valid_profile_data()
+        del data["surface"]["indicators"]["overflow"]
+
+        with self.assertRaisesRegex(ProfileError, "requires an overflow indicator"):
             parse_profile(data)
 
     def test_catalog_rejects_duplicate_ids(self) -> None:
@@ -134,8 +215,8 @@ class DeviceProfileTest(TestCase):
         )
 
         self.assertEqual(len(candidates), 1)
-        self.assertIn("Live Port", candidates[0].input_name)
-        self.assertIn("Live Port", candidates[0].output_name)
+        self.assertIn("Standalone Port", candidates[0].input_name)
+        self.assertIn("Standalone Port", candidates[0].output_name)
 
     def test_explicit_ports_do_not_trigger_midi_discovery(self) -> None:
         catalog = ProfileCatalog.load(include_user=False)

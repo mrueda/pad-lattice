@@ -19,39 +19,54 @@ letting a background update change the intended action target.
 
 ## Surface Layout
 
-Both bundled profiles expose four sessions. Pads `13` through `16` are
-selectors; pads `23` through `26` retain their states.
+Both bundled profiles expose the common Launchpad topology: eight top
+controls, an 8x8 matrix, and eight right-side Agent Scene controls. The right
+rail selects agents; the rightmost matrix column retains their compact states.
 
 ```text
-81  82  83  84  85  86  87  88   selected session state
-71  72  73  74  75  76  77  78   selected session state
-61  62  63  64  65  66  67  68   selected session state
-51  52  53  54  55  56  57  58   selected session state
-41  42  43  44  45  46  47  48   selected session state
-31  32  33  34  35  36  37  38   selected session state
-21  22 [S1][S2][S3][S4] 27  28   semantic status LEDs
-AP  NO [A1][A2][A3][A4] RE  ST   actions and selectors
-11  12  13  14  15  16  17  18
+AP  NO  --  --  OV  --  RE  ST   common top action/system rail
+CC91 CC92 CC93 CC94 CC95 CC96 CC97 CC98
+glyph glyph glyph glyph glyph glyph glyph S1   A1 / CC89
+glyph glyph glyph glyph glyph glyph glyph S2   A2 / CC79
+glyph glyph glyph glyph glyph glyph glyph S3   A3 / CC69
+glyph glyph glyph glyph glyph glyph glyph S4   A4 / CC59
+glyph glyph glyph glyph glyph glyph glyph S5   A5 / CC49
+glyph glyph glyph glyph glyph glyph glyph S6   A6 / CC39
+glyph glyph glyph glyph glyph glyph glyph S7   A7 / CC29
+glyph glyph glyph glyph glyph glyph glyph S8   A8 / CC19
 ```
 
-An occupied selector is bright when selected and dim otherwise. Its status pad
-uses blue for running, white for waiting, yellow for approval, green for
-success, or red for error. This makes a background approval request visible
-without replacing the center display.
+An occupied Agent Scene is bright when selected and dim otherwise. Its status
+pad uses the state's semantic color. This makes a background approval request
+visible without replacing the selected-agent glyph. `CC 95` is steady amber
+while one or more registered sessions are in overflow.
+
+The Pro Mk1's additional left `CC 80`-`10` and bottom `CC 1`-`8` controls remain
+reserved. Keeping the core mapping on the common rails lets the same visual
+protocol work on Launchpad models without those extra controls.
+
+Accent assignment is independent of slot assignment. A privacy-preserving LRU
+store remembers the preferred accent for a hash of `(backend, session_id)`,
+while the daemon guarantees that currently visible accents are unique.
 
 ## Slot Policy
 
 1. The first observed session takes the first slot and becomes selected.
 2. Later sessions take free slots without stealing selection.
-3. The selected session and approval-waiting sessions remain visible.
+3. The selected session and approval-waiting sessions are protected.
 4. When slots are full, the least recently active unselected session not
    waiting for approval becomes overflow.
-5. New activity from an overflow session assigns it a visible slot using the
+5. New activity from an overflow session can assign it a visible slot using the
    same rule.
-6. Restarting the daemon clears the ephemeral registry and slot assignments.
+6. An explicit `session_end` removes that identity and fills any free slot.
+7. Ending the selected session clears selection; another session is never
+   silently targeted.
+8. Quiet unselected sessions expire after 24 hours by default. Approval
+   sessions do not expire, and `--session-ttl 0` disables cleanup.
 
-Codex hooks currently provide no session-close event. Recency-based overflow
-avoids pretending that a quiet terminal is definitely closed.
+Codex hooks currently provide no session-close event. Pad-Lattice therefore
+exposes `pad-lattice end-session` for explicit cleanup and uses TTL-based
+retirement as the conservative fallback.
 
 ## State Flow
 
@@ -73,8 +88,9 @@ pad press -> profile -> daemon -> selected identity -> matching live subscriber
 
 Subscribers declare both identity and capabilities. For example,
 `codex-exec` advertises only Stop. The daemon derives action brightness from
-the selected session's currently connected subscribers and debounces presses
-per identity and action.
+the selected session's state and currently connected subscribers, then
+debounces presses per identity and action. Approve/Reject require approval,
+Stop requires running, and Retry requires error or cancellation.
 
 Request-scoped validity remains the integration's responsibility. A future
 approval bridge must correlate a hardware decision with a still-pending Codex
@@ -91,3 +107,10 @@ permission request before advertising Approve or Reject.
 The architecture intentionally avoids terminal scraping, synthetic typing, and
 nested pseudo-terminals. A broader interactive action set should wait for a
 durable Codex integration point.
+
+Inspect the live registry without touching MIDI ownership:
+
+```bash
+pad-lattice status
+pad-lattice status --json
+```

@@ -38,9 +38,9 @@ codex resume <SESSION_ID>
 ```
 
 Run `/hooks` in each new Codex session to review and trust the installed
-commands. Each hook update carries its Codex session identity. Up to four
-sessions remain visible on the controller, and pads `13` through `16` select
-which state is shown in the center.
+commands. Each hook update carries its Codex session identity. Up to eight
+sessions remain visible on the controller, and the right-side Agent Scene
+controls select which state is shown in the center.
 
 The lifecycle hook is a passive state source. It does not advertise action
 capabilities, so action pads remain dim for interactive Codex sessions until a
@@ -56,21 +56,33 @@ pad-lattice codex-exec "review the current diff"
 ```
 
 Each process receives its own ephemeral agent identity and visible slot. Select
-the desired task, then press pad `18` to send Stop only to that process. Stop is
-bright only while the selected adapter has a live subscriber.
+the desired task, then press the common top-rail Stop control (`CC 98`) to target only that
+process. Stop is bright only while the selected adapter has a live subscriber.
 
-## Slot Policy
+## Session Policy
 
-The surface shows four sessions:
+The surface shows eight sessions:
 
 1. The first session is selected.
 2. Later sessions use free slots without stealing selection.
 3. The selected session and approval-waiting sessions are pinned.
-4. A fifth session replaces the least recently active unselected session that
+4. A ninth session replaces the least recently active unselected session that
    is not waiting for approval.
 5. New activity can bring an overflow session back into a visible slot.
+6. A steady amber indicator reports that at least one session is in overflow.
+7. Quiet background sessions expire after 24 hours unless `--session-ttl 0`
+   disables cleanup.
 
-Slot assignments are ephemeral and reset with the daemon.
+Slot assignments are ephemeral. Preferred identity accents persist across
+daemon restarts in a local store that contains hashed identities, not raw
+session IDs.
+
+Inspect or explicitly remove sessions from another terminal:
+
+```bash
+pad-lattice status
+pad-lattice end-session --backend codex --session-id <SESSION_ID>
+```
 
 ## Custom Socket
 
@@ -86,5 +98,5 @@ per-user socket under `/tmp`.
 ## Shutdown
 
 Stop the daemon with `Ctrl-C`. The surface clears its LEDs, sends any profile
-shutdown command, and closes both MIDI ports. The Mini Mk3 profile explicitly
-returns the controller to Live mode.
+shutdown command, and closes both MIDI ports. Both bundled profiles return the
+controller to their normal Live mode.

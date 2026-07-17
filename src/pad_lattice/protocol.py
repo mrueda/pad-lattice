@@ -47,6 +47,16 @@ def state_message(
     return message
 
 
+def session_end_message(
+    agent: AgentIdentity | dict[str, str],
+) -> dict[str, Any]:
+    return {"type": "session_end", "agent": encode_agent(agent)}
+
+
+def status_message() -> dict[str, str]:
+    return {"type": "status"}
+
+
 def action_message(
     action: ControlAction,
     agent: AgentIdentity,
@@ -117,3 +127,23 @@ def send_message(socket_path: str, message: dict[str, Any]) -> None:
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
         client.connect(socket_path)
         client.sendall(encode_message(message))
+
+
+def request_message(
+    socket_path: str,
+    message: dict[str, Any],
+    *,
+    timeout: float = 2.0,
+) -> dict[str, Any]:
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+        client.settimeout(timeout)
+        client.connect(socket_path)
+        client.sendall(encode_message(message))
+        buffer = b""
+        while b"\n" not in buffer:
+            data = client.recv(4096)
+            if not data:
+                raise ConnectionError("daemon closed the connection without a response")
+            buffer += data
+        line, _ = buffer.split(b"\n", 1)
+        return decode_message(line)

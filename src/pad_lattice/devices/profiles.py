@@ -10,25 +10,17 @@ from importlib import resources
 from pathlib import Path
 from typing import Any, Iterable
 
-from pad_lattice.events import ControlAction
+from pad_lattice.events import AgentState, ControlAction
+from pad_lattice.visual_protocol import (
+    STATE_HEIGHT,
+    STATE_WIDTH,
+    VISUAL_PROTOCOL_VERSION,
+)
 
 PROFILE_SCHEMA_VERSION = 1
 SUPPORTED_DRIVERS = frozenset({"midi.palette-grid"})
 PROFILE_STATUSES = frozenset({"supported", "experimental"})
-REQUIRED_COLORS = frozenset(
-    {
-        "off",
-        "white",
-        "blue",
-        "yellow",
-        "green",
-        "red",
-        "dim_blue",
-        "dim_green",
-        "dim_red",
-        "dim_yellow",
-    }
-)
+CONFORMANCE_LEVELS = frozenset({"core-state", "multi-agent", "actions"})
 
 
 class ProfileError(ValueError):
@@ -53,13 +45,23 @@ class MidiCommand:
 
 @dataclass(frozen=True)
 class AccentColors:
-    bright: int
-    dim: int
+    name: str
+    selected: int
+    unselected: int
+
+
+@dataclass(frozen=True)
+class GridRegion:
+    x: int
+    y: int
+    width: int
+    height: int
 
 
 @dataclass(frozen=True)
 class DeviceProfile:
     schema_version: int
+    visual_protocol: str
     id: str
     name: str
     manufacturer: str
@@ -72,12 +74,14 @@ class DeviceProfile:
     grid_kind: str
     grid_channel: int
     grid: tuple[tuple[int, ...], ...]
-    state_rows: int
+    state_region: GridRegion
     controls: dict[ControlAction, MidiAddress]
     selectors: tuple[MidiAddress, ...]
     statuses: tuple[MidiAddress, ...]
-    colors: dict[str, int]
+    overflow_indicator: MidiAddress | None
+    palette: dict[str, int]
     accents: tuple[AccentColors, ...]
+    conformance: frozenset[str]
     startup: tuple[MidiCommand, ...]
     clear: tuple[MidiCommand, ...]
     shutdown: tuple[MidiCommand, ...]
@@ -96,14 +100,24 @@ class DeviceProfile:
     def selector_capacity(self) -> int:
         return len(self.selectors)
 
+    @property
+    def accent_names(self) -> tuple[str, ...]:
+        return tuple(accent.name for accent in self.accents)
+
     def grid_address(self, x: int, y: int) -> MidiAddress:
         return MidiAddress(self.grid_kind, self.grid[y][x], self.grid_channel)
 
     def color(self, name: str) -> int:
         try:
-            return self.colors[name]
+            return self.palette[name]
         except KeyError as exc:
             raise ProfileError(f"{self.id}: unknown color token: {name}") from exc
+
+    def accent(self, name: str) -> AccentColors:
+        for accent in self.accents:
+            if accent.name == name:
+                return accent
+        raise ProfileError(f"{self.id}: unknown session accent: {name}")
 
 
 @dataclass(frozen=True)
@@ -190,6 +204,12 @@ def parse_profile(data: Any, *, source: str = "<profile>") -> DeviceProfile:
             f"{source}: unsupported schema_version {schema_version}; "
             f"expected {PROFILE_SCHEMA_VERSION}"
         )
+    visual_protocol = _string(data, "visual_protocol", source)
+    if visual_protocol != VISUAL_PROTOCOL_VERSION:
+        raise ProfileError(
+            f"{source}: unsupported visual_protocol {visual_protocol!r}; "
+            f"expected {VISUAL_PROTOCOL_VERSION!r}"
+        )
 
     profile_id = _string(data, "id", source)
     if re.fullmatch(r"[a-z0-9][a-z0-9-]*(/[a-z0-9][a-z0-9-]*){2}", profile_id) is None:
@@ -243,7 +263,7 @@ def parse_profile(data: Any, *, source: str = "<profile>") -> DeviceProfile:
             raise ProfileError(f"{source}.grid.rows must all have the same width")
         rows.append(row)
     if width != 8 or len(rows) != 8:
-        raise ProfileError(f"{source}.grid must be 8x8 for schema version 1")
+        raise ProfileError(f"{source}.grid must be 8x8")
     _validate_unique_addresses(
         [
             MidiAddress(grid_kind, number, grid_channel)
@@ -253,57 +273,162 @@ def parse_profile(data: Any, *, source: str = "<profile>") -> DeviceProfile:
         f"{source}.grid",
     )
 
-    state_rows = grid_data.get("state_rows", 6)
-    if not isinstance(state_rows, int) or isinstance(state_rows, bool) or not 1 <= state_rows <= 8:
-        raise ProfileError(f"{source}.grid.state_rows must be an integer from 1 to 8")
+    surface_data = _object(data, "surface", source)
+    region_data = _object(surface_data, "state_region", f"{source}.surface")
+    state_region = GridRegion(
+        x=_bounded_integer(region_data.get("x"), f"{source}.surface.state_region.x", 0, 7),
+        y=_bounded_integer(region_data.get("y"), f"{source}.surface.state_region.y", 0, 7),
+        width=_bounded_integer(
+            region_data.get("width"),
+            f"{source}.surface.state_region.width",
+            1,
+            8,
+        ),
+        height=_bounded_integer(
+            region_data.get("height"),
+            f"{source}.surface.state_region.height",
+            1,
+            8,
+        ),
+    )
+    if state_region.width != STATE_WIDTH or state_region.height != STATE_HEIGHT:
+        raise ProfileError(
+            f"{source}.surface.state_region must be {STATE_WIDTH}x{STATE_HEIGHT} "
+            f"for Visual Protocol {VISUAL_PROTOCOL_VERSION}"
+        )
+    if (
+        state_region.x + state_region.width > width
+        or state_region.y + state_region.height > len(rows)
+    ):
+        raise ProfileError(f"{source}.surface.state_region exceeds the grid")
 
-    controls_data = _object(data, "controls", source)
+    controls_data = surface_data.get("actions", {})
+    if not isinstance(controls_data, dict):
+        raise ProfileError(f"{source}.surface.actions must be a JSON object")
+    unknown_actions = sorted(set(controls_data) - {action.value for action in ControlAction})
+    if unknown_actions:
+        raise ProfileError(
+            f"{source}.surface.actions contains unknown actions: "
+            + ", ".join(unknown_actions)
+        )
     action_addresses: dict[ControlAction, MidiAddress] = {}
     for action in ControlAction:
-        action_addresses[action] = _address(
-            controls_data.get(action.value),
-            f"{source}.controls.{action.value}",
-        )
-    selectors = _address_array(controls_data.get("selectors"), f"{source}.controls.selectors")
-    statuses = _address_array(controls_data.get("statuses"), f"{source}.controls.statuses")
+        if action.value in controls_data:
+            action_addresses[action] = _address(
+                controls_data[action.value],
+                f"{source}.surface.actions.{action.value}",
+            )
+    selectors = _address_array(
+        surface_data.get("agent_selectors"),
+        f"{source}.surface.agent_selectors",
+    )
+    statuses = _address_array(
+        surface_data.get("agent_statuses"),
+        f"{source}.surface.agent_statuses",
+    )
     if len(selectors) != len(statuses):
         raise ProfileError(f"{source}: selectors and statuses must have equal lengths")
     if not selectors:
         raise ProfileError(f"{source}: at least one selector/status pair is required")
     if len(selectors) > 8:
         raise ProfileError(f"{source}: at most eight selector slots are supported")
-    _validate_unique_addresses(
-        [*action_addresses.values(), *selectors, *statuses],
-        f"{source}.controls",
+    indicators_data = surface_data.get("indicators", {})
+    if not isinstance(indicators_data, dict):
+        raise ProfileError(f"{source}.surface.indicators must be a JSON object")
+    unknown_indicators = sorted(set(indicators_data) - {"overflow"})
+    if unknown_indicators:
+        raise ProfileError(
+            f"{source}.surface.indicators contains unknown indicators: "
+            + ", ".join(unknown_indicators)
+        )
+    overflow_indicator = (
+        _address(
+            indicators_data["overflow"],
+            f"{source}.surface.indicators.overflow",
+        )
+        if "overflow" in indicators_data
+        else None
     )
+    surface_addresses = [*action_addresses.values(), *selectors, *statuses]
+    if overflow_indicator is not None:
+        surface_addresses.append(overflow_indicator)
+    _validate_unique_addresses(surface_addresses, f"{source}.surface")
 
-    colors_data = _object(data, "colors", source)
-    colors = {
-        key: _midi_value(value, f"{source}.colors.{key}")
-        for key, value in colors_data.items()
+    state_addresses = {
+        MidiAddress(grid_kind, rows[y][x], grid_channel)
+        for y in range(state_region.y, state_region.y + state_region.height)
+        for x in range(state_region.x, state_region.x + state_region.width)
     }
-    missing_colors = sorted(REQUIRED_COLORS - colors.keys())
-    if missing_colors:
-        raise ProfileError(f"{source}: missing colors: {', '.join(missing_colors)}")
+    overlap = state_addresses.intersection(surface_addresses)
+    if overlap:
+        raise ProfileError(
+            f"{source}.surface: state region overlaps a control address: "
+            f"{sorted(overlap, key=lambda item: (item.kind, item.channel, item.number))[0]}"
+        )
+
+    palette = _palette(_object(data, "palette", source), f"{source}.palette")
 
     accents_data = data.get("accents")
     if not isinstance(accents_data, list) or len(accents_data) != len(selectors):
         raise ProfileError(
-            f"{source}.accents must provide exactly {len(selectors)} color pairs"
+            f"{source}.accents must provide exactly {len(selectors)} named color pairs"
         )
-    accents = tuple(
-        AccentColors(
-            bright=_midi_value(
-                _object(value, "bright", f"{source}.accents[{index}]", value_is_object=True),
-                f"{source}.accents[{index}].bright",
-            ),
-            dim=_midi_value(
-                _object(value, "dim", f"{source}.accents[{index}]", value_is_object=True),
-                f"{source}.accents[{index}].dim",
-            ),
+    accents_list: list[AccentColors] = []
+    for index, value in enumerate(accents_data):
+        location = f"{source}.accents[{index}]"
+        if not isinstance(value, dict):
+            raise ProfileError(f"{location} must be a JSON object")
+        accent_name = _string(value, "name", location)
+        if re.fullmatch(r"[a-z][a-z0-9-]*", accent_name) is None:
+            raise ProfileError(f"{location}.name must be a lowercase slug")
+        accents_list.append(
+            AccentColors(
+                name=accent_name,
+                selected=_midi_value(value.get("selected"), f"{location}.selected"),
+                unselected=_midi_value(
+                    value.get("unselected"),
+                    f"{location}.unselected",
+                ),
+            )
         )
-        for index, value in enumerate(accents_data)
-    )
+    accents = tuple(accents_list)
+    accent_names = [accent.name for accent in accents]
+    if len(set(accent_names)) != len(accent_names):
+        raise ProfileError(f"{source}.accents must use unique names")
+
+    conformance_data = data.get("conformance")
+    if (
+        not isinstance(conformance_data, list)
+        or not conformance_data
+        or not all(isinstance(item, str) for item in conformance_data)
+    ):
+        raise ProfileError(f"{source}.conformance must be a non-empty string array")
+    conformance = frozenset(conformance_data)
+    unknown_conformance = sorted(conformance - CONFORMANCE_LEVELS)
+    if unknown_conformance:
+        raise ProfileError(
+            f"{source}.conformance contains unknown levels: "
+            + ", ".join(unknown_conformance)
+        )
+    if "core-state" not in conformance:
+        raise ProfileError(f"{source}.conformance must include core-state")
+    if "multi-agent" in conformance and len(selectors) < 2:
+        raise ProfileError(
+            f"{source}: multi-agent conformance requires at least two selector slots"
+        )
+    if "multi-agent" in conformance and overflow_indicator is None:
+        raise ProfileError(
+            f"{source}: multi-agent conformance requires an overflow indicator"
+        )
+    if "actions" in conformance:
+        missing_actions = [
+            action.value for action in ControlAction if action not in action_addresses
+        ]
+        if missing_actions:
+            raise ProfileError(
+                f"{source}: actions conformance requires mappings for: "
+                + ", ".join(missing_actions)
+            )
 
     messages = data.get("messages", {})
     if not isinstance(messages, dict):
@@ -318,6 +443,7 @@ def parse_profile(data: Any, *, source: str = "<profile>") -> DeviceProfile:
 
     return DeviceProfile(
         schema_version=schema_version,
+        visual_protocol=visual_protocol,
         id=profile_id,
         name=name,
         manufacturer=manufacturer,
@@ -330,12 +456,14 @@ def parse_profile(data: Any, *, source: str = "<profile>") -> DeviceProfile:
         grid_kind=grid_kind,
         grid_channel=grid_channel,
         grid=tuple(rows),
-        state_rows=state_rows,
+        state_region=state_region,
         controls=action_addresses,
         selectors=selectors,
         statuses=statuses,
-        colors=colors,
+        overflow_indicator=overflow_indicator,
+        palette=palette,
         accents=accents,
+        conformance=conformance,
         startup=_commands(messages.get("startup", []), f"{source}.messages.startup"),
         clear=_commands(messages.get("clear", []), f"{source}.messages.clear"),
         shutdown=_commands(messages.get("shutdown", []), f"{source}.messages.shutdown"),
@@ -399,18 +527,10 @@ def _validate_patterns(patterns: tuple[str, ...], location: str) -> None:
 
 
 def _object(
-    data: dict[str, Any] | Any,
+    data: dict[str, Any],
     key: str,
     location: str,
-    *,
-    value_is_object: bool = False,
 ) -> Any:
-    if value_is_object:
-        if not isinstance(data, dict):
-            raise ProfileError(f"{location} must be a JSON object")
-        if key not in data:
-            raise ProfileError(f"{location}.{key} is required")
-        return data[key]
     value = data.get(key)
     if not isinstance(value, dict):
         raise ProfileError(f"{location}.{key} must be a JSON object")
@@ -428,6 +548,18 @@ def _integer(data: dict[str, Any], key: str, location: str) -> int:
     value = data.get(key)
     if not isinstance(value, int) or isinstance(value, bool):
         raise ProfileError(f"{location}.{key} must be an integer")
+    return value
+
+
+def _bounded_integer(value: Any, location: str, minimum: int, maximum: int) -> int:
+    if (
+        not isinstance(value, int)
+        or isinstance(value, bool)
+        or not minimum <= value <= maximum
+    ):
+        raise ProfileError(
+            f"{location} must be an integer from {minimum} to {maximum}"
+        )
     return value
 
 
@@ -456,6 +588,56 @@ def _midi_channel(value: Any, location: str) -> int:
     if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= 15:
         raise ProfileError(f"{location} must be an integer from 0 to 15")
     return value
+
+
+def _palette(data: dict[str, Any], location: str) -> dict[str, int]:
+    allowed_keys = {"off", "idle", "activity", "states", "actions", "system"}
+    unknown_keys = sorted(set(data) - allowed_keys)
+    if unknown_keys:
+        raise ProfileError(
+            f"{location} contains unknown sections: " + ", ".join(unknown_keys)
+        )
+
+    palette = {
+        token: _midi_value(data.get(token), f"{location}.{token}")
+        for token in ("off", "idle", "activity")
+    }
+
+    states = _object(data, "states", location)
+    unknown_states = sorted(set(states) - {state.value for state in AgentState})
+    if unknown_states:
+        raise ProfileError(
+            f"{location}.states contains unknown states: " + ", ".join(unknown_states)
+        )
+    for state in AgentState:
+        state_data = _object(states, state.value, f"{location}.states")
+        for role in ("primary", "summary"):
+            palette[f"state:{state.value}:{role}"] = _midi_value(
+                state_data.get(role),
+                f"{location}.states.{state.value}.{role}",
+            )
+
+    actions = _object(data, "actions", location)
+    unknown_actions = sorted(set(actions) - {action.value for action in ControlAction})
+    if unknown_actions:
+        raise ProfileError(
+            f"{location}.actions contains unknown actions: "
+            + ", ".join(unknown_actions)
+        )
+    for action in ControlAction:
+        action_data = _object(actions, action.value, f"{location}.actions")
+        for role in ("enabled", "disabled"):
+            palette[f"action:{action.value}:{role}"] = _midi_value(
+                action_data.get(role),
+                f"{location}.actions.{action.value}.{role}",
+            )
+
+    system = _object(data, "system", location)
+    palette["system:overflow"] = _midi_value(
+        system.get("overflow"),
+        f"{location}.system.overflow",
+    )
+    return palette
 
 
 def _address(value: Any, location: str) -> MidiAddress:

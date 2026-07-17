@@ -12,7 +12,9 @@ from pad_lattice.protocol import (
     parse_actions,
     parse_agent,
     parse_state,
+    session_end_message,
     state_message,
+    status_message,
     subscribe_actions_message,
 )
 
@@ -58,6 +60,18 @@ class ProtocolTest(TestCase):
                 "agent": {"backend": "codex", "session_id": "session-123"},
             },
         )
+
+    def test_session_end_and_status_messages_are_explicit(self) -> None:
+        identity = AgentIdentity("codex", "session-123")
+
+        self.assertEqual(
+            session_end_message(identity),
+            {
+                "type": "session_end",
+                "agent": {"backend": "codex", "session_id": "session-123"},
+            },
+        )
+        self.assertEqual(status_message(), {"type": "status"})
 
     def test_subscribe_actions_message_advertises_capabilities(self) -> None:
         identity = AgentIdentity("codex", "session-123")

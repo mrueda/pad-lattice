@@ -25,8 +25,8 @@ If multiple ports match, pass exact names:
 ```bash
 pad-lattice demo \
   --profile novation/launchpad/pro-mk1 \
-  --input "Launchpad Pro Live Port" \
-  --output "Launchpad Pro Live Port"
+  --input "Launchpad Pro Standalone Port" \
+  --output "Launchpad Pro Standalone Port"
 ```
 
 ## No LEDs Change
@@ -51,9 +51,9 @@ programmer-mode messages in the selected profile.
 
 ## Controller Does Not Return to Normal Mode
 
-Stop Pad-Lattice with `Ctrl-C` so profile shutdown runs. The Mini Mk3 profile
-returns to Live mode on close. If a process was terminated without cleanup,
-power-cycle the controller or select Live mode from the hardware.
+Stop Pad-Lattice with `Ctrl-C` so profile shutdown runs. Both bundled profiles
+restore their normal Live mode on close. If a process was terminated without
+cleanup, power-cycle the controller or select Live mode from the hardware.
 
 ## Another Process Owns MIDI
 
@@ -90,10 +90,29 @@ pad-lattice install-codex-hooks
 
 ## A Background Session Replaced the Center
 
-Background state updates should change only their slot status LED. Press pads
-`13` through `16` to confirm the selected session. If behavior differs, verify
-that every integration sends a stable `backend` and `session_id`; messages
-without identity all share `local/default`.
+Background state updates should change only their status LED. Press the eight
+right-side Agent Scene selectors to confirm the selected session. If behavior differs,
+verify that every integration sends a stable `backend` and `session_id`;
+messages without identity all share `local/default`.
+
+Inspect the daemon's exact target and slot assignments:
+
+```bash
+pad-lattice status
+```
+
+## Amber Overflow Light Stays On
+
+`CC 95` is a steady amber warning when more sessions are registered than the
+surface can show. Use `pad-lattice status` to inspect overflow entries, then
+end sessions that are no longer active:
+
+```bash
+pad-lattice end-session --backend codex --session-id SESSION_ID
+```
+
+Quiet unselected sessions are also retired by the daemon TTL. Sessions waiting
+for approval are intentionally protected.
 
 ## Action Pads Are Dim
 

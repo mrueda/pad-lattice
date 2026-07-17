@@ -46,6 +46,12 @@ pad-lattice daemon --no-greeting
 Keep it running in a dedicated terminal or user service. Other commands talk
 to it through the local Unix socket.
 
+Inspect the live device and session registry from any terminal:
+
+```bash
+pad-lattice status
+```
+
 ## Connect Codex
 
 Install the interactive lifecycle hooks once:
@@ -73,8 +79,9 @@ pad-lattice send-state running --backend test --session-id agent-a
 pad-lattice send-state waiting_for_approval --backend test --session-id agent-b
 ```
 
-Pads `13` through `16` select visible sessions. Pads `23` through `26` retain
-their semantic states. Background updates do not change the selected agent.
+The eight right-side round buttons select visible Agent Scenes. The rightmost
+grid column retains their compact semantic states. Background updates do not
+change the selected agent.
 
 Use an action listener to advertise controls for one test identity:
 
@@ -82,15 +89,24 @@ Use an action listener to advertise controls for one test identity:
 pad-lattice listen-actions --backend test --session-id agent-a
 ```
 
-The four action pads become bright only for the selected session with a live
-listener:
+Action pads become bright only when the selected session has a live listener
+**and** its state permits the action:
 
-| Pad | Action |
+| Common top control | Action |
 | --- | --- |
-| `11` | `approve` |
-| `12` | `reject` |
-| `17` | `retry` |
-| `18` | `stop` |
+| `CC 91` | `approve` |
+| `CC 92` | `reject` |
+| `CC 97` | `retry` |
+| `CC 98` | `stop` |
+
+For example, set `agent-a` to `waiting_for_approval` to enable Approve and
+Reject, or to `running` to enable Stop.
+
+Remove a finished manual session explicitly:
+
+```bash
+pad-lattice end-session --backend test --session-id agent-a
+```
 
 Interactive Codex hooks report state but do not yet apply these actions to a
 terminal approval prompt. See [Codex Integration](./codex-integration.md).

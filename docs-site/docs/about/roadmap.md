@@ -6,9 +6,13 @@
 - Interactive Codex lifecycle state hooks.
 - Non-interactive `codex-exec` adapter with targeted Stop.
 - Multi-agent registry keyed by backend and session ID.
-- Four steady-color session selectors and semantic status LEDs.
-- Selected-session action routing with live capability checks.
-- Declarative, hierarchical JSON device profiles.
+- Visual Protocol 0.1 with steady, shape-plus-color state glyphs.
+- Eight persistent-color session selectors and semantic status LEDs.
+- Safe LRU overflow, protected approvals, explicit session cleanup, and TTL.
+- Selected-session action routing with state and live-capability checks.
+- Privacy-preserving persistent accent preferences.
+- Human-readable and JSON daemon status inspection.
+- Declarative, hierarchical JSON device profiles with conformance levels.
 - Supported Novation Launchpad Pro Mk1 profile.
 - Experimental Novation Launchpad Mini Mk3 profile.
 - Guided physical profile testing with sanitized reports.
@@ -20,10 +24,10 @@
   physical report.
 - Package a supported interactive Codex action bridge when a durable API is
   available.
-- Add request correlation and keyboard fallback for physical approvals.
-- Add daemon session inspection for operational debugging.
+- Add request correlation for physical approvals through that supported bridge.
 - Publish signed releases to TestPyPI and PyPI.
 - Add more community-authored controller profiles.
+- Validate Visual Protocol 0.1 on devices with different layouts and palettes.
 
 ## Longer Term
 

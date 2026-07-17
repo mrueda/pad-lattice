@@ -7,7 +7,7 @@ from enum import Enum
 
 
 class AgentState(str, Enum):
-    """High-level states rendered by the Launchpad MVP."""
+    """High-level states rendered by Pad-Lattice surfaces."""
 
     RUNNING = "running"
     WAITING_FOR_REPLY = "waiting_for_reply"
@@ -15,10 +15,11 @@ class AgentState(str, Enum):
     WAITING_FOR_APPROVAL = "waiting_for_approval"
     SUCCESS = "success"
     ERROR = "error"
+    CANCELLED = "cancelled"
 
 
 class ControlAction(str, Enum):
-    """Hardware controls emitted by the Launchpad MVP."""
+    """Agent actions emitted by compatible physical surfaces."""
 
     APPROVE = "approve"
     REJECT = "reject"

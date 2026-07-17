@@ -77,151 +77,214 @@
 }
 
 .matrixDiagram {
-  max-width: 620px;
+  --pad-off: #101418;
+  --pad-line: #303943;
+  --pad-blue: #3674e8;
+  --pad-white: #f4f6f8;
+  --pad-cyan: #00aebb;
+  --pad-amber: #d39a18;
+  --pad-green: #35a94a;
+  --pad-red: #cf3f42;
+  --pad-gray: #727c88;
+  --accent-cyan: #00aebb;
+  --accent-magenta: #c83ec9;
+  --accent-lime: #70b92d;
+  --accent-orange: #e67e22;
+  --accent-violet: #7656c7;
+  --accent-teal: #009b83;
+  --accent-rose: #d94c76;
+  --accent-sky: #3788d8;
   margin: 1rem 0 2rem;
+  max-width: 720px;
 }
 
+.topRail,
+.actionRail,
 .matrixGrid,
-.miniMatrix {
+.stateMatrix,
+.sideRail {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 0.35rem;
 }
 
-.matrixCell,
-.miniMatrix span {
-  aspect-ratio: 1;
-  border-radius: 7px;
-  border: 1px solid var(--ifm-color-emphasis-300);
-  background: var(--ifm-background-surface-color);
-  color: var(--ifm-font-color-base);
+.topRail,
+.actionRail,
+.matrixGrid {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+
+.topRail,
+.actionRail {
+  margin-right: 3.4rem;
+}
+
+.topRail {
+  margin-bottom: 0.55rem;
+}
+
+.actionRail {
+  margin-top: 0.55rem;
+}
+
+.surfaceTierLabel {
+  align-items: baseline;
+  color: var(--ifm-color-emphasis-700);
   display: flex;
+  font-size: 0.78rem;
+  gap: 0.45rem;
+  margin: 0.5rem 0;
+}
+
+.surfaceTierLabel strong {
+  color: var(--ifm-font-color-base);
+  min-width: 3.2rem;
+}
+
+.controllerBody {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: minmax(0, 1fr) 2.85rem;
+}
+
+.sideRail {
+  grid-template-rows: repeat(8, minmax(0, 1fr));
+}
+
+.matrixCell,
+.selectorCell,
+.externalPad,
+.stateMatrix span,
+.overflowPad {
   align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: 0.72rem;
-  line-height: 1.05;
+  aspect-ratio: 1;
+  background: var(--pad-off);
+  border: 1px solid var(--pad-line);
+  border-radius: 7px;
+  color: #aeb7c2;
+  display: flex;
+  font-size: 0.68rem;
   font-weight: 700;
+  justify-content: center;
+  line-height: 1.08;
   min-width: 0;
+  text-align: center;
+}
+
+.selectorCell,
+.externalPad,
+.overflowPad {
+  border-radius: 50%;
 }
 
 .matrixCell.note {
   background: var(--ifm-color-emphasis-100);
+  border-color: var(--ifm-color-emphasis-300);
+  color: var(--ifm-font-color-base);
 }
 
-.matrixCell.idle,
-.miniMatrix span {
-  background: #101418;
-  border-color: #29313a;
-  color: #9ca3af;
-}
-
-.matrixCell.state {
-  background: #2563eb;
-  border-color: #60a5fa;
+.matrixCell.semanticBlue,
+.stateMatrix .semanticBlue {
+  background: var(--pad-blue);
+  border-color: #76a2f5;
   color: #ffffff;
 }
 
+.matrixCell.semanticWhite,
+.stateMatrix .semanticWhite {
+  background: var(--pad-white);
+  border-color: #ffffff;
+  color: #111827;
+}
+
+.matrixCell.semanticCyan,
+.stateMatrix .semanticCyan {
+  background: var(--pad-cyan);
+  border-color: #62d6df;
+  color: #ffffff;
+}
+
+.matrixCell.semanticAmber,
+.stateMatrix .semanticAmber,
+.overflowPad {
+  background: var(--pad-amber);
+  border-color: #eec35c;
+  color: #111827;
+}
+
+.matrixCell.semanticGreen,
+.stateMatrix .semanticGreen,
 .matrixCell.approve,
-.miniMatrix .approve {
-  background: #16a34a;
-  border-color: #86efac;
+.externalPad.approve {
+  background: var(--pad-green);
+  border-color: #78d187;
   color: #ffffff;
 }
 
+.matrixCell.semanticRed,
+.stateMatrix .semanticRed,
 .matrixCell.reject,
-.miniMatrix .reject {
-  background: #dc2626;
-  border-color: #fca5a5;
+.matrixCell.stop,
+.externalPad.reject,
+.externalPad.stop {
+  background: var(--pad-red);
+  border-color: #ed8587;
+  color: #ffffff;
+}
+
+.matrixCell.semanticGray,
+.stateMatrix .semanticGray {
+  background: var(--pad-gray);
+  border-color: #aab1ba;
   color: #ffffff;
 }
 
 .matrixCell.retry,
-.miniMatrix .retry {
-  background: #2563eb;
-  border-color: #93c5fd;
+.externalPad.retry {
+  background: var(--pad-blue);
+  border-color: #76a2f5;
   color: #ffffff;
 }
 
-.matrixCell.stop,
-.miniMatrix .stop {
-  background: #991b1b;
-  border-color: #f87171;
-  color: #ffffff;
+.matrixCell.reserved {
+  color: #6b7280;
 }
 
-.matrixCell.accentOne {
-  background: #0891b2;
-  border-color: #67e8f9;
-  color: #ffffff;
+.accentCyan { background: var(--accent-cyan); border-color: #62d6df; color: #ffffff; }
+.accentMagenta { background: var(--accent-magenta); border-color: #ec8ced; color: #ffffff; }
+.accentLime { background: var(--accent-lime); border-color: #a9dc74; color: #111827; }
+.accentOrange { background: var(--accent-orange); border-color: #f4b06f; color: #111827; }
+.accentViolet { background: var(--accent-violet); border-color: #ad99e1; color: #ffffff; }
+.accentTeal { background: var(--accent-teal); border-color: #5dccb8; color: #ffffff; }
+.accentRose { background: var(--accent-rose); border-color: #ee97ae; color: #ffffff; }
+.accentSky { background: var(--accent-sky); border-color: #83b8e8; color: #ffffff; }
+
+.selectorCell.unselected {
+  filter: brightness(0.68);
 }
 
-.matrixCell.accentTwo {
-  background: #9333ea;
-  border-color: #d8b4fe;
-  color: #ffffff;
-}
-
-.matrixCell.accentThree {
-  background: #db2777;
-  border-color: #f9a8d4;
-  color: #ffffff;
-}
-
-.matrixCell.accentFour {
-  background: #0d9488;
-  border-color: #5eead4;
-  color: #ffffff;
-}
-
-.matrixCell.statusBlue {
-  background: #2563eb;
-  border-color: #93c5fd;
-  color: #ffffff;
-}
-
-.matrixCell.statusWhite {
-  background: #f8fafc;
-  border-color: #ffffff;
-  color: #111827;
-}
-
-.matrixCell.statusYellow {
-  background: #eab308;
-  border-color: #fde047;
-  color: #111827;
-}
-
-.matrixCell.statusGreen {
-  background: #16a34a;
-  border-color: #86efac;
-  color: #ffffff;
+.matrixCell.status {
+  filter: brightness(0.7);
 }
 
 .stateExampleGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1.25rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 1rem 0 2rem;
 }
 
-.miniMatrix {
+.stateExampleGrid p {
+  margin-bottom: 0.55rem;
+}
+
+.stateMatrix {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   max-width: 220px;
 }
 
-.miniMatrix .white {
-  background: #f8fafc;
-  border-color: #ffffff;
-}
-
-.miniMatrix .yellow {
-  background: #eab308;
-  border-color: #fde047;
-}
-
-.miniMatrix .green {
-  background: #16a34a;
-  border-color: #86efac;
+.stateMatrix span {
+  background: var(--pad-off);
+  border-color: var(--pad-line);
 }
 
 @media (max-width: 768px) {
@@ -231,5 +294,18 @@
 
   .stateExampleGrid {
     grid-template-columns: 1fr;
+  }
+
+  .topRail {
+    margin-right: 2.7rem;
+  }
+
+  .controllerBody {
+    grid-template-columns: minmax(0, 1fr) 2.15rem;
+  }
+
+  .actionRail {
+    margin-left: 2.7rem;
+    margin-right: 2.7rem;
   }
 }

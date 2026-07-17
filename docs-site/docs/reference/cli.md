@@ -51,6 +51,23 @@ pad-lattice daemon --no-greeting --terminal-hold 1.5
 The daemon accepts the same `--profile`, `--profile-file`, `--input`, and
 `--output` options as the demo. `--socket` overrides the local socket path.
 
+Additional lifecycle options:
+
+| Option | Meaning |
+| --- | --- |
+| `--session-ttl SECONDS` | Retire quiet unselected sessions after this interval; default 86400, `0` disables. |
+| `--activity-motion` | Opt in to the slow running-state activity marker. |
+| `--identity-store PATH` | Override the persistent accent-preference file. |
+
+## `pad-lattice status`
+
+Inspect the daemon, selected identity, slots, accents, states, and overflow:
+
+```bash
+pad-lattice status
+pad-lattice status --json
+```
+
 ## State Commands
 
 Send a state to the default `local/default` identity:
@@ -62,6 +79,7 @@ pad-lattice send-state user_typing
 pad-lattice send-state waiting_for_approval
 pad-lattice send-state success
 pad-lattice send-state error
+pad-lattice send-state cancelled
 ```
 
 Target an explicit identity:
@@ -78,6 +96,15 @@ successful no-op, which is useful in external hook scripts:
 ```bash
 pad-lattice hook-state running
 ```
+
+Remove an identity explicitly:
+
+```bash
+pad-lattice end-session --backend test --session-id agent-a
+```
+
+If that identity was selected, the surface becomes unselected instead of
+automatically targeting another session.
 
 ## Codex Commands
 
@@ -104,8 +131,9 @@ Run a non-interactive Codex task with state and Stop integration:
 pad-lattice codex-exec "summarize this repository"
 ```
 
-Each invocation receives a unique session identity. Pad `18` stops only the
-selected live `codex-exec` process.
+Each invocation receives a unique session identity. The Stop control (`CC 98`
+on the common top rail) stops only the selected live
+`codex-exec` process.
 
 ## Action Listener
 
@@ -117,8 +145,8 @@ pad-lattice listen-actions \
   --session-id agent-a
 ```
 
-The action pads become bright only while this listener is connected and its
-identity is selected.
+An action pad becomes bright only while this listener is connected, its
+identity is selected, and the selected state permits that action.
 
 ## MIDI Monitor
 

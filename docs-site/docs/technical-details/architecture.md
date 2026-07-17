@@ -8,6 +8,7 @@ Agent backend
   -> JSON-line Unix socket protocol
   -> multi-agent daemon
   -> semantic ControlSurface interface
+  -> Visual Protocol 0.1 frame compiler
   -> trusted driver + declarative device profile
   -> MIDI controller
 ```
@@ -19,6 +20,8 @@ Agent backend
 | `pad_lattice.events` | Agent identities, semantic states, and actions. |
 | `pad_lattice.protocol` | JSON-line message encoding and validation. |
 | `pad_lattice.daemon` | MIDI ownership, session registry, selection, and targeted routing. |
+| `pad_lattice.identity_store` | Hashed session-to-accent preferences with bounded LRU persistence. |
+| `pad_lattice.visual_protocol` | Hardware-independent state glyphs and semantic light tokens. |
 | `pad_lattice.devices.base` | Hardware-independent surface view and input events. |
 | `pad_lattice.devices.profiles` | JSON schema validation and profile catalog. |
 | `pad_lattice.devices.midi_grid` | Trusted static-palette MIDI grid driver. |
@@ -86,19 +89,32 @@ Targeted action response:
 ```
 
 An action is sent only when the subscription identity equals the selected
-session and its capability list contains that action. With no matching live
-subscriber, the action is ignored and rendered dim.
+session, its capability list contains that action, and the current state permits
+it. With no matching live subscriber, the action is ignored and rendered dim.
+
+Explicit session cleanup uses:
+
+```json
+{
+  "type": "session_end",
+  "agent": {"backend": "codex", "session_id": "019f..."}
+}
+```
+
+A `{"type":"status"}` request returns device metadata, selection, every
+registered session, visible slots, accent names, and overflow count.
 
 ## Session Registry
 
 Registry records hold identity, current semantic state, metadata, visible
-slot, recency, and terminal-state expiry. The first session is selected;
-background updates never steal selection. Four selector slots are available in
-the bundled profiles.
+slot, persistent accent, recency, and terminal-state expiry. The first session
+is selected; background updates never steal selection. Eight selector slots
+are available in the bundled profiles.
 
-Success and error are tracked per session. After `--terminal-hold`, that
-session returns to `waiting_for_reply` without changing another session's
-state.
+Success, error, and cancellation are tracked per session. After
+`--terminal-hold`, that session returns to `waiting_for_reply` without changing
+another session's state. A 24-hour TTL retires quiet unselected sessions but
+never approval-waiting sessions.
 
 ## Profile Resolution
 

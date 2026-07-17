@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "visual_protocol": "0.1",
   "id": "novation/launchpad/mini-mk3",
   "name": "Novation Launchpad Mini Mk3",
   "manufacturer": "Novation",
@@ -20,7 +21,6 @@
   "grid": {
     "kind": "note",
     "channel": 0,
-    "state_rows": 6,
     "rows": [
       [81, 82, 83, 84, 85, 86, 87, 88],
       [71, 72, 73, 74, 75, 76, 77, 78],
@@ -32,42 +32,70 @@
       [11, 12, 13, 14, 15, 16, 17, 18]
     ]
   },
-  "controls": {
-    "approve": {"kind": "note", "number": 11},
-    "reject": {"kind": "note", "number": 12},
-    "retry": {"kind": "note", "number": 17},
-    "stop": {"kind": "note", "number": 18},
-    "selectors": [
-      {"kind": "note", "number": 13},
-      {"kind": "note", "number": 14},
-      {"kind": "note", "number": 15},
-      {"kind": "note", "number": 16}
+  "surface": {
+    "state_region": {"x": 0, "y": 0, "width": 7, "height": 8},
+    "actions": {
+      "approve": {"kind": "cc", "number": 91},
+      "reject": {"kind": "cc", "number": 92},
+      "retry": {"kind": "cc", "number": 97},
+      "stop": {"kind": "cc", "number": 98}
+    },
+    "agent_selectors": [
+      {"kind": "cc", "number": 89},
+      {"kind": "cc", "number": 79},
+      {"kind": "cc", "number": 69},
+      {"kind": "cc", "number": 59},
+      {"kind": "cc", "number": 49},
+      {"kind": "cc", "number": 39},
+      {"kind": "cc", "number": 29},
+      {"kind": "cc", "number": 19}
     ],
-    "statuses": [
-      {"kind": "note", "number": 23},
-      {"kind": "note", "number": 24},
-      {"kind": "note", "number": 25},
-      {"kind": "note", "number": 26}
-    ]
+    "agent_statuses": [
+      {"kind": "note", "number": 88},
+      {"kind": "note", "number": 78},
+      {"kind": "note", "number": 68},
+      {"kind": "note", "number": 58},
+      {"kind": "note", "number": 48},
+      {"kind": "note", "number": 38},
+      {"kind": "note", "number": 28},
+      {"kind": "note", "number": 18}
+    ],
+    "indicators": {
+      "overflow": {"kind": "cc", "number": 95}
+    }
   },
-  "colors": {
+  "palette": {
     "off": 0,
-    "white": 3,
-    "blue": 45,
-    "yellow": 13,
-    "green": 21,
-    "red": 5,
-    "dim_blue": 41,
-    "dim_green": 17,
-    "dim_red": 7,
-    "dim_yellow": 9
+    "idle": 1,
+    "activity": 3,
+    "states": {
+      "running": {"primary": 45, "summary": 47},
+      "waiting_for_reply": {"primary": 3, "summary": 1},
+      "user_typing": {"primary": 37, "summary": 39},
+      "waiting_for_approval": {"primary": 9, "summary": 11},
+      "success": {"primary": 21, "summary": 23},
+      "error": {"primary": 5, "summary": 7},
+      "cancelled": {"primary": 2, "summary": 2}
+    },
+    "actions": {
+      "approve": {"enabled": 21, "disabled": 23},
+      "reject": {"enabled": 5, "disabled": 7},
+      "retry": {"enabled": 45, "disabled": 47},
+      "stop": {"enabled": 5, "disabled": 7}
+    },
+    "system": {"overflow": 9}
   },
   "accents": [
-    {"bright": 37, "dim": 33},
-    {"bright": 53, "dim": 49},
-    {"bright": 21, "dim": 17},
-    {"bright": 9, "dim": 7}
+    {"name": "cyan", "selected": 37, "unselected": 39},
+    {"name": "magenta", "selected": 53, "unselected": 55},
+    {"name": "lime", "selected": 17, "unselected": 19},
+    {"name": "orange", "selected": 9, "unselected": 11},
+    {"name": "violet", "selected": 49, "unselected": 51},
+    {"name": "teal", "selected": 29, "unselected": 31},
+    {"name": "rose", "selected": 57, "unselected": 59},
+    {"name": "sky", "selected": 41, "unselected": 43}
   ],
+  "conformance": ["core-state", "multi-agent", "actions"],
   "messages": {
     "startup": [
       {"type": "sysex", "data": [0, 32, 41, 2, 13, 14, 1]}

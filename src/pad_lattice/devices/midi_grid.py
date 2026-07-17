@@ -13,31 +13,14 @@ from pad_lattice.devices.base import (
     SurfaceView,
 )
 from pad_lattice.devices.profiles import DeviceProfile, MidiAddress, MidiCommand
-from pad_lattice.events import AgentState, ControlAction
+from pad_lattice.visual_protocol import VisualFrame, compile_visual_frame
 
 MidiMessage = Any
-RUNNING_ACTIVITY_INTERVAL = 1.5
 
 
 class MidiDeviceError(RuntimeError):
     """Raised when MIDI hardware cannot be opened or driven."""
 
-
-STATE_COLOR_TOKENS: dict[AgentState, str] = {
-    AgentState.RUNNING: "blue",
-    AgentState.WAITING_FOR_REPLY: "white",
-    AgentState.USER_TYPING: "white",
-    AgentState.WAITING_FOR_APPROVAL: "yellow",
-    AgentState.SUCCESS: "green",
-    AgentState.ERROR: "red",
-}
-
-ACTION_COLOR_TOKENS: dict[ControlAction, tuple[str, str]] = {
-    ControlAction.APPROVE: ("green", "dim_green"),
-    ControlAction.REJECT: ("red", "dim_red"),
-    ControlAction.RETRY: ("blue", "dim_blue"),
-    ControlAction.STOP: ("red", "dim_red"),
-}
 
 FONT_5X7: dict[str, tuple[str, ...]] = {
     " ": ("00000", "00000", "00000", "00000", "00000", "00000", "00000"),
@@ -92,6 +75,8 @@ class MidiGridSurface:
         self.input_name = input_name
         self.output_name = output_name
         self.selector_capacity = profile.selector_capacity
+        self.accent_names = profile.accent_names
+        self.visual_protocol = profile.visual_protocol
         self.output_port = output_port
         self.input_port = input_port
         self._message_factory = message_factory or _message
@@ -113,16 +98,13 @@ class MidiGridSurface:
         if self.startup_greeting and self.profile.text_scroll:
             self.scroll_text(
                 self.startup_greeting,
-                self.profile.color("green"),
+                self.profile.color("state:success:primary"),
                 self.scroll_delay,
             )
             self.clear()
 
     def render(self, view: SurfaceView) -> None:
-        self._clear_state_area()
-        self._render_state(view.selected_state, view.frame)
-        self._render_sessions(view)
-        self._render_actions(view.available_actions)
+        self._render_frame(compile_visual_frame(view, self.selector_capacity))
 
     def poll_events(self) -> list[SurfaceEvent]:
         events: list[SurfaceEvent] = []
@@ -153,6 +135,8 @@ class MidiGridSurface:
         addresses.update(self.profile.controls.values())
         addresses.update(self.profile.selectors)
         addresses.update(self.profile.statuses)
+        if self.profile.overflow_indicator is not None:
+            addresses.add(self.profile.overflow_indicator)
         for address in addresses:
             self._set_address(address, self.profile.color("off"))
 
@@ -180,80 +164,34 @@ class MidiGridSurface:
             self._render_text_frame(frames[offset : offset + self.profile.width], color)
             self._sleep(delay)
 
-    def _clear_state_area(self) -> None:
-        off = self.profile.color("off")
-        for y in range(self.profile.state_rows):
-            for x in range(self.profile.width):
-                self._set_grid_pad(x, y, off)
+    def _render_frame(self, frame: VisualFrame) -> None:
+        region = self.profile.state_region
+        for y, row in enumerate(frame.state):
+            for x, token in enumerate(row):
+                self._set_grid_pad(
+                    region.x + x,
+                    region.y + y,
+                    self._resolve_color(token),
+                )
 
-    def _render_state(self, state: AgentState, frame: int) -> None:
-        color = self.profile.color(STATE_COLOR_TOKENS[state])
-        if state is AgentState.RUNNING:
-            self._set_grid_pad(frame % self.profile.width, 0, self.profile.color("white"))
-            self._draw(((3, 2), (4, 2), (3, 3), (4, 3)), color)
-        elif state is AgentState.WAITING_FOR_REPLY:
-            self._draw(
-                (
-                    (2, 0), (3, 0), (4, 0), (5, 0),
-                    (1, 1), (6, 1), (6, 2), (5, 2),
-                    (5, 3), (4, 4), (3, 4), (3, 5), (4, 5),
-                ),
-                color,
-            )
-        elif state is AgentState.USER_TYPING:
-            self._draw(tuple((x, 4) for x in range(1, 7)) + ((6, 3),), color)
-        elif state is AgentState.WAITING_FOR_APPROVAL:
-            self._draw(
-                tuple((x, y) for y in range(4) for x in (3, 4))
-                + ((3, 5), (4, 5)),
-                color,
-            )
-        elif state is AgentState.SUCCESS:
-            self._draw(
-                (
-                    (2, 1), (5, 1), (1, 3), (2, 4),
-                    (3, 5), (4, 5), (5, 4), (6, 3),
-                ),
-                color,
-            )
-        elif state is AgentState.ERROR:
-            self._draw(
-                tuple(
-                    point
-                    for y in range(self.profile.state_rows)
-                    for point in ((y + 1, y), (self.profile.width - 2 - y, y))
-                    if 0 <= point[0] < self.profile.width
-                ),
-                color,
-            )
-
-    def _render_sessions(self, view: SurfaceView) -> None:
-        off = self.profile.color("off")
-        for address in (*self.profile.selectors, *self.profile.statuses):
-            self._set_address(address, off)
-        for session in view.sessions:
-            if not 0 <= session.slot < self.selector_capacity:
-                continue
-            accent = self.profile.accents[session.slot]
-            self._set_address(
-                self.profile.selectors[session.slot],
-                accent.bright if session.selected else accent.dim,
-            )
-            self._set_address(
-                self.profile.statuses[session.slot],
-                self.profile.color(STATE_COLOR_TOKENS[session.state]),
-            )
-
-    def _render_actions(self, available_actions: frozenset[ControlAction]) -> None:
+        for index, address in enumerate(self.profile.selectors):
+            self._set_address(address, self._resolve_color(frame.selectors[index]))
+        for index, address in enumerate(self.profile.statuses):
+            self._set_address(address, self._resolve_color(frame.statuses[index]))
         for action, address in self.profile.controls.items():
-            enabled_token, disabled_token = ACTION_COLOR_TOKENS[action]
-            token = enabled_token if action in available_actions else disabled_token
-            self._set_address(address, self.profile.color(token))
+            self._set_address(address, self._resolve_color(frame.actions[action]))
+        if self.profile.overflow_indicator is not None:
+            self._set_address(
+                self.profile.overflow_indicator,
+                self._resolve_color(frame.overflow),
+            )
 
-    def _draw(self, points: tuple[tuple[int, int], ...], color: int) -> None:
-        for x, y in points:
-            if 0 <= x < self.profile.width and 0 <= y < self.profile.state_rows:
-                self._set_grid_pad(x, y, color)
+    def _resolve_color(self, token: str) -> int:
+        if not token.startswith("accent:"):
+            return self.profile.color(token)
+        _, name, role = token.split(":", 2)
+        accent = self.profile.accent(name)
+        return accent.selected if role == "selected" else accent.unselected
 
     def _render_text_frame(self, columns: list[int], color: int) -> None:
         for y in range(self.profile.height):

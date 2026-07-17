@@ -3,6 +3,16 @@
 Device profiles are declarative JSON descriptions of MIDI grid controllers.
 They keep hardware-specific behavior out of the daemon and agent integrations.
 
+:::caution Preserve the visual protocol
+
+A device profile is a hardware translation of Pad-Lattice's visual protocol.
+It may relocate controls or substitute supported palette values, but it must
+not redefine identity, state, selection, action availability, or activity.
+Profile review therefore includes semantic consistency as well as correct MIDI
+messages.
+
+:::
+
 ## Catalog Hierarchy
 
 Profile IDs use three lowercase slugs:
@@ -47,8 +57,13 @@ The generic driver supports:
 - one explicit 8x8 note or control-change map;
 - static MIDI palette colors;
 - startup, clear, and shutdown messages;
-- four required semantic actions;
+- a 7x8 state region within that grid, leaving the rightmost matrix column for
+  compact per-agent status;
+- four semantic actions;
 - one to eight selector/status pairs;
+- an optional overflow indicator;
+- named selected/unselected accent pairs;
+- protocol conformance declarations;
 - optional 5x7 text scrolling.
 
 All state indicators are steady. Profiles cannot enable MIDI flashing or
@@ -61,16 +76,18 @@ The top-level fields are:
 | Field | Purpose |
 | --- | --- |
 | `schema_version` | Profile contract version; currently `1`. |
+| `visual_protocol` | Visual contract implemented by the profile; currently `0.1`. |
 | `id` | `manufacturer/family/model` identifier. |
 | `name` | Human-readable device name. |
 | `manufacturer`, `family`, `model` | Catalog metadata. |
 | `status` | `supported` or `experimental`. |
 | `driver` | Trusted built-in driver ID. |
 | `ports` | Ordered regex patterns for MIDI input and output names. |
-| `grid` | Kind, channel, eight explicit rows, and state-row count. |
-| `controls` | Four actions plus selector and status addresses. |
-| `colors` | Semantic static-palette values. |
-| `accents` | Bright/dim identity colors for visible slots. |
+| `grid` | Kind, channel, and eight explicit MIDI-address rows. |
+| `surface` | State region, actions, agent selectors/statuses, and indicators. |
+| `palette` | Static values for semantic states, actions, activity, and overflow. |
+| `accents` | Named selected/unselected identity colors. |
+| `conformance` | `core-state`, `multi-agent`, and/or `actions`. |
 | `messages` | Startup, clear, and shutdown MIDI commands. |
 | `capabilities` | Optional driver features such as text scrolling. |
 
@@ -84,13 +101,50 @@ SysEx data excludes the framing bytes `F0` and `F7`, matching `mido.Message`:
 
 ```json
 {
-  "kind": "sysex",
+  "type": "sysex",
   "data": [0, 32, 41, 2, 13, 14, 1]
 }
 ```
 
-The required color tokens are `off`, `white`, `blue`, `yellow`, `green`,
-`red`, `dim_blue`, `dim_green`, `dim_red`, and `dim_yellow`.
+The profile schema and visual protocol are versioned independently. This is
+the first public profile schema, so it is `schema_version: 1`; there is no
+legacy schema to preserve.
+
+The central surface declaration is explicit:
+
+```json
+{
+  "surface": {
+    "state_region": {"x": 0, "y": 0, "width": 7, "height": 8},
+    "actions": {
+      "approve": {"kind": "cc", "number": 91},
+      "reject": {"kind": "cc", "number": 92},
+      "retry": {"kind": "cc", "number": 97},
+      "stop": {"kind": "cc", "number": 98}
+    },
+    "agent_selectors": [
+      {"kind": "cc", "number": 89}
+    ],
+    "agent_statuses": [
+      {"kind": "note", "number": 88}
+    ],
+    "indicators": {
+      "overflow": {"kind": "cc", "number": 95}
+    }
+  }
+}
+```
+
+All states, including `cancelled`, require both a primary glyph color and a
+compact summary color. Every action requires enabled and disabled values.
+Accent names must be unique, and the profile must define exactly one accent
+pair per selector/status slot.
+
+The Launchpad Pro Mk1 profile opens the **Standalone Port**, switches to
+Standalone Programmer layout, and restores Live Session mode during clean
+shutdown. Both bundled profiles keep actions on the common top rail; the Pro's
+extra left and bottom controls remain reserved. Explicit Pro Mk1 port
+overrides should therefore also select the Standalone Port.
 
 ## Discovery and Selection
 

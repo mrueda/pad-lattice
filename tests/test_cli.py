@@ -47,6 +47,9 @@ class CliTest(TestCase):
                 "--no-greeting",
                 "--terminal-hold",
                 "1.5",
+                "--session-ttl",
+                "3600",
+                "--activity-motion",
             ]
         )
 
@@ -54,6 +57,31 @@ class CliTest(TestCase):
         self.assertEqual(args.socket, "/tmp/pad-lattice.sock")
         self.assertTrue(args.no_greeting)
         self.assertEqual(args.terminal_hold, 1.5)
+        self.assertEqual(args.session_ttl, 3600.0)
+        self.assertTrue(args.activity_motion)
+
+    def test_status_supports_json_output(self) -> None:
+        args = build_parser().parse_args(
+            ["status", "--socket", "/tmp/pad-lattice.sock", "--json"]
+        )
+
+        self.assertEqual(args.command, "status")
+        self.assertTrue(args.json)
+
+    def test_end_session_accepts_agent_identity(self) -> None:
+        args = build_parser().parse_args(
+            [
+                "end-session",
+                "--backend",
+                "codex",
+                "--session-id",
+                "session-123",
+            ]
+        )
+
+        self.assertEqual(args.command, "end-session")
+        self.assertEqual(args.backend, "codex")
+        self.assertEqual(args.session_id, "session-123")
 
     def test_send_state_accepts_agent_state(self) -> None:
         args = build_parser().parse_args(["send-state", "waiting_for_reply"])

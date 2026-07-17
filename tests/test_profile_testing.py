@@ -16,7 +16,18 @@ class FakeSurface:
     profile_id = "novation/launchpad/pro-mk1"
     input_name = "Launchpad test input"
     output_name = "Launchpad test output"
-    selector_capacity = 4
+    selector_capacity = 8
+    accent_names = (
+        "cyan",
+        "magenta",
+        "lime",
+        "orange",
+        "violet",
+        "teal",
+        "rose",
+        "sky",
+    )
+    visual_protocol = "0.1"
 
     def __init__(self, *, fail_initialize: bool = False) -> None:
         self.fail_initialize = fail_initialize
@@ -49,7 +60,7 @@ class ProfileTestingTest(TestCase):
 
     def test_complete_run_writes_passing_sanitized_report(self) -> None:
         surface = FakeSurface()
-        answers = io.StringIO("yes\n" * 6)
+        answers = io.StringIO("yes\n" * 9)
         output = io.StringIO()
 
         with TemporaryDirectory() as directory:
@@ -68,7 +79,7 @@ class ProfileTestingTest(TestCase):
         self.assertTrue(report["passed"])
         self.assertEqual(saved, report)
         self.assertTrue(surface.closed)
-        self.assertEqual(len(surface.views), 11)
+        self.assertEqual(len(surface.views), 18)
         serialized = json.dumps(report)
         self.assertNotIn("prompt", serialized.lower())
         self.assertNotIn("session_id", serialized)

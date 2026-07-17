@@ -29,6 +29,15 @@ and model are optional display metadata, never identity keys. Simultaneous
 sessions occupy separate slots; an update from an unselected session changes
 only its status LED.
 
+Codex does not currently expose a `SessionEnd` lifecycle hook. Finished
+interactive identities remain registered until the background-session TTL
+expires or they are removed explicitly:
+
+```bash
+pad-lattice status
+pad-lattice end-session --backend codex --session-id <SESSION_ID>
+```
+
 The hook is deliberately passive. It never approves, denies, rewrites, or
 stops an operation. If the daemon is unavailable, it exits successfully so
 Codex continues normally. Hooks also do not expose individual keystrokes, so
@@ -64,8 +73,9 @@ The adapter maps these events:
 | `error` | `error` |
 
 Each invocation generates a unique agent identity and subscribes only to Stop.
-After selecting that task on the controller, pad `18` terminates that process
-without affecting another concurrent `codex-exec` task.
+After selecting that task on the controller, the common top-rail Stop control
+(`CC 98`) terminates that process without affecting
+another concurrent `codex-exec` task.
 
 ## Hook Trust and Scope
 

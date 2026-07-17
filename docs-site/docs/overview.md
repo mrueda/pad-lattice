@@ -5,6 +5,18 @@ AI agents. It separates agent integrations from hardware details so existing
 musical controllers can supervise terminal agents without a browser or
 graphical agent UI.
 
+:::important Visual protocol
+
+Pad-Lattice defines **Visual Protocol 0.1** as well as a socket protocol. Color,
+shape, position, brightness, and motion are semantic fields: together they
+communicate agent identity, state, selection, action availability, and
+activity. Their meanings must remain deliberate and consistent across devices.
+
+Changing that visual grammar is a protocol-design decision, not a cosmetic
+restyling.
+
+:::
+
 ## Why MIDI
 
 MIDI hardware already combines tactile input, RGB feedback, low-latency local
@@ -30,7 +42,9 @@ probabilities, top-k candidates, or model internals. It focuses on supervision:
 - Steady, shape-plus-color rendering for common agent states.
 - A local Unix socket daemon that exclusively owns the MIDI ports.
 - A multi-agent registry keyed by backend and session ID.
-- Four visible session selectors with distinct accent colors and state LEDs.
+- Eight visible session selectors with persistent accent colors and state LEDs.
+- Safe least-recently-used overflow with a steady warning indicator.
+- Explicit session cleanup, a 24-hour background-session TTL, and daemon status.
 - Agent-scoped action subscriptions; actions are never broadcast.
 - Declarative JSON device profiles behind a trusted generic MIDI-grid driver.
 - Supported Launchpad Pro Mk1 and experimental Launchpad Mini Mk3 profiles.
@@ -44,19 +58,30 @@ The daemon works with semantic states and actions. A device profile owns:
 
 - MIDI port discovery;
 - programmer-mode startup and shutdown;
-- 8x8 note or control-change maps;
+- 8x8 note or control-change maps and optional outer controls;
 - static palette values;
 - action controls;
-- session selector and status locations.
+- session selector, status, and overflow locations;
+- calibrated palette values and declared protocol conformance levels.
 
 This boundary lets controller manufacturers and community developers add
 hardware without coupling it to Codex-specific events.
 
+A profile translates the shared visual protocol to a device. It may use
+different MIDI addresses, palette values, or physical controls, but it should
+preserve the same semantic distinctions.
+
 ## Multi-Agent Boundary
 
 The first observed session is selected. Later sessions occupy free slots
-without stealing the center display. Pressing a selector changes the active
-session, and background updates remain visible on that session's status LED.
+without stealing the center display. Pressing one of the eight right-side
+Agent Scene buttons changes the active session, and background updates remain
+visible on that session's adjacent status LED. Accent preferences survive
+daemon restarts without storing raw session IDs.
+
+When capacity is exceeded, the least recently active unselected session that
+is not waiting for approval moves to overflow. Ending the selected session
+clears selection instead of silently retargeting physical controls.
 
 Physical actions are emitted only when the selected identity has a connected
 subscriber advertising that action. Interactive Codex lifecycle hooks are

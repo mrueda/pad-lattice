@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
 from pad_lattice.daemon import Client, PadLatticeDaemon
 from pad_lattice.devices.base import SessionSelected
 from pad_lattice.events import AgentIdentity, AgentState, ControlAction
+from pad_lattice.identity_store import IdentityStore
 
 
 class FakeSocket:
@@ -31,6 +34,8 @@ class FakeSurface:
     input_name = "Test input"
     output_name = "Test output"
     selector_capacity = 4
+    accent_names = ("cyan", "magenta", "lime", "orange")
+    visual_protocol = "0.1"
 
     def __init__(self) -> None:
         self.views = []
@@ -246,6 +251,135 @@ class DaemonTest(TestCase):
         self.assertEqual(view.available_actions, frozenset({ControlAction.STOP}))
         self.assertEqual(len(view.sessions), 2)
         self.assertTrue(view.sessions[0].selected)
+
+    def test_actions_are_gated_by_selected_state(self) -> None:
+        daemon = self.daemon()
+        identity = AgentIdentity("codex", "session")
+        daemon.update_agent(identity, AgentState.RUNNING)
+        self.add_client(
+            daemon,
+            identity,
+            ControlAction.APPROVE,
+            ControlAction.STOP,
+        )
+
+        self.assertEqual(
+            daemon._available_actions(),
+            frozenset({ControlAction.STOP}),
+        )
+
+    def test_session_end_clears_selection_without_retargeting(self) -> None:
+        daemon = self.daemon()
+        first = AgentIdentity("codex", "first")
+        second = AgentIdentity("codex", "second")
+        daemon.update_agent(first, AgentState.RUNNING)
+        daemon.update_agent(second, AgentState.WAITING_FOR_REPLY)
+
+        subscriber = self.add_client(daemon, first, ControlAction.STOP)
+        daemon.handle_message(
+            Client(FakeSocket()),
+            {
+                "type": "session_end",
+                "agent": {"backend": "codex", "session_id": "first"},
+            },
+        )
+
+        self.assertIsNone(daemon.selected_agent)
+        self.assertIsNone(daemon.state)
+        self.assertIn(second, {session.identity for session in daemon.sessions})
+        self.assertIsNone(daemon._surface_view().selected_state)
+        self.assertIsNone(subscriber.agent)
+        self.assertFalse(subscriber.actions)
+
+    def test_quiet_background_session_expires(self) -> None:
+        daemon = self.daemon(session_ttl=10.0)
+        first = AgentIdentity("codex", "first")
+        second = AgentIdentity("codex", "second")
+        with patch("pad_lattice.daemon.time.monotonic", return_value=1.0):
+            daemon.update_agent(first, AgentState.RUNNING)
+            daemon.update_agent(second, AgentState.WAITING_FOR_REPLY)
+
+        with patch("pad_lattice.daemon.time.monotonic", return_value=12.0):
+            daemon._render_if_needed()
+
+        self.assertIn(first, daemon._sessions)
+        self.assertNotIn(second, daemon._sessions)
+
+    def test_approval_session_does_not_expire(self) -> None:
+        daemon = self.daemon(session_ttl=10.0)
+        first = AgentIdentity("codex", "first")
+        approval = AgentIdentity("codex", "approval")
+        with patch("pad_lattice.daemon.time.monotonic", return_value=1.0):
+            daemon.update_agent(first, AgentState.RUNNING)
+            daemon.update_agent(approval, AgentState.WAITING_FOR_APPROVAL)
+
+        with patch("pad_lattice.daemon.time.monotonic", return_value=12.0):
+            daemon._render_if_needed()
+
+        self.assertIn(approval, daemon._sessions)
+
+    def test_overflow_is_reported_when_all_slots_are_protected(self) -> None:
+        daemon = self.daemon()
+        identities = [AgentIdentity("codex", str(index)) for index in range(5)]
+        for identity in identities[:4]:
+            daemon.update_agent(identity, AgentState.WAITING_FOR_APPROVAL)
+        daemon.update_agent(identities[4], AgentState.RUNNING)
+
+        view = daemon._surface_view()
+
+        self.assertEqual(view.overflow_count, 1)
+        self.assertIsNone(daemon._sessions[identities[4]].slot)
+
+    def test_status_snapshot_includes_accents_and_protocol(self) -> None:
+        daemon = self.daemon(activity_motion=True)
+        identity = AgentIdentity("codex", "session")
+        daemon.update_agent(identity, AgentState.RUNNING)
+
+        status = daemon.status_snapshot()
+
+        self.assertEqual(status["visual_protocol"], "0.1")
+        self.assertTrue(status["activity_motion"])
+        self.assertEqual(status["sessions"][0]["accent"], "cyan")
+
+    def test_accents_are_unique_across_visible_sessions(self) -> None:
+        daemon = self.daemon()
+        for index in range(4):
+            daemon.update_agent(
+                AgentIdentity("codex", str(index)),
+                AgentState.RUNNING,
+            )
+
+        accents = [session.accent for session in daemon.sessions]
+
+        self.assertEqual(len(set(accents)), 4)
+
+    def test_returning_identity_recovers_persistent_accent(self) -> None:
+        with TemporaryDirectory() as directory:
+            identity = AgentIdentity("codex", "returning")
+            store = IdentityStore(Path(directory) / "identities.json")
+            store.remember(identity, "magenta")
+            daemon = PadLatticeDaemon(
+                FakeSurface(),
+                "/tmp/pad-lattice-unit-test.sock",
+                identity_store=store,
+            )
+            self.daemons.append(daemon)
+
+            daemon.update_agent(identity, AgentState.RUNNING)
+
+            self.assertEqual(daemon._sessions[identity].accent, "magenta")
+
+    def test_existing_non_socket_path_is_not_unlinked(self) -> None:
+        with TemporaryDirectory() as directory:
+            socket_path = str(Path(directory) / "daemon.sock")
+            Path(socket_path).write_text("not a socket", encoding="utf-8")
+            daemon = PadLatticeDaemon(FakeSurface(), socket_path)
+            self.daemons.append(daemon)
+
+            with self.assertRaisesRegex(OSError, "not a Unix socket"):
+                daemon._open_server()
+
+            self.assertTrue(Path(socket_path).exists())
 
     def test_close_is_idempotent(self) -> None:
         daemon = self.daemon()

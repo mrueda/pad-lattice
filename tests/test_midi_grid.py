@@ -69,17 +69,22 @@ def surface_for(profile_id: str) -> tuple[MidiGridSurface, FakePort, FakePort]:
 
 
 class MidiGridSurfaceTest(TestCase):
-    def test_mk1_initialization_preserves_host_mode_messages(self) -> None:
+    def test_mk1_initialization_enters_standalone_programmer_mode(self) -> None:
         surface, output, _ = surface_for("novation/launchpad/pro-mk1")
 
         surface.initialize()
 
         self.assertEqual(output.messages[0].type, "sysex")
-        self.assertEqual(output.messages[0].data, [0, 32, 41, 2, 16, 33, 0])
-        self.assertEqual(output.messages[1].data, [0, 32, 41, 2, 16, 34, 0])
-        self.assertEqual(output.messages[2].type, "control_change")
-        self.assertEqual(output.messages[2].control, 0)
-        self.assertEqual(output.messages[2].value, 0)
+        self.assertEqual(output.messages[0].data, [0, 32, 41, 2, 16, 33, 1])
+        self.assertEqual(output.messages[1].data, [0, 32, 41, 2, 16, 44, 3])
+
+    def test_mk1_close_restores_live_session_mode(self) -> None:
+        surface, output, _ = surface_for("novation/launchpad/pro-mk1")
+
+        surface.close()
+
+        self.assertEqual(output.messages[-2].data, [0, 32, 41, 2, 16, 34, 0])
+        self.assertEqual(output.messages[-1].data, [0, 32, 41, 2, 16, 33, 0])
 
     def test_mini_close_clears_restores_live_mode_and_closes_ports(self) -> None:
         surface, output, input_port = surface_for("novation/launchpad/mini-mk3")
@@ -109,22 +114,37 @@ class MidiGridSurfaceTest(TestCase):
         view = SurfaceView(
             AgentState.RUNNING,
             sessions=(
-                SessionIndicator(0, AgentState.RUNNING, selected=True),
-                SessionIndicator(1, AgentState.WAITING_FOR_APPROVAL),
+                SessionIndicator(0, AgentState.RUNNING, selected=True, accent="cyan"),
+                SessionIndicator(
+                    1,
+                    AgentState.WAITING_FOR_APPROVAL,
+                    accent="magenta",
+                ),
             ),
         )
 
         surface.render(view)
 
-        latest = {
+        latest_notes = {
             message.note: message.velocity
             for message in output.messages
             if message.type == "note_on"
         }
-        self.assertEqual(latest[13], surface.profile.accents[0].bright)
-        self.assertEqual(latest[14], surface.profile.accents[1].dim)
-        self.assertEqual(latest[23], surface.profile.color("blue"))
-        self.assertEqual(latest[24], surface.profile.color("yellow"))
+        latest_ccs = {
+            message.control: message.value
+            for message in output.messages
+            if message.type == "control_change"
+        }
+        self.assertEqual(latest_ccs[89], surface.profile.accent("cyan").selected)
+        self.assertEqual(latest_ccs[79], surface.profile.accent("magenta").unselected)
+        self.assertEqual(
+            latest_notes[88],
+            surface.profile.color("state:running:summary"),
+        )
+        self.assertEqual(
+            latest_notes[78],
+            surface.profile.color("state:waiting_for_approval:summary"),
+        )
 
     def test_actions_are_bright_only_when_available(self) -> None:
         surface, output, _ = surface_for("novation/launchpad/pro-mk1")
@@ -137,20 +157,24 @@ class MidiGridSurfaceTest(TestCase):
         )
 
         latest = {
-            message.note: message.velocity
+            message.control: message.value
             for message in output.messages
-            if message.type == "note_on"
+            if message.type == "control_change"
         }
-        self.assertEqual(latest[11], surface.profile.color("green"))
-        self.assertEqual(latest[12], surface.profile.color("dim_red"))
+        self.assertEqual(
+            latest[91], surface.profile.color("action:approve:enabled")
+        )
+        self.assertEqual(
+            latest[92], surface.profile.color("action:reject:disabled")
+        )
 
     def test_poll_events_distinguishes_actions_and_session_selection(self) -> None:
         surface, _, input_port = surface_for("novation/launchpad/pro-mk1")
         input_port.pending.extend(
             [
-                FakeMessage("note_on", note=11, velocity=127),
-                FakeMessage("note_on", note=14, velocity=127),
-                FakeMessage("note_on", note=15, velocity=0),
+                FakeMessage("control_change", control=91, value=127),
+                FakeMessage("control_change", control=79, value=127),
+                FakeMessage("control_change", control=69, value=0),
             ]
         )
 
@@ -168,22 +192,57 @@ class MidiGridSurfaceTest(TestCase):
             message.note
             for message in output.messages
             if message.type == "note_on"
-            and message.velocity == surface.profile.color("green")
+            and message.velocity == surface.profile.color("state:success:primary")
         }
         self.assertEqual(
             green_notes,
             {
                 surface.profile.grid_address(x, y).number
                 for x, y in (
-                    (2, 1),
-                    (5, 1),
-                    (1, 3),
-                    (2, 4),
-                    (3, 5),
-                    (4, 5),
-                    (5, 4),
-                    (6, 3),
+                    (1, 2),
+                    (5, 2),
+                    (0, 4),
+                    (1, 5),
+                    (2, 6),
+                    (3, 7),
+                    (4, 6),
+                    (5, 5),
+                    (6, 4),
                 )
+            },
+        )
+
+    def test_overflow_indicator_is_steady_amber(self) -> None:
+        surface, output, _ = surface_for("novation/launchpad/pro-mk1")
+
+        surface.render(SurfaceView(None, overflow_count=1))
+
+        latest_ccs = {
+            message.control: message.value
+            for message in output.messages
+            if message.type == "control_change"
+        }
+        self.assertEqual(latest_ccs[95], surface.profile.color("system:overflow"))
+
+    def test_running_motion_is_opt_in(self) -> None:
+        surface, output, _ = surface_for("novation/launchpad/pro-mk1")
+
+        surface.render(
+            SurfaceView(AgentState.RUNNING, frame=1, activity_motion=True)
+        )
+
+        activity_notes = {
+            message.note
+            for message in output.messages
+            if message.type == "note_on"
+            and message.velocity == surface.profile.color("activity")
+        }
+        self.assertEqual(
+            activity_notes,
+            {
+                surface.profile.grid_address(x, y).number
+                for x in (3,)
+                for y in (3, 4)
             },
         )
 
