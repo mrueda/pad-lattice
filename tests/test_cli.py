@@ -4,6 +4,7 @@ import contextlib
 import io
 from unittest import TestCase
 
+from pad_lattice import __version__
 from pad_lattice.cli import build_parser
 
 
@@ -18,7 +19,7 @@ class CliTest(TestCase):
             build_parser().parse_args(["--version"])
 
         self.assertEqual(raised.exception.code, 0)
-        self.assertRegex(output.getvalue(), r"^pad-lattice \d+\.\d+\.\d+\n$")
+        self.assertEqual(output.getvalue(), f"pad-lattice {__version__}\n")
 
     def test_demo_accepts_greeting_delay(self) -> None:
         args = build_parser().parse_args(

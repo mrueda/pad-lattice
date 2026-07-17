@@ -30,6 +30,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install ".[release]"
+          python -c "from packaging.version import Version; from pad_lattice import __version__; assert Version(__version__).is_prerelease, 'TestPyPI releases must use a pre-release version'"
           python -m unittest discover -s tests
           python -m build
           python -m twine check dist/*

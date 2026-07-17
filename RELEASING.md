@@ -36,7 +36,8 @@ Register the production publisher at
 Run **Publish to TestPyPI** from the GitHub Actions tab. The workflow tests the
 package, builds its wheel and source archive, validates the metadata, installs
 the wheel in a clean environment, and publishes through the `testpypi`
-environment.
+environment. The workflow accepts only PEP 440 pre-release versions. The first
+planned release is `0.1.0a1`.
 
 Verify the uploaded package in a clean virtual environment:
 
@@ -45,17 +46,19 @@ python3 -m venv /tmp/pad-lattice-testpypi
 /tmp/pad-lattice-testpypi/bin/python -m pip install \
   --index-url https://test.pypi.org/simple/ \
   --extra-index-url https://pypi.org/simple/ \
-  pad-lattice==0.1.0
+  pad-lattice==0.1.0a1
 /tmp/pad-lattice-testpypi/bin/pad-lattice --version
 /tmp/pad-lattice-testpypi/bin/pad-lattice profile list
 ```
 
-PyPI versions and distribution files are immutable. Change `__version__` before
-publishing another build with different contents.
+Index versions and distribution files are immutable. Change `__version__` to
+`0.1.0a2`, `0.1.0a3`, and so on before publishing another alpha build with
+different contents.
 
 ## PyPI
 
-After TestPyPI verification, create and push a tag matching `__version__`:
+After alpha verification, change `__version__` to `0.1.0`, commit that release,
+then create and push a matching tag:
 
 ```bash
 git tag -a v0.1.0 -m "Pad-Lattice 0.1.0"
