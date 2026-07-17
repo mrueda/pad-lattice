@@ -6,7 +6,14 @@ import argparse
 import json
 import socket
 import sys
+from pathlib import Path
 
+from pad_lattice import __version__
+from pad_lattice.codex_hooks import (
+    default_codex_hooks_path,
+    install_codex_hooks,
+    run_codex_hook,
+)
 from pad_lattice.codex_exec import run_codex_exec
 from pad_lattice.demo_agent import DemoAgent
 from pad_lattice.events import AgentState
@@ -30,7 +37,12 @@ from pad_lattice.protocol import (
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="pad-lattice",
-        description="Use a Launchpad Pro as a coding-agent control surface.",
+        description="Use a MIDI grid controller as a coding-agent control surface.",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -50,6 +62,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.08,
         help="seconds between greeting scroll frames",
+    )
+    demo.add_argument(
+        "--no-greeting",
+        action="store_true",
+        help="skip the Launchpad startup greeting",
     )
 
     daemon = subparsers.add_parser("daemon", help="run the Launchpad sidecar daemon")
@@ -90,6 +107,21 @@ def build_parser() -> argparse.ArgumentParser:
         "state",
         choices=[state.value for state in AgentState],
         help="state to render on the Launchpad",
+    )
+
+    codex_hook = subparsers.add_parser(
+        "codex-hook", help="process one Codex lifecycle hook event from stdin"
+    )
+    codex_hook.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
+
+    install_hooks = subparsers.add_parser(
+        "install-codex-hooks", help="install lifecycle hooks for interactive Codex"
+    )
+    install_hooks.add_argument(
+        "--path",
+        type=Path,
+        default=default_codex_hooks_path(),
+        help="hooks.json path (default: ~/.codex/hooks.json)",
     )
 
     listen_actions = subparsers.add_parser(
@@ -137,6 +169,7 @@ def main(argv: list[str] | None = None) -> int:
             surface = open_launchpad(
                 input_name=args.input,
                 output_name=args.output,
+                startup_greeting=None if args.no_greeting else "HELLO FROM CODEX CLI",
                 scroll_delay=args.greeting_delay,
             )
             run_surface(surface, agent.current_state, agent.action_logger())
@@ -161,6 +194,16 @@ def main(argv: list[str] | None = None) -> int:
                 send_message(args.socket, state_message(AgentState(args.state)))
             except (ConnectionError, FileNotFoundError, OSError):
                 pass
+            return 0
+
+        if args.command == "codex-hook":
+            return run_codex_hook(args.socket, sys.stdin, sys.stdout)
+
+        if args.command == "install-codex-hooks":
+            changed = install_codex_hooks(args.path)
+            status = "Installed" if changed else "Already installed"
+            print(f"{status}: {args.path}")
+            print("Review and trust the hooks with /hooks in Codex.")
             return 0
 
         if args.command == "listen-actions":

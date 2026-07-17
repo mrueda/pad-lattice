@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Pad-Lattice Docs',
-  tagline: 'Hardware control surface framework for coding agents',
+  tagline: 'Repurpose MIDI controllers as physical interfaces for AI agents',
   url: 'https://mrueda.github.io',
   baseUrl: '/pad-lattice/',
   organizationName: 'mrueda',

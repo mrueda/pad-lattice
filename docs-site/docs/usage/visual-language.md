@@ -41,6 +41,17 @@ contains the direct action pads.
   </div>
 </div>
 
+Pads `13` through `16` are currently unused. The planned multi-agent layout
+assigns them to four active Codex sessions:
+
+| `11` | `12` | `13` | `14` | `15` | `16` | `17` | `18` |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| approve | reject | agent 1 | agent 2 | agent 3 | agent 4 | retry | stop |
+
+Each agent selector will keep a stable accent color. Brightness will indicate
+the selected session; the center shape and semantic state color remain
+unchanged.
+
 ### State Examples
 
 <div className="stateExampleGrid">

@@ -20,7 +20,7 @@ from pad_lattice.protocol import (
     subscribe_actions_message,
 )
 
-StateSender = Callable[[str, dict[str, str]], None]
+StateSender = Callable[[str, dict[str, Any]], None]
 
 
 def state_for_codex_event(event: dict[str, Any]) -> AgentState | None:

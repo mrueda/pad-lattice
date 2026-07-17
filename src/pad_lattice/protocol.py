@@ -36,8 +36,15 @@ def decode_message(line: bytes) -> dict[str, Any]:
     return message
 
 
-def state_message(state: AgentState) -> dict[str, str]:
-    return {"type": "state", "state": state.value}
+def state_message(
+    state: AgentState,
+    *,
+    agent: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    message: dict[str, Any] = {"type": "state", "state": state.value}
+    if agent:
+        message["agent"] = agent
+    return message
 
 
 def action_message(action: ControlAction) -> dict[str, str]:

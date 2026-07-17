@@ -1,29 +1,36 @@
 <div align="center">
   <a href="https://github.com/mrueda/pad-lattice">
-    <img src="assets/pad-lattice-logo.svg" width="220" alt="Pad-Lattice logo">
+    <img src="https://raw.githubusercontent.com/mrueda/pad-lattice/main/assets/pad-lattice-logo.svg" width="220" alt="Pad-Lattice logo">
   </a>
-  <p><em>Launchpad control surface for coding agents</em></p>
+  <p><em>Repurpose MIDI controllers as physical interfaces for AI agents</em></p>
 </div>
 
 # Pad-Lattice
 
-**Pad-Lattice: a hardware control surface for coding agents, using a Novation
-Launchpad as a local state display and action pad.**
+**Pad-Lattice repurposes MIDI grid controllers as physical control surfaces for
+AI agents.**
 
 [![Build](https://github.com/mrueda/pad-lattice/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/mrueda/pad-lattice/actions/workflows/build-and-test.yml)
 [![Documentation Status](https://github.com/mrueda/pad-lattice/actions/workflows/documentation.yml/badge.svg)](https://github.com/mrueda/pad-lattice/actions/workflows/documentation.yml)
 [![Documentation](https://img.shields.io/badge/docs-online-blue)](https://mrueda.github.io/pad-lattice/)
-[![Python](https://img.shields.io/badge/python-%3E%3D3.10-blue)](pyproject.toml)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-%3E%3D3.10-blue)](https://github.com/mrueda/pad-lattice/blob/main/pyproject.toml)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/mrueda/pad-lattice/blob/main/LICENSE)
 
-Pad-Lattice turns a MIDI grid controller into a physical supervisor for coding
-agents. The daemon owns the hardware, renders agent state on the LEDs, and
-exposes a small local socket protocol that agent integrations can use to send
-state updates and receive hardware actions.
+MIDI controllers already provide durable pads, RGB feedback, low-latency input,
+and a mature cross-platform protocol. Pad-Lattice brings that hardware
+ecosystem beyond music by turning a grid controller into a physical supervisor
+for coding agents. Its daemon owns the hardware, renders agent state on the
+LEDs, and exposes a small local protocol for agent integrations.
 
-The first supported target is the **Novation Launchpad Pro Mk1**. The first
-agent integration is **Codex CLI**, with `codex exec --json` support available
-through the `pad-lattice codex-exec` adapter.
+The first supported device is the **Novation Launchpad Pro Mk1**. The first
+agent integration is **Codex CLI**, including direct lifecycle state updates
+for normal terminal sessions. Pad-Lattice does not require a browser or
+graphical agent UI to be open or focused.
+
+Pad-Lattice is currently **alpha software**. The hardware demo, local daemon,
+socket protocol, interactive Codex state hooks, and non-interactive Codex
+adapter are functional. Applying Launchpad actions directly to interactive
+Codex approval prompts remains on the roadmap.
 
 Pad-Lattice is not a token-probability visualizer, macro keyboard, or browser
 WebMIDI app. It is a local agent state and action surface: running, waiting for
@@ -37,13 +44,28 @@ reply, waiting for approval, success, error, approve, reject, retry, and stop.
 
 **GitHub Repository:** <a href="https://github.com/mrueda/pad-lattice" target="_blank">https://github.com/mrueda/pad-lattice</a>
 
-## Quick Start
+## Installation
 
-Install locally from the repository root:
+Install the command in an isolated environment with
+[pipx](https://pipx.pypa.io/):
 
 ```bash
-python3 -m pip install -e .
+pipx install pad-lattice
 ```
+
+Alternatively, install it into the active Python environment:
+
+```bash
+python3 -m pip install pad-lattice
+```
+
+Confirm the installed version:
+
+```bash
+pad-lattice --version
+```
+
+## Quick Start
 
 List MIDI ports:
 
@@ -62,6 +84,16 @@ Run the production daemon:
 ```bash
 pad-lattice daemon
 ```
+
+Install lifecycle hooks for normal `codex` and `codex resume` sessions:
+
+```bash
+pad-lattice install-codex-hooks
+```
+
+Start a new Codex CLI session, run `/hooks`, and explicitly review and trust
+the installed commands. Interactive prompt, running, approval, and completion
+states will then update the Launchpad automatically.
 
 Send a state from another process:
 
@@ -87,13 +119,20 @@ Planned extension point:
 
 - Additional Launchpad and MIDI grid controllers through device profiles.
 
+The protocol is intentionally device-agnostic so controller manufacturers and
+hardware developers can add profiles without coupling their devices to Codex.
+
 Only one process can own the Launchpad MIDI ports at a time. For normal use,
 run one long-lived `pad-lattice daemon` and let agent integrations talk to it
 through the local socket.
 
+The current surface displays one global state. Hook messages already carry the
+Codex session identity, but selecting among simultaneous agents and routing
+actions to only the selected session are not implemented yet.
+
 ## Development
 
-Run the Python test suite:
+Install an editable checkout and run the Python test suite:
 
 ```bash
 python3 -m pip install -e .
@@ -115,6 +154,9 @@ npm run typecheck
 npm run build
 ```
 
+The maintainer release process is documented in
+[RELEASING.md](https://github.com/mrueda/pad-lattice/blob/main/RELEASING.md).
+
 ## Citation
 
 No formal citation is available yet. For now, cite the GitHub repository:
@@ -132,5 +174,5 @@ Repository: <https://github.com/mrueda/pad-lattice>
 
 Copyright (C) 2026 Manuel Rueda.
 
-This project is distributed under the Apache License 2.0. See [LICENSE](LICENSE)
-for details.
+This project is distributed under the Apache License 2.0. See the
+[LICENSE](https://github.com/mrueda/pad-lattice/blob/main/LICENSE) for details.

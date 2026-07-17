@@ -13,7 +13,7 @@ const featureLinks = [
   {
     label: 'Operation',
     title: 'Use with Codex',
-    text: 'Mirror Codex task state to the hardware surface and route Launchpad actions back to listeners.',
+    text: 'Connect normal Codex CLI sessions directly through local lifecycle hooks, without a graphical agent UI.',
     to: '/docs/usage/codex-integration',
   },
   {
@@ -24,9 +24,9 @@ const featureLinks = [
   },
   {
     label: 'Protocol',
-    title: 'Integrate agents',
-    text: 'Send JSON-line state messages to the daemon and receive approve, reject, retry, and stop actions.',
-    to: '/docs/technical-details/architecture',
+    title: 'Supervise multiple agents',
+    text: 'See how session identity, stable accent colors, selection, and targeted actions fit one physical surface.',
+    to: '/docs/technical-details/multi-agent-design',
   },
 ];
 
@@ -38,18 +38,17 @@ export default function Home() {
   return (
     <Layout
       title="Pad-Lattice"
-      description="Hardware control surface framework for coding agents">
+      description="Repurpose MIDI controllers as physical interfaces for AI agents">
       <main className={styles.page}>
         <section className={styles.hero}>
           <div className={styles.heroGrid}>
             <div className={styles.copy}>
               <p className={styles.kicker}>Pad-Lattice</p>
-              <h1>Physical state and action controls for coding agents.</h1>
+              <h1>Repurpose MIDI controllers for AI agents.</h1>
               <p className={styles.lede}>
-                Turn a <strong>Novation Launchpad Pro Mk1</strong> into a
-                local supervisor for <strong>Codex CLI</strong>: steady LED
-                state, approval controls, and a small socket protocol for
-                agent integrations.
+                Bring tactile input and RGB feedback beyond music. Pad-Lattice
+                turns a <strong>Novation Launchpad Pro Mk1</strong> into a local
+                supervisor that integrates directly with <strong>Codex CLI</strong>.
               </p>
               <div className={styles.actions}>
                 <Link className="button button--primary button--lg" to="/docs/overview">

@@ -1,16 +1,33 @@
 from __future__ import annotations
 
+import contextlib
+import io
 from unittest import TestCase
 
 from pad_lattice.cli import build_parser
 
 
 class CliTest(TestCase):
+    def test_version_is_available_without_a_subcommand(self) -> None:
+        output = io.StringIO()
+
+        with (
+            contextlib.redirect_stdout(output),
+            self.assertRaises(SystemExit) as raised,
+        ):
+            build_parser().parse_args(["--version"])
+
+        self.assertEqual(raised.exception.code, 0)
+        self.assertRegex(output.getvalue(), r"^pad-lattice \d+\.\d+\.\d+\n$")
+
     def test_demo_accepts_greeting_delay(self) -> None:
-        args = build_parser().parse_args(["demo", "--greeting-delay", "0.12"])
+        args = build_parser().parse_args(
+            ["demo", "--greeting-delay", "0.12", "--no-greeting"]
+        )
 
         self.assertEqual(args.command, "demo")
         self.assertEqual(args.greeting_delay, 0.12)
+        self.assertTrue(args.no_greeting)
 
     def test_daemon_accepts_socket_and_no_greeting(self) -> None:
         args = build_parser().parse_args(
@@ -40,6 +57,22 @@ class CliTest(TestCase):
 
         self.assertEqual(args.command, "hook-state")
         self.assertEqual(args.state, "running")
+
+    def test_codex_hook_accepts_socket(self) -> None:
+        args = build_parser().parse_args(
+            ["codex-hook", "--socket", "/tmp/pad-lattice.sock"]
+        )
+
+        self.assertEqual(args.command, "codex-hook")
+        self.assertEqual(args.socket, "/tmp/pad-lattice.sock")
+
+    def test_install_codex_hooks_accepts_path(self) -> None:
+        args = build_parser().parse_args(
+            ["install-codex-hooks", "--path", "/tmp/hooks.json"]
+        )
+
+        self.assertEqual(args.command, "install-codex-hooks")
+        self.assertEqual(str(args.path), "/tmp/hooks.json")
 
     def test_listen_actions_accepts_socket(self) -> None:
         args = build_parser().parse_args(

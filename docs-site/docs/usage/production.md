@@ -1,42 +1,76 @@
 # Production Use
 
-Run the daemon in one terminal and Codex in another. Use an explicit socket path
-in both terminals so every process connects to the same daemon.
+Run one long-lived daemon to own the Launchpad MIDI ports. Other processes use
+the local Pad-Lattice socket and never open the MIDI device themselves.
+
+## Non-interactive Codex
 
 Terminal 1:
 
 ```bash
-cd /media/mrueda/2TBS/music/pad-lattice
-export PAD_LATTICE_SOCKET=/tmp/pad-lattice.sock
-.venv/bin/pad-lattice daemon --no-greeting --terminal-hold 1.5
+pad-lattice daemon --no-greeting --terminal-hold 1.5
 ```
 
 Terminal 2:
 
 ```bash
-cd /media/mrueda/2TBS/music/pad-lattice
-export PAD_LATTICE_SOCKET=/tmp/pad-lattice.sock
-codex resume 019f28ff-78ad-7c52-b7e4-1d2f4544cda5
+pad-lattice codex-exec "summarize this repository"
 ```
 
-Test state updates without opening the MIDI device from the Codex terminal:
+The adapter maps `codex exec --json` events to Launchpad states. During the
+run, pad `18` sends `stop` and terminates the Codex process.
+
+## Interactive Codex
+
+Install the lifecycle hooks once:
 
 ```bash
-.venv/bin/pad-lattice send-state running
-.venv/bin/pad-lattice send-state success
+pad-lattice install-codex-hooks
+```
+
+Start a new `codex` or `codex resume` session beside the daemon:
+
+```bash
+codex
+codex resume <SESSION_ID>
+```
+
+Run `/hooks` in Codex to review and trust the Pad-Lattice commands. Prompt,
+running, approval, and completion states then update automatically.
+
+Test state rendering manually without opening the MIDI device from the Codex
+terminal:
+
+```bash
+pad-lattice send-state running
+pad-lattice send-state waiting_for_approval
+pad-lattice send-state success
 ```
 
 Listen for pad actions:
 
 ```bash
-.venv/bin/pad-lattice listen-actions
+pad-lattice listen-actions
 ```
 
-## Stop behavior
+The daemon emits `approve`, `reject`, `retry`, and `stop`, but the passive
+lifecycle hook does not yet apply those actions to an interactive session.
 
-During `pad-lattice codex-exec`, pad `18` sends `stop` and terminates the
-running Codex process.
+## Multiple Codex sessions
 
-For normal interactive `codex` / `codex resume` sessions, Pad-Lattice can emit
-the stop action, but interrupting the Codex TUI itself requires a listener or a
-future app-server integration.
+Hook updates carry their Codex session ID, but the current daemon still renders
+one global state. If several sessions run simultaneously, the most recent event
+wins and the display can switch between them. Hardware actions are not yet
+routed to a selected session.
+
+Until the planned session selector is implemented, use one hooked interactive
+session when the Launchpad state must be authoritative.
+
+## Custom socket path
+
+The default socket is selected automatically. To override it, set the same path
+for the daemon and every client:
+
+```bash
+export PAD_LATTICE_SOCKET=/tmp/pad-lattice.sock
+```

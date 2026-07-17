@@ -49,6 +49,11 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'doc',
+          id: 'technical-details/multi-agent-design',
+          label: 'Multi-Agent Design',
+        },
+        {
+          type: 'doc',
           id: 'technical-details/device-profiles',
           label: 'Device Profiles',
         },

@@ -24,6 +24,19 @@ class ProtocolTest(TestCase):
             {"type": "state", "state": "waiting_for_reply"},
         )
 
+    def test_state_message_can_include_agent_identity(self) -> None:
+        self.assertEqual(
+            state_message(
+                AgentState.RUNNING,
+                agent={"backend": "codex", "session_id": "session-123"},
+            ),
+            {
+                "type": "state",
+                "state": "running",
+                "agent": {"backend": "codex", "session_id": "session-123"},
+            },
+        )
+
     def test_action_message_uses_action_type(self) -> None:
         self.assertEqual(
             action_message(ControlAction.APPROVE),

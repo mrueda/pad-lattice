@@ -61,26 +61,35 @@ export PAD_LATTICE_SOCKET=/tmp/pad-lattice.sock
 Start the daemon in one terminal:
 
 ```bash
-.venv/bin/pad-lattice daemon --no-greeting --terminal-hold 1.5
+pad-lattice daemon --no-greeting --terminal-hold 1.5
 ```
 
 From another terminal, test the same socket:
 
 ```bash
 export PAD_LATTICE_SOCKET=/tmp/pad-lattice.sock
-.venv/bin/pad-lattice send-state running
-.venv/bin/pad-lattice send-state waiting_for_reply
+pad-lattice send-state running
+pad-lattice send-state waiting_for_reply
 ```
 
 If this works, the daemon is healthy and the problem is in the agent
 integration layer.
+
+For interactive Codex, confirm the lifecycle hooks are installed:
+
+```bash
+pad-lattice install-codex-hooks
+```
+
+Then start a new Codex session and run `/hooks`. The Pad-Lattice commands must
+be enabled and trusted before Codex will run them.
 
 ## Pad Actions Do Not Reach the Terminal
 
 First verify that the daemon emits actions:
 
 ```bash
-.venv/bin/pad-lattice listen-actions
+pad-lattice listen-actions
 ```
 
 Press the control pads:
