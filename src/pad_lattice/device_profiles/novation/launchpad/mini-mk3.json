@@ -78,10 +78,10 @@
       "cancelled": {"primary": 2, "summary": 2}
     },
     "actions": {
-      "approve": {"enabled": 21, "disabled": 23},
-      "reject": {"enabled": 5, "disabled": 7},
-      "retry": {"enabled": 45, "disabled": 47},
-      "stop": {"enabled": 5, "disabled": 7}
+      "approve": {"enabled": 21},
+      "reject": {"enabled": 5},
+      "retry": {"enabled": 45},
+      "stop": {"enabled": 5}
     },
     "system": {"overflow": 9}
   },

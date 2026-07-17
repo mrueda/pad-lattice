@@ -28,6 +28,9 @@ from pad_lattice.protocol import (
     encode_message,
     parse_actions,
     parse_agent,
+    parse_boolean,
+    parse_identifier,
+    parse_metadata,
     parse_state,
 )
 from pad_lattice.visual_protocol import RUNNING_ACTIVITY_INTERVAL
@@ -50,6 +53,10 @@ class Client:
     buffer: bytes = b""
     agent: AgentIdentity | None = None
     actions: frozenset[ControlAction] = field(default_factory=frozenset)
+    request_id: str | None = None
+    one_shot: bool = False
+    subscribed_at: int = 0
+    lease_id: str | None = None
 
 
 @dataclass
@@ -98,6 +105,9 @@ class PadLatticeDaemon:
         self._owns_socket_path = False
         self._clients: dict[int, Client] = {}
         self._sessions: dict[AgentIdentity, AgentSession] = {}
+        self._lease_clients: dict[str, Client] = {}
+        self._lease_agents: dict[str, AgentIdentity] = {}
+        self._lease_metadata: dict[str, dict[str, str]] = {}
         self._slots: list[AgentIdentity | None] = [None] * surface.selector_capacity
         self._selected_agent: AgentIdentity | None = None
         self._sequence = 0
@@ -168,14 +178,31 @@ class PadLatticeDaemon:
         if message_type == "state":
             identity = parse_agent(message.get("agent"))
             metadata = _agent_metadata(message.get("agent"))
+            lease_id = parse_identifier(
+                message.get("lease_id"), field="lease_id", default=None
+            )
+            if lease_id is not None:
+                self._bind_lease(lease_id, identity, metadata)
             self.update_agent(identity, parse_state(message.get("state")), metadata=metadata)
+            if parse_boolean(message.get("reply"), field="reply"):
+                self._send(client, self._state_ack(self._sessions[identity]))
+            return
+        if message_type == "session_lease":
+            self._register_lease(client, message)
             return
         if message_type == "subscribe_actions":
             identity = parse_agent(message.get("agent"))
             client.agent = identity
             client.actions = parse_actions(message.get("actions"))
+            client.request_id = parse_identifier(
+                message.get("request_id"), field="request_id", default=None
+            )
+            client.one_shot = parse_boolean(
+                message.get("one_shot"), field="one_shot"
+            )
             session = self._ensure_session(identity)
             self._sequence += 1
+            client.subscribed_at = self._sequence
             session.last_seen = self._sequence
             session.last_activity_at = time.monotonic()
             self._render_dirty = True
@@ -208,10 +235,15 @@ class PadLatticeDaemon:
         self._sequence += 1
         session.last_seen = self._sequence
         session.last_activity_at = now
-        session.state = state
+        session.state = (
+            AgentState.WAITING_FOR_APPROVAL
+            if state is not AgentState.WAITING_FOR_APPROVAL
+            and self._has_pending_approval(identity)
+            else state
+        )
         if metadata:
             session.metadata.update(metadata)
-        if state in TERMINAL_STATES:
+        if session.state in TERMINAL_STATES:
             session.terminal_state_until = now + self.terminal_hold
         else:
             session.terminal_state_until = None
@@ -231,6 +263,11 @@ class PadLatticeDaemon:
             if client.agent == identity:
                 client.agent = None
                 client.actions = frozenset()
+                client.request_id = None
+                client.one_shot = False
+        for lease_id, agent in list(self._lease_agents.items()):
+            if agent == identity:
+                del self._lease_agents[lease_id]
         self._last_action_at = {
             key: value
             for key, value in self._last_action_at.items()
@@ -269,6 +306,8 @@ class PadLatticeDaemon:
                     "slot": session.slot,
                     "accent": session.accent,
                     "selected": session.identity == self._selected_agent,
+                    "leased": self._has_live_lease(session.identity),
+                    "label": _session_label(session),
                     "metadata": dict(session.metadata),
                 }
                 for session in sessions
@@ -305,6 +344,115 @@ class PadLatticeDaemon:
             self._selected_agent = identity
         self._render_dirty = True
         return session
+
+    def _register_lease(self, client: Client, message: dict[str, Any]) -> None:
+        lease_id = parse_identifier(message.get("lease_id"), field="lease_id")
+        assert lease_id is not None
+        metadata = parse_metadata(message.get("metadata"))
+
+        if client.lease_id is not None and client.lease_id != lease_id:
+            self._release_lease(client)
+        previous_client = self._lease_clients.get(lease_id)
+        if previous_client is not None and previous_client is not client:
+            previous_client.lease_id = None
+        client.lease_id = lease_id
+        self._lease_clients[lease_id] = client
+        self._lease_metadata[lease_id] = metadata
+
+        identity = (
+            parse_agent(message.get("agent"), default=None)
+            if message.get("agent")
+            else None
+        )
+        if identity is not None:
+            self._bind_lease(lease_id, identity, metadata)
+        else:
+            identity = self._lease_agents.get(lease_id)
+            if identity is not None and metadata:
+                self.update_agent(
+                    identity,
+                    self._sessions[identity].state,
+                    metadata=metadata,
+                )
+
+        payload: dict[str, Any] = {
+            "type": "session_lease_ack",
+            "lease_id": lease_id,
+        }
+        if identity is not None and identity in self._sessions:
+            payload["session"] = self._state_ack(self._sessions[identity])
+        self._send(client, payload)
+
+    def _bind_lease(
+        self,
+        lease_id: str,
+        identity: AgentIdentity,
+        metadata: dict[str, str] | None = None,
+    ) -> None:
+        previous_identity = self._lease_agents.get(lease_id)
+        self._lease_agents[lease_id] = identity
+        combined_metadata = dict(self._lease_metadata.get(lease_id, {}))
+        if metadata:
+            combined_metadata.update(metadata)
+        session = self._ensure_session(identity)
+        if combined_metadata:
+            session.metadata.update(combined_metadata)
+
+        if previous_identity is not None and previous_identity != identity:
+            if not self._has_live_lease(previous_identity):
+                self.end_agent(previous_identity)
+
+        lease_client = self._lease_clients.get(lease_id)
+        if lease_client is not None:
+            self._send(
+                lease_client,
+                {
+                    "type": "session_lease_bound",
+                    "lease_id": lease_id,
+                    "session": self._state_ack(session),
+                },
+            )
+
+    def _release_lease(self, client: Client) -> None:
+        lease_id = client.lease_id
+        if lease_id is None:
+            return
+        client.lease_id = None
+        if self._lease_clients.get(lease_id) is not client:
+            return
+        del self._lease_clients[lease_id]
+        identity = self._lease_agents.pop(lease_id, None)
+        self._lease_metadata.pop(lease_id, None)
+        if identity is not None and not self._has_live_lease(identity):
+            self.end_agent(identity)
+
+    def _has_live_lease(self, identity: AgentIdentity) -> bool:
+        return any(
+            agent == identity and lease_id in self._lease_clients
+            for lease_id, agent in self._lease_agents.items()
+        )
+
+    def _has_pending_approval(self, identity: AgentIdentity) -> bool:
+        approval_actions = {ControlAction.APPROVE, ControlAction.REJECT}
+        return any(
+            client.agent == identity
+            and client.request_id is not None
+            and bool(client.actions & approval_actions)
+            for client in self._clients.values()
+        )
+
+    def _state_ack(self, session: AgentSession) -> dict[str, Any]:
+        return {
+            "type": "state_ack",
+            **_identity_payload(session.identity),
+            "state": session.state.value,
+            "slot": session.slot,
+            "scene": session.slot + 1 if session.slot is not None else None,
+            "accent": session.accent,
+            "selected": session.identity == self._selected_agent,
+            "leased": self._has_live_lease(session.identity),
+            "label": _session_label(session),
+        }
 
     def _assign_slot(self, session: AgentSession) -> None:
         if session.slot is not None:
@@ -442,11 +590,17 @@ class PadLatticeDaemon:
         identity = self._selected_agent
         if identity is None or action not in self._available_actions():
             return
-        recipients = [
-            client
-            for client in self._clients.values()
-            if client.agent == identity and action in client.actions
-        ]
+        recipients = sorted(
+            (
+                client
+                for client in self._clients.values()
+                if client.agent == identity and action in client.actions
+            ),
+            key=lambda client: (
+                client.request_id is None,
+                client.subscribed_at,
+            ),
+        )
         if not recipients:
             return
 
@@ -462,9 +616,17 @@ class PadLatticeDaemon:
             session.last_seen = self._sequence
             session.last_activity_at = now
 
-        message = action_message(action, identity)
-        for client in recipients:
-            self._send(client, message)
+        recipient = recipients[0]
+        request_id = recipient.request_id
+        if recipient.one_shot:
+            recipient.actions = frozenset()
+            recipient.request_id = None
+            recipient.one_shot = False
+            self._render_dirty = True
+        self._send(
+            recipient,
+            action_message(action, identity, request_id=request_id),
+        )
 
     def _render_if_needed(self) -> None:
         now = time.monotonic()
@@ -494,8 +656,7 @@ class PadLatticeDaemon:
         expired = [
             session.identity
             for session in self._sessions.values()
-            if session.identity != self._selected_agent
-            and session.state is not AgentState.WAITING_FOR_APPROVAL
+            if not self._has_live_lease(session.identity)
             and now - session.last_activity_at >= self.session_ttl
         ]
         for identity in expired:
@@ -549,6 +710,7 @@ class PadLatticeDaemon:
         fileno = client.socket.fileno()
         if fileno in self._clients:
             del self._clients[fileno]
+        self._release_lease(client)
         if client.actions:
             self._render_dirty = True
         try:
@@ -570,3 +732,13 @@ def _agent_metadata(value: Any) -> dict[str, str]:
 
 def _identity_payload(identity: AgentIdentity) -> dict[str, str]:
     return {"backend": identity.backend, "session_id": identity.session_id}
+
+
+def _session_label(session: AgentSession) -> str:
+    if label := session.metadata.get("label"):
+        return label
+    if cwd := session.metadata.get("cwd"):
+        name = os.path.basename(os.path.normpath(cwd))
+        if name:
+            return name
+    return session.identity.session_id[:8]

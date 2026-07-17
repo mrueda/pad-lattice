@@ -136,9 +136,9 @@ The central surface declaration is explicit:
 ```
 
 All states, including `cancelled`, require both a primary glyph color and a
-compact summary color. Every action requires enabled and disabled values.
-Accent names must be unique, and the profile must define exactly one accent
-pair per selector/status slot.
+compact summary color. Every action requires one enabled color; unavailable
+actions use the global `off` value. Accent names must be unique, and the
+profile must define exactly one accent pair per selector/status slot.
 
 The Launchpad Pro Mk1 profile opens the **Standalone Port**, switches to
 Standalone Programmer layout, and restores Live Session mode during clean

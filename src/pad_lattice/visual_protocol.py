@@ -139,10 +139,9 @@ def compile_visual_frame(view: SurfaceView, selector_capacity: int) -> VisualFra
         statuses[session.slot] = state_token(session.state, "summary")
 
     actions = {
-        action: action_token(
-            action,
-            "enabled" if action in view.available_actions else "disabled",
-        )
+        action: action_token(action, "enabled")
+        if action in view.available_actions
+        else OFF
         for action in ControlAction
     }
     return VisualFrame(

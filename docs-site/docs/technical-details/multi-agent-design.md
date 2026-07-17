@@ -49,6 +49,21 @@ Accent assignment is independent of slot assignment. A privacy-preserving LRU
 store remembers the preferred accent for a hash of `(backend, session_id)`,
 while the daemon guarantees that currently visible accents are unique.
 
+## Terminal Identity
+
+The controller communicates identity by Scene and accent, not by rendering
+arbitrary names. The leased launcher completes that visual protocol on screen:
+
+```text
+[S1 CYAN] implementation
+[S2 MAGENTA] docs
+```
+
+`pad-lattice status --watch` is the live legend for larger setups. It matches
+those titles to current state, project, short troubleshooting ID, and lease
+status. Labels default to the Codex working-directory name and can be supplied
+with `pad-lattice codex --label NAME` when several agents share a repository.
+
 ## Slot Policy
 
 1. The first observed session takes the first slot and becomes selected.
@@ -61,12 +76,14 @@ while the daemon guarantees that currently visible accents are unique.
 6. An explicit `session_end` removes that identity and fills any free slot.
 7. Ending the selected session clears selection; another session is never
    silently targeted.
-8. Quiet unselected sessions expire after 24 hours by default. Approval
-   sessions do not expire, and `--session-ttl 0` disables cleanup.
+8. A live launcher lease prevents expiry and removes its session immediately
+   when the Codex process exits.
+9. Any inactive unleased session expires after 24 hours by default;
+   `--session-ttl 0` disables cleanup.
 
-Codex hooks currently provide no session-close event. Pad-Lattice therefore
-exposes `pad-lattice end-session` for explicit cleanup and uses TTL-based
-retirement as the conservative fallback.
+Codex hooks provide no session-close event. `pad-lattice codex` therefore keeps
+a persistent daemon lease while passing the real terminal directly to Codex.
+Plain Codex remains supported through explicit `end-session` and TTL cleanup.
 
 ## State Flow
 
@@ -86,31 +103,36 @@ only when that record is selected.
 pad press -> profile -> daemon -> selected identity -> matching live subscriber
 ```
 
-Subscribers declare both identity and capabilities. For example,
-`codex-exec` advertises only Stop. The daemon derives action brightness from
-the selected session's state and currently connected subscribers, then
-debounces presses per identity and action. Approve/Reject require approval,
-Stop requires running, and Retry requires error or cancellation.
+Subscribers declare identity, capabilities, and optional request correlation.
+For example, `codex-exec` advertises only Stop, while a Codex
+`PermissionRequest` hook advertises one-shot Approve and Reject with a unique
+request ID. The daemon derives action visibility from the selected session's
+state and live subscribers, then debounces presses per identity and action.
+Approve/Reject require approval, Stop requires running, and Retry requires
+error or cancellation.
 
-Request-scoped validity remains the integration's responsibility. A future
-approval bridge must correlate a hardware decision with a still-pending Codex
-permission request before advertising Approve or Reject.
+Request-scoped subscribers take priority over diagnostic session listeners.
+Only the oldest matching request receives a press, and one-shot subscriptions
+remove both approval capabilities before delivery. One physical press can
+therefore never approve two pending operations.
 
 ## Current Codex Coverage
 
 | Integration | Multi-session state | Targeted actions |
 | --- | --- | --- |
-| Interactive Codex hooks | Yes | None; state-only hooks |
+| Interactive Codex hooks | Yes | Approve and Reject for permission requests |
 | `codex-exec` | Yes | Stop |
 | Manual `listen-actions` | Yes | Approve, reject, retry, stop for its chosen identity |
 
 The architecture intentionally avoids terminal scraping, synthetic typing, and
-nested pseudo-terminals. A broader interactive action set should wait for a
-durable Codex integration point.
+nested pseudo-terminals. Interactive Stop, Retry, and ordinary chat replies
+remain outside the permission-hook boundary and require a broader Codex
+integration point.
 
 Inspect the live registry without touching MIDI ownership:
 
 ```bash
 pad-lattice status
+pad-lattice status --watch
 pad-lattice status --json
 ```

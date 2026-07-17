@@ -1,88 +1,104 @@
-"""A tiny fake agent backend for exercising the hardware loop."""
+"""Standalone guided conversation for demonstrating the control surface."""
 
 from __future__ import annotations
 
+import sys
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
+from typing import TextIO
 
 from pad_lattice.devices.base import ActionPressed, ControlSurface, SurfaceView
 from pad_lattice.events import AgentState, ControlAction
 
 
-class DemoAgent:
-    """Cycle through the MVP states until a Launchpad control changes it."""
+@dataclass(frozen=True)
+class DemoQuestion:
+    """One yes/no prompt and the visual state that gives it context."""
 
-    def __init__(self, *, seconds_per_state: float = 4.0) -> None:
-        self.seconds_per_state = seconds_per_state
-        self._states = (
-            AgentState.RUNNING,
-            AgentState.WAITING_FOR_REPLY,
-            AgentState.USER_TYPING,
-            AgentState.WAITING_FOR_APPROVAL,
-            AgentState.SUCCESS,
-            AgentState.ERROR,
-            AgentState.CANCELLED,
-        )
-        self._index = 0
-        self._last_change = time.monotonic()
+    prompt: str
+    state: AgentState
 
-    def current_state(self) -> AgentState:
-        now = time.monotonic()
-        if now - self._last_change >= self.seconds_per_state:
-            self._index = (self._index + 1) % len(self._states)
-            self._last_change = now
-        return self._states[self._index]
 
-    def handle_action(self, action: ControlAction) -> None:
-        if action is ControlAction.APPROVE:
-            self._set_state(AgentState.RUNNING)
-        elif action is ControlAction.REJECT:
-            self._set_state(AgentState.ERROR)
-        elif action is ControlAction.STOP:
-            self._set_state(AgentState.CANCELLED)
-        elif action is ControlAction.RETRY:
-            self._set_state(AgentState.RUNNING)
+DEMO_QUESTIONS = (
+    DemoQuestion(
+        "Can you see the white question mark on the controller?",
+        AgentState.WAITING_FOR_REPLY,
+    ),
+    DemoQuestion(
+        "The demo agent requests permission to run a simulated task. Approve it?",
+        AgentState.WAITING_FOR_APPROVAL,
+    ),
+    DemoQuestion(
+        "Was the difference between reply (?) and approval (!) clear?",
+        AgentState.WAITING_FOR_REPLY,
+    ),
+)
 
-    def action_logger(self) -> Callable[[ControlAction], None]:
-        def log_and_handle(action: ControlAction) -> None:
-            print(f"control: {action.value}", flush=True)
-            self.handle_action(action)
-
-        return log_and_handle
-
-    def _set_state(self, state: AgentState) -> None:
-        self._index = self._states.index(state)
-        self._last_change = time.monotonic()
+ANSWER_ACTIONS = frozenset({ControlAction.APPROVE, ControlAction.REJECT})
 
 
 def run_demo_surface(
     surface: ControlSurface,
-    agent: DemoAgent,
     *,
+    questions: Sequence[DemoQuestion] = DEMO_QUESTIONS,
     poll_interval: float = 0.03,
-) -> None:
-    """Run the hardware demo against any configured control surface."""
+    feedback_seconds: float = 0.8,
+    success_seconds: float = 2.0,
+    output: TextIO | None = None,
+    sleep: Callable[[float], None] = time.sleep,
+) -> tuple[ControlAction, ...]:
+    """Ask a short conversation through any configured control surface."""
 
-    last_state: AgentState | None = None
-    on_action = agent.action_logger()
+    stream = output or sys.stdout
+    answers: list[ControlAction] = []
     try:
         surface.initialize()
-        while True:
-            state = agent.current_state()
-            if state is not last_state:
-                surface.render(
-                    SurfaceView(
-                        selected_state=state,
-                        sessions=(),
-                        available_actions=frozenset(ControlAction),
-                    )
+        print("Pad-Lattice guided demo", file=stream)
+        print("Green Approve = yes; red Reject = no. Press Ctrl-C to exit.", file=stream)
+
+        for index, question in enumerate(questions, start=1):
+            surface.render(
+                SurfaceView(
+                    selected_state=question.state,
+                    available_actions=ANSWER_ACTIONS,
                 )
-                last_state = state
-            for event in surface.poll_events():
-                if isinstance(event, ActionPressed):
-                    on_action(event.action)
-            time.sleep(poll_interval)
+            )
+            print(f"[{index}/{len(questions)}] {question.prompt}", file=stream, flush=True)
+
+            action = _wait_for_answer(surface, poll_interval=poll_interval, sleep=sleep)
+            answers.append(action)
+            answer = "yes" if action is ControlAction.APPROVE else "no"
+            print(f"Answer: {answer}", file=stream, flush=True)
+
+            feedback_state = AgentState.RUNNING
+            if (
+                question.state is AgentState.WAITING_FOR_APPROVAL
+                and action is ControlAction.REJECT
+            ):
+                feedback_state = AgentState.CANCELLED
+            surface.render(SurfaceView(selected_state=feedback_state))
+            sleep(feedback_seconds)
+
+        surface.render(SurfaceView(selected_state=AgentState.SUCCESS))
+        print("Demo complete.", file=stream, flush=True)
+        sleep(success_seconds)
     except KeyboardInterrupt:
-        return
+        print("Demo cancelled.", file=stream, flush=True)
     finally:
         surface.close()
+
+    return tuple(answers)
+
+
+def _wait_for_answer(
+    surface: ControlSurface,
+    *,
+    poll_interval: float,
+    sleep: Callable[[float], None],
+) -> ControlAction:
+    while True:
+        for event in surface.poll_events():
+            if isinstance(event, ActionPressed) and event.action in ANSWER_ACTIONS:
+                return event.action
+        sleep(poll_interval)

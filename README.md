@@ -29,14 +29,14 @@ It also defines **Visual Protocol 0.1**: a hardware-independent grammar for
 agent identity, state, selection, action availability, and overflow. Device
 profiles translate that grammar to MIDI without redefining it.
 
-The first integration is **Codex CLI**. Interactive `codex` and `codex resume`
-sessions report lifecycle state through hooks, while `codex-exec` supports
-non-interactive tasks and a hardware Stop action.
+The first integration is **Codex CLI**. Interactive sessions report lifecycle
+state through hooks and can approve or reject real Codex permission requests
+from the controller. A leased launcher adds human labels, terminal titles, and
+immediate Scene cleanup; `codex-exec` supports non-interactive tasks and Stop.
 
 Pad-Lattice is alpha software. State rendering, device profiles, multi-agent
-selection, targeted action routing, Codex lifecycle hooks, and the
-non-interactive Codex adapter are implemented. Directly applying approval,
-reject, and retry actions to an interactive Codex terminal remains planned.
+selection, targeted action routing, interactive Codex approval/rejection, and
+the non-interactive Codex adapter are implemented.
 
 ## Hardware
 
@@ -81,12 +81,23 @@ Start the daemon and install Codex lifecycle hooks:
 ```bash
 pad-lattice daemon --no-greeting
 pad-lattice install-codex-hooks
-pad-lattice status
+pad-lattice codex --label pad-lattice
 ```
 
-Start a new Codex session, run `/hooks`, and review and trust the installed
-commands. The controller will then follow prompt, running, approval, and
-completion states.
+In the first Codex session, run `/hooks` and review and trust the installed
+commands. When Codex requests permission, select its right-side Agent Scene
+and press Approve or Reject. After 60 seconds without a hardware decision,
+Codex falls back to its normal keyboard prompt.
+
+Launch another labeled or resumed session from another terminal:
+
+```bash
+pad-lattice codex --label docs -- resume <SESSION_ID>
+pad-lattice status --watch
+```
+
+The launcher uses the terminal directly, without a pseudo-terminal. Closing
+it releases the session lease and clears that Scene immediately.
 
 The experimental Mini Mk3 profile must be selected explicitly:
 
@@ -120,7 +131,7 @@ agent's glyph. This example has agent 1 selected and **waiting for approval**:
 
 Top controls are common across the Launchpad profiles:
 
-| 🟢 approve | 🔴 reject | ⚫ | ⚫ | 🟨 overflow | ⚫ | 🔵 retry | 🔴 stop |
+| 🟢 approve | 🔴 reject | ⚫ | ⚫ | ⚫ overflow | ⚫ | ⚫ retry | ⚫ stop |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `CC91` | `CC92` | `CC93` | `CC94` | `CC95` | `CC96` | `CC97` | `CC98` |
 
@@ -135,9 +146,10 @@ Top controls are common across the Launchpad profiles:
 | Gray hollow square | Cancelled |
 | Dim two-pad dash | No session selected |
 
-The selected accent is bright; other occupied Agent Scenes are dim. Hardware
-actions are sent only to the selected session and only when both its state and
-live adapter permit that action. See the [full visual protocol](https://mrueda.github.io/pad-lattice/docs/usage/visual-language).
+The selected accent is bright; other occupied Agent Scenes are dim. Action
+controls are dark unless the selected session can consume that action now. A
+lit green or red control therefore performs a real operation. See the [full
+visual protocol](https://mrueda.github.io/pad-lattice/docs/usage/visual-language).
 
 The Launchpad-family common surface is **8x8 plus eight top and eight right
 controls**. The Pro Mk1 has 16 additional controls on its left and bottom

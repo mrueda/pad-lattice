@@ -13,6 +13,7 @@ from pad_lattice.protocol import (
     parse_agent,
     parse_state,
     session_end_message,
+    session_lease_message,
     state_message,
     status_message,
     subscribe_actions_message,
@@ -49,6 +50,23 @@ class ProtocolTest(TestCase):
             },
         )
 
+    def test_state_message_can_request_a_lease_aware_ack(self) -> None:
+        self.assertEqual(
+            state_message(
+                AgentState.RUNNING,
+                agent=AgentIdentity("codex", "session-123"),
+                lease_id="lease-123",
+                reply=True,
+            ),
+            {
+                "type": "state",
+                "state": "running",
+                "agent": {"backend": "codex", "session_id": "session-123"},
+                "lease_id": "lease-123",
+                "reply": True,
+            },
+        )
+
     def test_action_message_is_agent_scoped(self) -> None:
         identity = AgentIdentity("codex", "session-123")
 
@@ -59,6 +77,15 @@ class ProtocolTest(TestCase):
                 "action": "approve",
                 "agent": {"backend": "codex", "session_id": "session-123"},
             },
+        )
+
+        self.assertEqual(
+            action_message(
+                ControlAction.REJECT,
+                identity,
+                request_id="request-1",
+            )["request_id"],
+            "request-1",
         )
 
     def test_session_end_and_status_messages_are_explicit(self) -> None:
@@ -72,6 +99,23 @@ class ProtocolTest(TestCase):
             },
         )
         self.assertEqual(status_message(), {"type": "status"})
+
+    def test_session_lease_can_restore_identity_and_metadata(self) -> None:
+        identity = AgentIdentity("codex", "session-123")
+
+        self.assertEqual(
+            session_lease_message(
+                "lease-123",
+                agent=identity,
+                metadata={"label": "docs"},
+            ),
+            {
+                "type": "session_lease",
+                "lease_id": "lease-123",
+                "agent": {"backend": "codex", "session_id": "session-123"},
+                "metadata": {"label": "docs"},
+            },
+        )
 
     def test_subscribe_actions_message_advertises_capabilities(self) -> None:
         identity = AgentIdentity("codex", "session-123")
@@ -87,6 +131,15 @@ class ProtocolTest(TestCase):
                 "actions": ["approve", "reject"],
             },
         )
+
+        scoped = subscribe_actions_message(
+            identity,
+            (ControlAction.APPROVE, ControlAction.REJECT),
+            request_id="request-1",
+            one_shot=True,
+        )
+        self.assertEqual(scoped["request_id"], "request-1")
+        self.assertTrue(scoped["one_shot"])
 
     def test_parse_agent_rejects_incomplete_identity(self) -> None:
         with self.assertRaises(ProtocolError):

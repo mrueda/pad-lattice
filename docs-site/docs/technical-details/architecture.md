@@ -27,6 +27,7 @@ Agent backend
 | `pad_lattice.devices.midi_grid` | Trusted static-palette MIDI grid driver. |
 | `pad_lattice.devices.factory` | Discovery, explicit selection, and port resolution. |
 | `pad_lattice.codex_hooks` | Interactive Codex lifecycle adapter and installer. |
+| `pad_lattice.codex_session` | Native-terminal Codex launcher and reconnecting process lease. |
 | `pad_lattice.codex_exec` | Non-interactive Codex JSONL adapter and Stop sink. |
 | `pad_lattice.cli` | User-facing orchestration and profile tools. |
 
@@ -68,10 +69,12 @@ Action subscription:
 {
   "type": "subscribe_actions",
   "agent": {
-    "backend": "codex-exec",
-    "session_id": "6f3a..."
+    "backend": "codex",
+    "session_id": "019f..."
   },
-  "actions": ["stop"]
+  "actions": ["approve", "reject"],
+  "request_id": "c42a...",
+  "one_shot": true
 }
 ```
 
@@ -80,17 +83,24 @@ Targeted action response:
 ```json
 {
   "type": "action",
-  "action": "stop",
+  "action": "approve",
   "agent": {
-    "backend": "codex-exec",
-    "session_id": "6f3a..."
-  }
+    "backend": "codex",
+    "session_id": "019f..."
+  },
+  "request_id": "c42a..."
 }
 ```
 
 An action is sent only when the subscription identity equals the selected
 session, its capability list contains that action, and the current state permits
-it. With no matching live subscriber, the action is ignored and rendered dim.
+it. Request-scoped subscriptions are delivered one at a time. With no matching
+live subscriber, the action is ignored and rendered dark.
+
+An interactive launcher opens a persistent `session_lease` connection. Hook
+state messages bind its random lease ID to the real Codex session identity.
+Disconnecting the owning socket removes that session; reconnect messages may
+carry the previously bound identity to restore it after a daemon restart.
 
 Explicit session cleanup uses:
 
@@ -102,7 +112,8 @@ Explicit session cleanup uses:
 ```
 
 A `{"type":"status"}` request returns device metadata, selection, every
-registered session, visible slots, accent names, and overflow count.
+registered session, visible slots, accent names, labels, lease status, and
+overflow count.
 
 ## Session Registry
 
@@ -113,8 +124,9 @@ are available in the bundled profiles.
 
 Success, error, and cancellation are tracked per session. After
 `--terminal-hold`, that session returns to `waiting_for_reply` without changing
-another session's state. A 24-hour TTL retires quiet unselected sessions but
-never approval-waiting sessions.
+another session's state. Live leased sessions do not expire. A 24-hour TTL
+retires any inactive unleased session, including a stale selected or approval
+session left by a directly launched Codex process.
 
 ## Profile Resolution
 

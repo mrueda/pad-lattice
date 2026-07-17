@@ -3,15 +3,31 @@
 from __future__ import annotations
 
 import json
+import math
 import os
+import shlex
+import shutil
+import socket
+import sys
+import time
+import uuid
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TextIO
 
-from pad_lattice.events import AgentState
-from pad_lattice.protocol import send_message, state_message
+from pad_lattice.events import AgentIdentity, AgentState, ControlAction
+from pad_lattice.protocol import (
+    ProtocolError,
+    decode_message,
+    encode_message,
+    parse_action,
+    parse_agent,
+    request_message,
+    send_message,
+    state_message,
+    subscribe_actions_message,
+)
 
-HOOK_COMMAND = "pad-lattice codex-hook"
 HOOK_EVENTS = (
     "SessionStart",
     "UserPromptSubmit",
@@ -19,8 +35,12 @@ HOOK_EVENTS = (
     "PostToolUse",
     "Stop",
 )
+DEFAULT_APPROVAL_TIMEOUT = 60.0
+HOOK_TIMEOUT_MARGIN = 5
 
 StateSender = Callable[[str, dict[str, Any]], None]
+StateRequester = Callable[[str, dict[str, Any]], dict[str, Any]]
+ActionWaiter = Callable[[str, AgentIdentity, float], ControlAction | None]
 
 
 def state_for_codex_hook(event: dict[str, Any]) -> AgentState | None:
@@ -40,30 +60,137 @@ def run_codex_hook(
     stdin: TextIO,
     stdout: TextIO,
     *,
+    approval_timeout: float = DEFAULT_APPROVAL_TIMEOUT,
     sender: StateSender = send_message,
+    requester: StateRequester = request_message,
+    action_waiter: ActionWaiter | None = None,
 ) -> int:
-    """Read one Codex hook event and mirror it without blocking Codex."""
+    """Mirror one hook event and optionally await a hardware permission decision."""
+
+    if approval_timeout <= 0:
+        raise ValueError("approval_timeout must be positive")
 
     try:
         event = json.load(stdin)
     except (json.JSONDecodeError, UnicodeError):
         event = None
 
+    response: dict[str, Any] = {}
     if isinstance(event, dict):
+        socket_path = os.environ.get("PAD_LATTICE_SOCKET", socket_path)
         state = state_for_codex_hook(event)
-        if state is not None:
-            try:
-                sender(
-                    socket_path,
-                    state_message(state, agent=_agent_metadata(event)),
-                )
-            except (ConnectionError, FileNotFoundError, OSError):
-                pass
+        identity = _event_identity(event)
+        if state is not None and identity is not None:
+            assignment = _report_state(
+                socket_path,
+                state,
+                event,
+                sender=sender,
+                requester=requester,
+            )
+            if assignment is not None:
+                _set_terminal_title(assignment)
 
-    # Stop hooks require JSON output. An empty object is also a no-op decision
-    # for the other lifecycle events used by Pad-Lattice.
-    print("{}", file=stdout, flush=True)
+            if event.get("hook_event_name") == "PermissionRequest":
+                waiter = action_waiter or wait_for_permission_action
+                action = waiter(socket_path, identity, approval_timeout)
+                if action in {ControlAction.APPROVE, ControlAction.REJECT}:
+                    try:
+                        sender(
+                            socket_path,
+                            state_message(
+                                AgentState.RUNNING,
+                                agent=_agent_metadata(event),
+                                lease_id=_lease_id(),
+                            ),
+                        )
+                    except (ConnectionError, FileNotFoundError, OSError):
+                        pass
+                    response = permission_decision(action)
+
+    # Stop hooks require JSON output. An empty object is a no-op decision for
+    # other events and restores Codex's keyboard approval prompt after timeout.
+    print(json.dumps(response, separators=(",", ":")), file=stdout, flush=True)
     return 0
+
+
+def wait_for_permission_action(
+    socket_path: str,
+    identity: AgentIdentity,
+    timeout: float,
+) -> ControlAction | None:
+    """Wait for one request-scoped hardware approval decision."""
+
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+            client.settimeout(timeout)
+            client.connect(socket_path)
+            return _wait_for_permission_action_client(client, identity, timeout)
+    except (ConnectionError, FileNotFoundError, OSError):
+        return None
+
+
+def _wait_for_permission_action_client(
+    client: socket.socket,
+    identity: AgentIdentity,
+    timeout: float,
+) -> ControlAction | None:
+    request_id = uuid.uuid4().hex
+    deadline = time.monotonic() + timeout
+    client.sendall(
+        encode_message(
+            subscribe_actions_message(
+                identity,
+                (ControlAction.APPROVE, ControlAction.REJECT),
+                request_id=request_id,
+                one_shot=True,
+            )
+        )
+    )
+    buffer = b""
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return None
+        client.settimeout(remaining)
+        data = client.recv(4096)
+        if not data:
+            return None
+        buffer += data
+        while b"\n" in buffer:
+            line, buffer = buffer.split(b"\n", 1)
+            if not line.strip():
+                continue
+            try:
+                message = decode_message(line)
+                action = parse_action(message.get("action"))
+                target = parse_agent(message.get("agent"), default=None)
+            except (ProtocolError, ValueError):
+                continue
+            if (
+                target == identity
+                and message.get("request_id") == request_id
+                and action in {ControlAction.APPROVE, ControlAction.REJECT}
+            ):
+                return action
+
+
+def permission_decision(action: ControlAction) -> dict[str, Any]:
+    if action is ControlAction.APPROVE:
+        decision: dict[str, str] = {"behavior": "allow"}
+    elif action is ControlAction.REJECT:
+        decision = {
+            "behavior": "deny",
+            "message": "Rejected from Pad-Lattice.",
+        }
+    else:
+        raise ValueError(f"unsupported permission action: {action.value}")
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "PermissionRequest",
+            "decision": decision,
+        }
+    }
 
 
 def default_codex_hooks_path() -> Path:
@@ -73,13 +200,48 @@ def default_codex_hooks_path() -> Path:
     return Path.home() / ".codex" / "hooks.json"
 
 
-def install_codex_hooks(path: Path, *, command: str = HOOK_COMMAND) -> bool:
+def resolve_hook_command(
+    socket_path: str,
+    argv0: str | None = None,
+    *,
+    approval_timeout: float = DEFAULT_APPROVAL_TIMEOUT,
+) -> str:
+    """Return a shell-safe hook command with stable executable and socket paths."""
+
+    if approval_timeout <= 0:
+        raise ValueError("approval_timeout must be positive")
+
+    invocation = argv0 or sys.argv[0]
+    candidate = Path(invocation).expanduser()
+    if candidate.is_file():
+        executable = candidate.resolve()
+    else:
+        located = shutil.which(invocation)
+        if located is None:
+            raise FileNotFoundError(f"could not resolve Pad-Lattice executable: {invocation}")
+        executable = Path(located).resolve()
+    resolved_socket = Path(socket_path).expanduser().resolve()
+    return (
+        f"{shlex.quote(str(executable))} codex-hook "
+        f"--socket {shlex.quote(str(resolved_socket))} "
+        f"--approval-timeout {approval_timeout:g}"
+    )
+
+
+def install_codex_hooks(
+    path: Path,
+    *,
+    command: str,
+    approval_timeout: float = DEFAULT_APPROVAL_TIMEOUT,
+) -> bool:
     """Merge Pad-Lattice lifecycle hooks into a Codex hooks file.
 
     Returns ``True`` when the file changed and ``False`` when the same hooks
     were already installed.
     """
 
+    if approval_timeout <= 0:
+        raise ValueError("approval_timeout must be positive")
     config = _read_hooks_config(path)
     hooks = config.setdefault("hooks", {})
     if not isinstance(hooks, dict):
@@ -87,23 +249,36 @@ def install_codex_hooks(path: Path, *, command: str = HOOK_COMMAND) -> bool:
 
     changed = False
     for event_name in HOOK_EVENTS:
+        timeout = (
+            math.ceil(approval_timeout) + HOOK_TIMEOUT_MARGIN
+            if event_name == "PermissionRequest"
+            else 5
+        )
         groups = hooks.setdefault(event_name, [])
         if not isinstance(groups, list):
             raise ValueError(f"{path}: hooks.{event_name} must be a JSON array")
-        if _contains_command(groups, command):
-            continue
-        groups.append(
-            {
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": command,
-                        "timeout": 5,
-                    }
-                ]
-            }
+        groups, found, replaced = _replace_managed_commands(
+            groups,
+            command,
+            timeout=timeout,
         )
-        changed = True
+        if replaced:
+            hooks[event_name] = groups
+            changed = True
+        if not found:
+            groups.append(
+                {
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": command,
+                            "timeout": timeout,
+                        }
+                    ]
+                }
+            )
+            hooks[event_name] = groups
+            changed = True
 
     if changed:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -122,7 +297,78 @@ def _agent_metadata(event: dict[str, Any]) -> dict[str, str]:
         value = event.get(field)
         if isinstance(value, str) and value:
             metadata[field] = value
+    if label := os.environ.get("PAD_LATTICE_LABEL"):
+        metadata["label"] = label
     return metadata
+
+
+def _event_identity(event: dict[str, Any]) -> AgentIdentity | None:
+    session_id = event.get("session_id")
+    if not isinstance(session_id, str) or not session_id:
+        return None
+    return AgentIdentity("codex", session_id)
+
+
+def _lease_id() -> str | None:
+    value = os.environ.get("PAD_LATTICE_LEASE_ID")
+    return value if value else None
+
+
+def _report_state(
+    socket_path: str,
+    state: AgentState,
+    event: dict[str, Any],
+    *,
+    sender: StateSender,
+    requester: StateRequester,
+) -> dict[str, Any] | None:
+    wants_assignment = os.environ.get("PAD_LATTICE_TERMINAL_TITLE") == "1"
+    message = state_message(
+        state,
+        agent=_agent_metadata(event),
+        lease_id=_lease_id(),
+        reply=wants_assignment,
+    )
+    try:
+        if wants_assignment:
+            return requester(socket_path, message)
+        sender(socket_path, message)
+    except (ConnectionError, FileNotFoundError, OSError):
+        pass
+    return None
+
+
+def _set_terminal_title(assignment: dict[str, Any]) -> None:
+    if os.environ.get("PAD_LATTICE_TERMINAL_TITLE") != "1":
+        return
+    scene = assignment.get("scene")
+    accent = assignment.get("accent")
+    label = assignment.get("label")
+    if (
+        not isinstance(scene, int)
+        or not isinstance(accent, str)
+        or not isinstance(label, str)
+    ):
+        return
+    safe_accent = _terminal_text(accent.upper(), limit=16)
+    safe_label = _terminal_text(label, limit=64)
+    title = f"[S{scene} {safe_accent}] {safe_label}"
+    try:
+        descriptor = os.open("/dev/tty", os.O_WRONLY | os.O_NOCTTY)
+        try:
+            os.write(descriptor, f"\x1b]0;{title}\x07".encode("utf-8"))
+        finally:
+            os.close(descriptor)
+    except OSError:
+        pass
+
+
+def _terminal_text(value: str, *, limit: int) -> str:
+    safe = "".join(
+        character if ord(character) >= 32 and ord(character) != 127 else " "
+        for character in value
+    )
+    return " ".join(safe.split())[:limit]
 
 
 def _read_hooks_config(path: Path) -> dict[str, Any]:
@@ -137,14 +383,74 @@ def _read_hooks_config(path: Path) -> dict[str, Any]:
     return config
 
 
-def _contains_command(groups: list[Any], command: str) -> bool:
+def _replace_managed_commands(
+    groups: list[Any],
+    command: str,
+    *,
+    timeout: int,
+) -> tuple[list[Any], bool, bool]:
+    updated_groups: list[Any] = []
+    found = False
+    changed = False
+
     for group in groups:
         if not isinstance(group, dict):
+            updated_groups.append(group)
             continue
         handlers = group.get("hooks")
         if not isinstance(handlers, list):
+            updated_groups.append(group)
             continue
+
+        updated_handlers: list[Any] = []
+        group_changed = False
         for handler in handlers:
-            if isinstance(handler, dict) and handler.get("command") == command:
-                return True
-    return False
+            managed = (
+                isinstance(handler, dict)
+                and _is_pad_lattice_hook_command(handler.get("command"))
+            )
+            if not managed:
+                updated_handlers.append(handler)
+                continue
+            if found:
+                group_changed = True
+                changed = True
+                continue
+
+            found = True
+            if (
+                handler.get("command") == command
+                and handler.get("timeout") == timeout
+            ):
+                updated_handlers.append(handler)
+                continue
+            updated_handler = dict(handler)
+            updated_handler["command"] = command
+            updated_handler["timeout"] = timeout
+            updated_handlers.append(updated_handler)
+            group_changed = True
+            changed = True
+
+        if not updated_handlers and group_changed:
+            continue
+        if group_changed:
+            updated_group = dict(group)
+            updated_group["hooks"] = updated_handlers
+            updated_groups.append(updated_group)
+        else:
+            updated_groups.append(group)
+
+    return updated_groups, found, changed
+
+
+def _is_pad_lattice_hook_command(command: Any) -> bool:
+    if not isinstance(command, str):
+        return False
+    try:
+        parts = shlex.split(command)
+    except ValueError:
+        return False
+    if len(parts) < 2 or parts[1] != "codex-hook":
+        return False
+    executable = Path(parts[0]).name
+    return executable in {"pad-lattice", "pad-lattice.exe"}

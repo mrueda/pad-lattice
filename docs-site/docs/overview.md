@@ -44,11 +44,13 @@ probabilities, top-k candidates, or model internals. It focuses on supervision:
 - A multi-agent registry keyed by backend and session ID.
 - Eight visible session selectors with persistent accent colors and state LEDs.
 - Safe least-recently-used overflow with a steady warning indicator.
-- Explicit session cleanup, a 24-hour background-session TTL, and daemon status.
-- Agent-scoped action subscriptions; actions are never broadcast.
+- Process leases, explicit cleanup, a 24-hour unleased-session TTL, and a live legend.
+- Request-scoped action subscriptions; actions are never broadcast.
 - Declarative JSON device profiles behind a trusted generic MIDI-grid driver.
 - Supported Launchpad Pro Mk1 and experimental Launchpad Mini Mk3 profiles.
 - Lifecycle hooks for interactive `codex` and `codex resume` sessions.
+- Hardware Approve and Reject decisions for Codex permission requests.
+- Labeled, native-terminal Codex launching with immediate Scene cleanup.
 - A `codex-exec` adapter with a targeted Stop action.
 - Guided, privacy-preserving physical profile verification.
 
@@ -84,9 +86,14 @@ is not waiting for approval moves to overflow. Ending the selected session
 clears selection instead of silently retargeting physical controls.
 
 Physical actions are emitted only when the selected identity has a connected
-subscriber advertising that action. Interactive Codex lifecycle hooks are
-currently state-only, so their action pads remain dim. The `codex-exec` adapter
-advertises Stop while its process is live.
+subscriber advertising that action. Interactive Codex permission hooks expose
+one-shot Approve and Reject; `codex-exec` advertises Stop while its process is
+live. Every unavailable action is dark.
+
+The controller's Scene and accent are mirrored in terminal titles and
+`pad-lattice status --watch`. A persistent launcher lease removes a session
+when its Codex process exits, while direct Codex sessions use TTL or explicit
+cleanup.
 
 ## Non-Goals
 

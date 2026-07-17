@@ -55,7 +55,7 @@ Additional lifecycle options:
 
 | Option | Meaning |
 | --- | --- |
-| `--session-ttl SECONDS` | Retire quiet unselected sessions after this interval; default 86400, `0` disables. |
+| `--session-ttl SECONDS` | Retire inactive unleased sessions after this interval; default 86400, `0` disables. |
 | `--activity-motion` | Opt in to the slow running-state activity marker. |
 | `--identity-store PATH` | Override the persistent accent-preference file. |
 
@@ -66,7 +66,13 @@ Inspect the daemon, selected identity, slots, accents, states, and overflow:
 ```bash
 pad-lattice status
 pad-lattice status --json
+pad-lattice status --watch
+pad-lattice status --watch --interval 1
 ```
+
+The live legend shows actual accent swatches, Scene, state, label, project,
+short session ID, and whether cleanup is controlled by a live lease or TTL.
+`NO_COLOR` disables ANSI swatches.
 
 ## State Commands
 
@@ -108,22 +114,44 @@ automatically targeting another session.
 
 ## Codex Commands
 
+Launch interactive Codex with inherited terminal I/O, an optional label,
+terminal-title identity, and automatic session cleanup:
+
+```bash
+pad-lattice codex --label implementation
+pad-lattice codex --label docs -- resume <SESSION_ID>
+pad-lattice codex --label review -- --ask-for-approval on-request
+```
+
+Useful options are `--socket`, `--codex`, `--label`, and
+`--no-terminal-title`. Arguments after `--` are passed to Codex unchanged.
+Without a label, the Codex working-directory name is used.
+
 Install lifecycle handlers:
 
 ```bash
 pad-lattice install-codex-hooks
 pad-lattice install-codex-hooks --path .codex/hooks.json
+pad-lattice install-codex-hooks --socket /tmp/pad-lattice.sock
+pad-lattice install-codex-hooks --approval-timeout 90
 ```
 
 After installation, start a new Codex session and use `/hooks` to review and
-trust the commands.
+trust the commands. The installer embeds an absolute executable path and the
+resolved daemon socket path.
 
 `codex-hook` is the low-level stdin handler referenced by the installed
 configuration and is not normally invoked directly:
 
 ```bash
-pad-lattice codex-hook
+pad-lattice codex-hook \
+  --socket /tmp/pad-lattice.sock \
+  --approval-timeout 60
 ```
+
+The `PermissionRequest` handler waits for one selected, request-scoped Approve
+or Reject action. On timeout or daemon failure it returns no decision, allowing
+Codex to show its normal keyboard prompt.
 
 Run a non-interactive Codex task with state and Stop integration:
 
@@ -145,8 +173,9 @@ pad-lattice listen-actions \
   --session-id agent-a
 ```
 
-An action pad becomes bright only while this listener is connected, its
-identity is selected, and the selected state permits that action.
+An action pad lights only while this listener is connected, its identity is
+selected, and the selected state permits that action. `--once` exits after the
+first routed action.
 
 ## MIDI Monitor
 

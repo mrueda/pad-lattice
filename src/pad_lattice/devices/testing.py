@@ -63,7 +63,7 @@ def run_profile_test(
         surface.render(SurfaceView(selected_state=None))
         time.sleep(settle_delay)
         visual_checks["idle"] = _confirm(
-            "Do you see a dim two-pad idle dash? [y/N] ",
+            "Do you see a dim three-pad idle dash? [y/N] ",
             input_stream,
             output_stream,
         )

@@ -2,18 +2,28 @@ from __future__ import annotations
 
 import io
 import json
+import shlex
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
+from unittest.mock import patch
 
 from pad_lattice.codex_hooks import (
-    HOOK_COMMAND,
     HOOK_EVENTS,
+    _wait_for_permission_action_client,
     install_codex_hooks,
+    resolve_hook_command,
     run_codex_hook,
     state_for_codex_hook,
 )
-from pad_lattice.events import AgentState
+from pad_lattice.events import AgentIdentity, AgentState, ControlAction
+from pad_lattice.protocol import action_message, decode_message, encode_message
+
+
+HOOK_COMMAND = (
+    "pad-lattice codex-hook --socket /tmp/pad-lattice.sock "
+    "--approval-timeout 60"
+)
 
 
 class CodexHookTest(TestCase):
@@ -81,13 +91,184 @@ class CodexHookTest(TestCase):
         output = io.StringIO()
         result = run_codex_hook(
             "/missing.sock",
-            io.StringIO('{"hook_event_name":"Stop"}'),
+            io.StringIO(
+                '{"hook_event_name":"Stop","session_id":"session-123"}'
+            ),
             output,
             sender=unavailable,
         )
 
         self.assertEqual(result, 0)
         self.assertEqual(output.getvalue(), "{}\n")
+
+    def test_permission_request_returns_hardware_approval_to_codex(self) -> None:
+        sent = []
+        waited = []
+        output = io.StringIO()
+        event = {
+            "hook_event_name": "PermissionRequest",
+            "session_id": "session-123",
+            "cwd": "/work/repository",
+        }
+
+        result = run_codex_hook(
+            "/tmp/pad-lattice.sock",
+            io.StringIO(json.dumps(event)),
+            output,
+            approval_timeout=60,
+            sender=lambda path, message: sent.append(message),
+            action_waiter=lambda path, identity, timeout: (
+                waited.append((path, identity.session_id, timeout))
+                or ControlAction.APPROVE
+            ),
+        )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PermissionRequest",
+                    "decision": {"behavior": "allow"},
+                }
+            },
+        )
+        self.assertEqual(waited, [("/tmp/pad-lattice.sock", "session-123", 60)])
+        self.assertEqual(
+            [message["state"] for message in sent],
+            ["waiting_for_approval", "running"],
+        )
+
+    def test_permission_request_can_reject_or_fall_back_to_keyboard(self) -> None:
+        event = {
+            "hook_event_name": "PermissionRequest",
+            "session_id": "session-123",
+        }
+        rejected = io.StringIO()
+        timed_out = io.StringIO()
+
+        run_codex_hook(
+            "/tmp/pad-lattice.sock",
+            io.StringIO(json.dumps(event)),
+            rejected,
+            sender=lambda path, message: None,
+            action_waiter=lambda path, identity, timeout: ControlAction.REJECT,
+        )
+        run_codex_hook(
+            "/tmp/pad-lattice.sock",
+            io.StringIO(json.dumps(event)),
+            timed_out,
+            sender=lambda path, message: None,
+            action_waiter=lambda path, identity, timeout: None,
+        )
+
+        self.assertEqual(
+            json.loads(rejected.getvalue())["hookSpecificOutput"]["decision"],
+            {
+                "behavior": "deny",
+                "message": "Rejected from Pad-Lattice.",
+            },
+        )
+        self.assertEqual(json.loads(timed_out.getvalue()), {})
+
+    def test_launcher_environment_overrides_installed_socket_and_labels_state(self) -> None:
+        sent = []
+        event = {
+            "hook_event_name": "SessionStart",
+            "session_id": "session-123",
+            "cwd": "/work/repository",
+        }
+
+        with patch.dict(
+            "os.environ",
+            {
+                "PAD_LATTICE_SOCKET": "/tmp/runtime.sock",
+                "PAD_LATTICE_LEASE_ID": "lease-123",
+                "PAD_LATTICE_LABEL": "docs",
+            },
+            clear=False,
+        ):
+            run_codex_hook(
+                "/tmp/installed.sock",
+                io.StringIO(json.dumps(event)),
+                io.StringIO(),
+                sender=lambda path, message: sent.append((path, message)),
+            )
+
+        self.assertEqual(sent[0][0], "/tmp/runtime.sock")
+        self.assertEqual(sent[0][1]["lease_id"], "lease-123")
+        self.assertEqual(sent[0][1]["agent"]["label"], "docs")
+
+    def test_launcher_hook_sets_scene_identity_in_terminal_title(self) -> None:
+        event = {
+            "hook_event_name": "SessionStart",
+            "session_id": "session-123",
+            "cwd": "/work/repository",
+        }
+        requested = []
+
+        with (
+            patch.dict(
+                "os.environ",
+                {
+                    "PAD_LATTICE_TERMINAL_TITLE": "1",
+                    "PAD_LATTICE_LEASE_ID": "lease-123",
+                },
+                clear=False,
+            ),
+            patch("pad_lattice.codex_hooks.os.open", return_value=9),
+            patch("pad_lattice.codex_hooks.os.write") as write,
+            patch("pad_lattice.codex_hooks.os.close"),
+        ):
+            run_codex_hook(
+                "/tmp/pad-lattice.sock",
+                io.StringIO(json.dumps(event)),
+                io.StringIO(),
+                requester=lambda path, message: (
+                    requested.append(message)
+                    or {
+                        "type": "state_ack",
+                        "scene": 2,
+                        "accent": "magenta",
+                        "label": "repository",
+                    }
+                ),
+            )
+
+        self.assertTrue(requested[0]["reply"])
+        self.assertEqual(requested[0]["lease_id"], "lease-123")
+        self.assertIn(b"[S2 MAGENTA] repository", write.call_args.args[1])
+
+    def test_permission_waiter_uses_request_scoped_unix_socket_message(self) -> None:
+        agent = AgentIdentity("codex", "session-123")
+        received = []
+
+        class ApprovalSocket:
+            response = b""
+
+            def sendall(self, data: bytes) -> None:
+                message = decode_message(data.strip())
+                received.append(message)
+                self.response = encode_message(
+                    action_message(
+                        ControlAction.APPROVE,
+                        agent,
+                        request_id=message["request_id"],
+                    )
+                )
+
+            def recv(self, size: int) -> bytes:
+                response, self.response = self.response, b""
+                return response
+
+            def settimeout(self, timeout: float) -> None:
+                pass
+
+        action = _wait_for_permission_action_client(ApprovalSocket(), agent, 1.0)
+
+        self.assertIs(action, ControlAction.APPROVE)
+        self.assertTrue(received[0]["one_shot"])
+        self.assertEqual(received[0]["actions"], ["approve", "reject"])
 
     def test_invalid_input_is_a_noop(self) -> None:
         output = io.StringIO()
@@ -127,7 +308,7 @@ class CodexHookInstallerTest(TestCase):
                 encoding="utf-8",
             )
 
-            self.assertTrue(install_codex_hooks(path))
+            self.assertTrue(install_codex_hooks(path, command=HOOK_COMMAND))
             config = json.loads(path.read_text(encoding="utf-8"))
 
             self.assertEqual(
@@ -146,9 +327,9 @@ class CodexHookInstallerTest(TestCase):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "hooks.json"
 
-            self.assertTrue(install_codex_hooks(path))
+            self.assertTrue(install_codex_hooks(path, command=HOOK_COMMAND))
             first_content = path.read_text(encoding="utf-8")
-            self.assertFalse(install_codex_hooks(path))
+            self.assertFalse(install_codex_hooks(path, command=HOOK_COMMAND))
 
             self.assertEqual(path.read_text(encoding="utf-8"), first_content)
 
@@ -158,4 +339,64 @@ class CodexHookInstallerTest(TestCase):
             path.write_text("not-json", encoding="utf-8")
 
             with self.assertRaisesRegex(ValueError, "invalid JSON"):
-                install_codex_hooks(path)
+                install_codex_hooks(path, command=HOOK_COMMAND)
+
+    def test_resolves_absolute_console_script_path(self) -> None:
+        with TemporaryDirectory(prefix="pad lattice ") as directory:
+            executable = Path(directory) / "pad-lattice"
+            executable.touch()
+            socket_path = Path(directory) / "pad-lattice.sock"
+
+            self.assertEqual(
+                resolve_hook_command(str(socket_path), str(executable)),
+                (
+                    f"{shlex.quote(str(executable.resolve()))} codex-hook "
+                    f"--socket {shlex.quote(str(socket_path.resolve()))} "
+                    "--approval-timeout 60"
+                ),
+            )
+
+    def test_replaces_managed_hook_command_without_touching_other_hooks(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "hooks.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "hooks": {
+                            event_name: [
+                                {
+                                    "hooks": [
+                                        {"type": "command", "command": HOOK_COMMAND},
+                                        {"type": "command", "command": "existing-hook"},
+                                    ]
+                                }
+                            ]
+                            for event_name in HOOK_EVENTS
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            command = (
+                "/opt/pad-lattice/bin/pad-lattice codex-hook "
+                "--socket /run/user/1000/pad-lattice.sock"
+            )
+
+            self.assertTrue(install_codex_hooks(path, command=command))
+            config = json.loads(path.read_text(encoding="utf-8"))
+
+            for event_name in HOOK_EVENTS:
+                handlers = [
+                    handler
+                    for group in config["hooks"][event_name]
+                    for handler in group["hooks"]
+                ]
+                self.assertEqual(
+                    [handler["command"] for handler in handlers],
+                    [command, "existing-hook"],
+                )
+                managed = handlers[0]
+                self.assertEqual(
+                    managed["timeout"],
+                    65 if event_name == "PermissionRequest" else 5,
+                )

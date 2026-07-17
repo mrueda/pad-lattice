@@ -165,7 +165,7 @@ class MidiGridSurfaceTest(TestCase):
             latest[91], surface.profile.color("action:approve:enabled")
         )
         self.assertEqual(
-            latest[92], surface.profile.color("action:reject:disabled")
+            latest[92], surface.profile.color("off")
         )
 
     def test_poll_events_distinguishes_actions_and_session_selection(self) -> None:

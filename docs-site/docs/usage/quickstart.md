@@ -50,6 +50,7 @@ Inspect the live device and session registry from any terminal:
 
 ```bash
 pad-lattice status
+pad-lattice status --watch
 ```
 
 ## Connect Codex
@@ -60,9 +61,31 @@ Install the interactive lifecycle hooks once:
 pad-lattice install-codex-hooks
 ```
 
-Start a new `codex` or `codex resume` session and run `/hooks` to review and
-trust the Pad-Lattice commands. Prompt, running, approval, and completion
-states will then update the selected session automatically.
+Launch an integrated session:
+
+```bash
+pad-lattice codex --label pad-lattice
+```
+
+Run `/hooks` once to review and trust the Pad-Lattice commands. Prompt,
+running, approval, and completion states now update automatically. The
+terminal title shows the assigned Scene and accent, for example
+`[S1 CYAN] pad-lattice`.
+
+When Codex requests permission, select its right-side Agent Scene and press
+the green Approve or red Reject control. A hardware decision applies only to
+that request. If no pad is pressed within 60 seconds, Codex displays its normal
+keyboard approval prompt.
+
+Start or resume another labeled session from another terminal:
+
+```bash
+pad-lattice codex --label docs -- resume <SESSION_ID>
+```
+
+Closing a session launched this way releases its daemon lease and removes its
+Scene immediately. Plain `codex` remains compatible with the hooks, but it
+cannot provide an immediate terminal-close signal.
 
 Run a non-interactive task with a targeted hardware Stop action:
 
@@ -89,7 +112,7 @@ Use an action listener to advertise controls for one test identity:
 pad-lattice listen-actions --backend test --session-id agent-a
 ```
 
-Action pads become bright only when the selected session has a live listener
+Action pads light only when the selected session has a live listener
 **and** its state permits the action:
 
 | Common top control | Action |
@@ -108,8 +131,9 @@ Remove a finished manual session explicitly:
 pad-lattice end-session --backend test --session-id agent-a
 ```
 
-Interactive Codex hooks report state but do not yet apply these actions to a
-terminal approval prompt. See [Codex Integration](./codex-integration.md).
+Interactive Codex uses Approve and Reject directly. Interactive Stop, Retry,
+and ordinary chat replies require a broader Codex control channel and remain
+unavailable. See [Codex Integration](./codex-integration.md).
 
 ## Development Checkout
 

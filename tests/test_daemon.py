@@ -119,6 +119,131 @@ class DaemonTest(TestCase):
             frozenset({ControlAction.APPROVE, ControlAction.REJECT}),
         )
 
+    def test_request_scoped_action_is_delivered_once_to_oldest_waiter(self) -> None:
+        daemon = self.daemon()
+        identity = AgentIdentity("codex", "session-1")
+        daemon.update_agent(identity, AgentState.WAITING_FOR_APPROVAL)
+        first = Client(FakeSocket())
+        second = Client(FakeSocket())
+        for client, request_id in ((first, "first"), (second, "second")):
+            daemon._clients[client.socket.fileno()] = client
+            daemon.handle_message(
+                client,
+                {
+                    "type": "subscribe_actions",
+                    "agent": {"backend": "codex", "session_id": "session-1"},
+                    "actions": ["approve", "reject"],
+                    "request_id": request_id,
+                    "one_shot": True,
+                },
+            )
+
+        daemon._handle_action(ControlAction.APPROVE)
+
+        self.assertIn(b'"request_id":"first"', first.socket.sent)
+        self.assertEqual(second.socket.sent, b"")
+        self.assertFalse(first.actions)
+        self.assertEqual(
+            daemon._available_actions(),
+            frozenset({ControlAction.APPROVE, ControlAction.REJECT}),
+        )
+
+    def test_overlapping_approvals_remain_available_until_each_is_decided(self) -> None:
+        daemon = self.daemon(action_debounce=0)
+        identity = AgentIdentity("codex", "session-1")
+        daemon.update_agent(identity, AgentState.WAITING_FOR_APPROVAL)
+        clients = [Client(FakeSocket()), Client(FakeSocket())]
+        for index, client in enumerate(clients):
+            daemon._clients[client.socket.fileno()] = client
+            daemon.handle_message(
+                client,
+                {
+                    "type": "subscribe_actions",
+                    "agent": {"backend": "codex", "session_id": "session-1"},
+                    "actions": ["approve", "reject"],
+                    "request_id": f"request-{index}",
+                    "one_shot": True,
+                },
+            )
+
+        daemon._handle_action(ControlAction.APPROVE)
+        daemon.update_agent(identity, AgentState.RUNNING)
+
+        self.assertIs(daemon.state, AgentState.WAITING_FOR_APPROVAL)
+        self.assertEqual(
+            daemon._available_actions(),
+            frozenset({ControlAction.APPROVE, ControlAction.REJECT}),
+        )
+
+        daemon._handle_action(ControlAction.REJECT)
+        daemon.update_agent(identity, AgentState.RUNNING)
+
+        self.assertIs(daemon.state, AgentState.RUNNING)
+        self.assertIn(b'"request_id":"request-0"', clients[0].socket.sent)
+        self.assertIn(b'"request_id":"request-1"', clients[1].socket.sent)
+
+    def test_lease_disconnect_removes_bound_session_immediately(self) -> None:
+        daemon = self.daemon()
+        lease_client = Client(FakeSocket())
+        daemon._clients[lease_client.socket.fileno()] = lease_client
+        daemon.handle_message(
+            lease_client,
+            {
+                "type": "session_lease",
+                "lease_id": "lease-1",
+                "metadata": {"label": "docs"},
+            },
+        )
+        state_client = Client(FakeSocket())
+        daemon.handle_message(
+            state_client,
+            {
+                "type": "state",
+                "state": "running",
+                "lease_id": "lease-1",
+                "reply": True,
+                "agent": {
+                    "backend": "codex",
+                    "session_id": "session-1",
+                    "cwd": "/work/project",
+                },
+            },
+        )
+
+        status = daemon.status_snapshot()["sessions"][0]
+        self.assertTrue(status["leased"])
+        self.assertEqual(status["label"], "docs")
+        self.assertIn(b'"type":"state_ack"', state_client.socket.sent)
+
+        daemon._close_client(lease_client)
+
+        self.assertEqual(daemon.sessions, ())
+        self.assertIsNone(daemon.selected_agent)
+
+    def test_replacing_a_lease_connection_ignores_the_old_disconnect(self) -> None:
+        daemon = self.daemon()
+        identity = AgentIdentity("codex", "session-1")
+        first = Client(FakeSocket())
+        second = Client(FakeSocket())
+        for client in (first, second):
+            daemon._clients[client.socket.fileno()] = client
+            daemon.handle_message(
+                client,
+                {
+                    "type": "session_lease",
+                    "lease_id": "lease-1",
+                    "agent": {"backend": "codex", "session_id": "session-1"},
+                },
+            )
+
+        daemon._close_client(first)
+
+        self.assertIn(identity, daemon._sessions)
+        self.assertTrue(daemon._has_live_lease(identity))
+
+        daemon._close_client(second)
+        self.assertNotIn(identity, daemon._sessions)
+
     def test_background_update_does_not_steal_selection(self) -> None:
         daemon = self.daemon()
         first = AgentIdentity("codex", "first")
@@ -291,7 +416,7 @@ class DaemonTest(TestCase):
         self.assertIsNone(subscriber.agent)
         self.assertFalse(subscriber.actions)
 
-    def test_quiet_background_session_expires(self) -> None:
+    def test_quiet_unleased_sessions_expire_even_when_selected(self) -> None:
         daemon = self.daemon(session_ttl=10.0)
         first = AgentIdentity("codex", "first")
         second = AgentIdentity("codex", "second")
@@ -302,21 +427,29 @@ class DaemonTest(TestCase):
         with patch("pad_lattice.daemon.time.monotonic", return_value=12.0):
             daemon._render_if_needed()
 
-        self.assertIn(first, daemon._sessions)
+        self.assertNotIn(first, daemon._sessions)
         self.assertNotIn(second, daemon._sessions)
 
-    def test_approval_session_does_not_expire(self) -> None:
+    def test_live_leased_session_does_not_expire(self) -> None:
         daemon = self.daemon(session_ttl=10.0)
-        first = AgentIdentity("codex", "first")
-        approval = AgentIdentity("codex", "approval")
+        identity = AgentIdentity("codex", "leased")
+        lease_client = Client(FakeSocket())
+        daemon._clients[lease_client.socket.fileno()] = lease_client
         with patch("pad_lattice.daemon.time.monotonic", return_value=1.0):
-            daemon.update_agent(first, AgentState.RUNNING)
-            daemon.update_agent(approval, AgentState.WAITING_FOR_APPROVAL)
+            daemon.handle_message(
+                lease_client,
+                {
+                    "type": "session_lease",
+                    "lease_id": "lease-1",
+                    "agent": {"backend": "codex", "session_id": "leased"},
+                },
+            )
+            daemon.update_agent(identity, AgentState.WAITING_FOR_APPROVAL)
 
         with patch("pad_lattice.daemon.time.monotonic", return_value=12.0):
             daemon._render_if_needed()
 
-        self.assertIn(approval, daemon._sessions)
+        self.assertIn(identity, daemon._sessions)
 
     def test_overflow_is_reported_when_all_slots_are_protected(self) -> None:
         daemon = self.daemon()

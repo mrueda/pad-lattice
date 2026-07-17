@@ -4,19 +4,24 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import socket
 import sys
+import time
 from pathlib import Path
+from typing import TextIO
 
 from pad_lattice import __version__
 from pad_lattice.codex_hooks import (
     default_codex_hooks_path,
     install_codex_hooks,
+    resolve_hook_command,
     run_codex_hook,
 )
 from pad_lattice.codex_exec import run_codex_exec
+from pad_lattice.codex_session import run_codex_session
 from pad_lattice.daemon import PadLatticeDaemon
-from pad_lattice.demo_agent import DemoAgent, run_demo_surface
+from pad_lattice.demo_agent import run_demo_surface
 from pad_lattice.devices.factory import (
     discover_devices,
     open_resolved_surface,
@@ -65,14 +70,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("devices", help="detect supported and experimental devices")
 
-    demo = subparsers.add_parser("demo", help="run the hardware demo loop")
+    demo = subparsers.add_parser("demo", help="run a guided hardware conversation")
     _add_device_arguments(demo)
-    demo.add_argument(
-        "--seconds-per-state",
-        type=float,
-        default=4.0,
-        help="seconds before the demo advances to the next state",
-    )
     demo.add_argument(
         "--greeting-delay",
         type=float,
@@ -125,7 +124,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     status = subparsers.add_parser("status", help="show daemon and session status")
     status.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
-    status.add_argument("--json", action="store_true", help="emit machine-readable JSON")
+    status_output = status.add_mutually_exclusive_group()
+    status_output.add_argument(
+        "--json", action="store_true", help="emit machine-readable JSON"
+    )
+    status_output.add_argument(
+        "--watch", action="store_true", help="continuously refresh the session legend"
+    )
+    status.add_argument(
+        "--interval",
+        type=float,
+        default=0.5,
+        help="seconds between --watch updates",
+    )
 
     send_state = subparsers.add_parser("send-state", help="send a state to the daemon")
     send_state.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
@@ -159,6 +170,12 @@ def build_parser() -> argparse.ArgumentParser:
         "codex-hook", help="process one Codex lifecycle hook event from stdin"
     )
     codex_hook.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
+    codex_hook.add_argument(
+        "--approval-timeout",
+        type=float,
+        default=60.0,
+        help="seconds to wait for a hardware approval decision",
+    )
 
     install_hooks = subparsers.add_parser(
         "install-codex-hooks", help="install lifecycle hooks for interactive Codex"
@@ -169,11 +186,27 @@ def build_parser() -> argparse.ArgumentParser:
         default=default_codex_hooks_path(),
         help="hooks.json path (default: ~/.codex/hooks.json)",
     )
+    install_hooks.add_argument(
+        "--socket",
+        default=default_socket_path(),
+        help="daemon Unix socket path to embed in the installed hooks",
+    )
+    install_hooks.add_argument(
+        "--approval-timeout",
+        type=float,
+        default=60.0,
+        help="seconds before falling back to Codex's keyboard approval prompt",
+    )
 
     listen_actions = subparsers.add_parser(
         "listen-actions", help="print hardware actions from the daemon"
     )
     listen_actions.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
+    listen_actions.add_argument(
+        "--once",
+        action="store_true",
+        help="exit after receiving one hardware action",
+    )
     _add_agent_arguments(listen_actions)
 
     monitor_midi = subparsers.add_parser(
@@ -185,6 +218,23 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=None,
         help="seconds to monitor before exiting",
+    )
+
+    codex = subparsers.add_parser(
+        "codex", help="run interactive Codex with labels and automatic cleanup"
+    )
+    codex.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
+    codex.add_argument("--codex", default="codex", help="Codex CLI executable")
+    codex.add_argument("--label", help="human-readable session label")
+    codex.add_argument(
+        "--no-terminal-title",
+        action="store_true",
+        help="leave Codex's terminal title behavior unchanged",
+    )
+    codex.add_argument(
+        "codex_args",
+        nargs=argparse.REMAINDER,
+        help="arguments passed unchanged to interactive Codex",
     )
 
     codex_exec = subparsers.add_parser(
@@ -267,7 +317,6 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command == "demo":
-            agent = DemoAgent(seconds_per_state=args.seconds_per_state)
             device = resolve_device(
                 profile_id=args.profile_id,
                 profile_file=args.profile_file,
@@ -279,7 +328,7 @@ def main(argv: list[str] | None = None) -> int:
                 startup_greeting=None if args.no_greeting else "HELLO FROM CODEX CLI",
                 scroll_delay=args.greeting_delay,
             )
-            run_demo_surface(surface, agent)
+            run_demo_surface(surface)
             return 0
 
         if args.command == "daemon":
@@ -305,6 +354,10 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command == "status":
+            if args.interval <= 0:
+                raise ValueError("status interval must be positive")
+            if args.watch:
+                return watch_status(args.socket, interval=args.interval)
             status_payload = request_message(args.socket, status_message())
             if args.json:
                 print(json.dumps(status_payload, indent=2, sort_keys=True))
@@ -334,21 +387,47 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command == "codex-hook":
-            return run_codex_hook(args.socket, sys.stdin, sys.stdout)
+            return run_codex_hook(
+                args.socket,
+                sys.stdin,
+                sys.stdout,
+                approval_timeout=args.approval_timeout,
+            )
 
         if args.command == "install-codex-hooks":
-            changed = install_codex_hooks(args.path)
+            hook_command = resolve_hook_command(
+                args.socket,
+                approval_timeout=args.approval_timeout,
+            )
+            changed = install_codex_hooks(
+                args.path,
+                command=hook_command,
+                approval_timeout=args.approval_timeout,
+            )
             status = "Installed" if changed else "Already installed"
             print(f"{status}: {args.path}")
+            print(f"Command: {hook_command}")
             print("Review and trust the hooks with /hooks in Codex.")
             return 0
 
         if args.command == "listen-actions":
-            return listen_actions(args.socket, _agent_from_args(args))
+            return listen_actions(args.socket, _agent_from_args(args), once=args.once)
 
         if args.command == "monitor-midi":
             monitor_midi_input(input_name=args.input, timeout=args.seconds)
             return 0
+
+        if args.command == "codex":
+            codex_args = args.codex_args
+            if codex_args and codex_args[0] == "--":
+                codex_args = codex_args[1:]
+            return run_codex_session(
+                codex_args,
+                args.socket,
+                label=args.label,
+                codex_binary=args.codex,
+                terminal_title=not args.no_terminal_title,
+            )
 
         if args.command == "codex-exec":
             prompt = args.prompt
@@ -422,7 +501,12 @@ def main(argv: list[str] | None = None) -> int:
     raise AssertionError(f"unhandled command: {args.command}")
 
 
-def listen_actions(socket_path: str, agent: AgentIdentity) -> int:
+def listen_actions(
+    socket_path: str,
+    agent: AgentIdentity,
+    *,
+    once: bool = False,
+) -> int:
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
         client.connect(socket_path)
         client.sendall(encode_message(subscribe_actions_message(agent)))
@@ -436,6 +520,8 @@ def listen_actions(socket_path: str, agent: AgentIdentity) -> int:
                 line, buffer = buffer.split(b"\n", 1)
                 if line.strip():
                     print(json.dumps(decode_message(line), separators=(",", ":")), flush=True)
+                    if once:
+                        return 0
 
 
 def _add_device_arguments(parser: argparse.ArgumentParser) -> None:
@@ -476,30 +562,120 @@ def _profile_summary(profile: DeviceProfile) -> dict[str, object]:
     }
 
 
-def _print_status(payload: dict[str, object]) -> None:
+ACCENT_RGB: dict[str, tuple[int, int, int]] = {
+    "cyan": (0, 174, 187),
+    "magenta": (200, 62, 201),
+    "lime": (112, 185, 45),
+    "orange": (230, 126, 34),
+    "violet": (118, 86, 199),
+    "teal": (0, 155, 131),
+    "rose": (217, 76, 118),
+    "sky": (55, 136, 216),
+}
+
+
+def watch_status(
+    socket_path: str,
+    *,
+    interval: float = 0.5,
+    stream: TextIO | None = None,
+) -> int:
+    """Render a stable, colorized multi-agent legend until interrupted."""
+
+    if interval <= 0:
+        raise ValueError("status interval must be positive")
+    if stream is None:
+        stream = sys.stdout
+    while True:
+        payload = request_message(socket_path, status_message())
+        if _stream_is_tty(stream):
+            stream.write("\x1b[H\x1b[J")
+        _print_status(payload, stream=stream)
+        stream.flush()
+        time.sleep(interval)
+
+
+def _print_status(
+    payload: dict[str, object],
+    *,
+    stream: TextIO | None = None,
+    color: bool | None = None,
+) -> None:
+    if stream is None:
+        stream = sys.stdout
     selected = payload.get("selected")
     selected_label = "none"
     if isinstance(selected, dict):
         selected_label = f"{selected.get('backend')}/{selected.get('session_id')}"
-    print(f"Device: {payload.get('profile')} (Visual Protocol {payload.get('visual_protocol')})")
-    print(f"Selected: {selected_label}")
-    print(f"Overflow: {payload.get('overflow_count', 0)}")
+    print(
+        f"Device: {payload.get('profile')} "
+        f"(Visual Protocol {payload.get('visual_protocol')})",
+        file=stream,
+    )
+    print(f"Selected: {selected_label}", file=stream)
+    print(f"Overflow: {payload.get('overflow_count', 0)}", file=stream)
     sessions = payload.get("sessions")
     if not isinstance(sessions, list) or not sessions:
-        print("Sessions: none")
+        print("Sessions: none", file=stream)
         return
-    print("Sessions:")
+    use_color = (
+        _stream_is_tty(stream) and "NO_COLOR" not in os.environ
+        if color is None
+        else color
+    )
+    print("Sessions:", file=stream)
+    print(
+        "    Scene  Color       State                 Label                    "
+        "Project              Session   Lease",
+        file=stream,
+    )
     for session in sessions:
         if not isinstance(session, dict):
             continue
-        marker = "*" if session.get("selected") else "-"
+        marker = ">" if session.get("selected") else " "
         slot = session.get("slot")
-        slot_label = str(int(slot) + 1) if isinstance(slot, int) else "overflow"
+        slot_label = f"S{int(slot) + 1}" if isinstance(slot, int) else "overflow"
+        accent = _safe_display(session.get("accent"), 8)
+        state = _safe_display(session.get("state"), 20)
+        label = _safe_display(session.get("label"), 24)
+        session_id = _safe_display(session.get("session_id"), 8)
+        metadata = session.get("metadata")
+        project = "-"
+        if isinstance(metadata, dict):
+            cwd = metadata.get("cwd")
+            if isinstance(cwd, str) and cwd:
+                project = Path(cwd).name or cwd
+        project = _safe_display(project, 20)
+        swatch = _accent_swatch(accent, color=use_color)
+        lease = "live" if session.get("leased") else "ttl"
         print(
-            f"  {marker} slot={slot_label} accent={session.get('accent')} "
-            f"state={session.get('state')} "
-            f"agent={session.get('backend')}/{session.get('session_id')}"
+            f"  {marker} {slot_label:<6} {swatch} {accent:<8} {state:<20} "
+            f"{label:<24} {project:<20} {session_id:<8} {lease}",
+            file=stream,
         )
+
+
+def _accent_swatch(accent: str, *, color: bool) -> str:
+    rgb = ACCENT_RGB.get(accent)
+    if not color or rgb is None:
+        return "[]"
+    red, green, blue = rgb
+    return f"\x1b[48;2;{red};{green};{blue}m  \x1b[0m"
+
+
+def _safe_display(value: object, limit: int) -> str:
+    text = value if isinstance(value, str) else "-"
+    safe = "".join(
+        character if ord(character) >= 32 and ord(character) != 127 else " "
+        for character in text
+    )
+    compact = " ".join(safe.split())
+    return compact[:limit] or "-"
+
+
+def _stream_is_tty(stream: TextIO) -> bool:
+    isatty = getattr(stream, "isatty", None)
+    return bool(isatty()) if callable(isatty) else False
 
 
 if __name__ == "__main__":

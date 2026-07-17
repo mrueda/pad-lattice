@@ -40,10 +40,16 @@ def state_message(
     state: AgentState,
     *,
     agent: AgentIdentity | dict[str, str] | None = None,
+    lease_id: str | None = None,
+    reply: bool = False,
 ) -> dict[str, Any]:
     message: dict[str, Any] = {"type": "state", "state": state.value}
     if agent:
         message["agent"] = encode_agent(agent)
+    if lease_id:
+        message["lease_id"] = lease_id
+    if reply:
+        message["reply"] = True
     return message
 
 
@@ -57,27 +63,54 @@ def status_message() -> dict[str, str]:
     return {"type": "status"}
 
 
+def session_lease_message(
+    lease_id: str,
+    *,
+    agent: AgentIdentity | dict[str, str] | None = None,
+    metadata: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    message: dict[str, Any] = {"type": "session_lease", "lease_id": lease_id}
+    if agent is not None:
+        message["agent"] = encode_agent(agent)
+    if metadata:
+        message["metadata"] = dict(metadata)
+    return message
+
+
 def action_message(
     action: ControlAction,
     agent: AgentIdentity,
+    *,
+    request_id: str | None = None,
 ) -> dict[str, Any]:
-    return {
+    message: dict[str, Any] = {
         "type": "action",
         "action": action.value,
         "agent": encode_agent(agent),
     }
+    if request_id:
+        message["request_id"] = request_id
+    return message
 
 
 def subscribe_actions_message(
     agent: AgentIdentity = DEFAULT_AGENT,
     actions: tuple[ControlAction, ...] | None = None,
+    *,
+    request_id: str | None = None,
+    one_shot: bool = False,
 ) -> dict[str, Any]:
     selected_actions = actions or tuple(ControlAction)
-    return {
+    message: dict[str, Any] = {
         "type": "subscribe_actions",
         "agent": encode_agent(agent),
         "actions": [action.value for action in selected_actions],
     }
+    if request_id:
+        message["request_id"] = request_id
+    if one_shot:
+        message["one_shot"] = True
+    return message
 
 
 def parse_state(value: Any) -> AgentState:
@@ -121,6 +154,38 @@ def parse_actions(value: Any) -> frozenset[ControlAction]:
         return frozenset(ControlAction(item) for item in value)
     except (TypeError, ValueError) as exc:
         raise ProtocolError("actions contains an unknown control action") from exc
+
+
+def parse_identifier(value: Any, *, field: str, default: str | None = None) -> str | None:
+    if value is None:
+        return default
+    if not isinstance(value, str) or not value:
+        raise ProtocolError(f"{field} must be a non-empty string")
+    return value
+
+
+def parse_metadata(value: Any) -> dict[str, str]:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ProtocolError("metadata must be a JSON object")
+    metadata: dict[str, str] = {}
+    for key, item in value.items():
+        if not isinstance(key, str) or not key:
+            raise ProtocolError("metadata keys must be non-empty strings")
+        if not isinstance(item, str):
+            raise ProtocolError("metadata values must be strings")
+        if item:
+            metadata[key] = item
+    return metadata
+
+
+def parse_boolean(value: Any, *, field: str, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if not isinstance(value, bool):
+        raise ProtocolError(f"{field} must be a boolean")
+    return value
 
 
 def send_message(socket_path: str, message: dict[str, Any]) -> None:

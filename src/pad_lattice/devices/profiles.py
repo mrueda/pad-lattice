@@ -626,11 +626,10 @@ def _palette(data: dict[str, Any], location: str) -> dict[str, int]:
         )
     for action in ControlAction:
         action_data = _object(actions, action.value, f"{location}.actions")
-        for role in ("enabled", "disabled"):
-            palette[f"action:{action.value}:{role}"] = _midi_value(
-                action_data.get(role),
-                f"{location}.actions.{action.value}.{role}",
-            )
+        palette[f"action:{action.value}:enabled"] = _midi_value(
+            action_data.get("enabled"),
+            f"{location}.actions.{action.value}.enabled",
+        )
 
     system = _object(data, "system", location)
     palette["system:overflow"] = _midi_value(

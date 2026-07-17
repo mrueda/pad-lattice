@@ -85,8 +85,11 @@ If this renders, reinstall the hooks, start a new Codex session, and run
 `/hooks` to verify that every Pad-Lattice command is trusted:
 
 ```bash
-pad-lattice install-codex-hooks
+pad-lattice install-codex-hooks --socket /tmp/pad-lattice.sock
 ```
+
+The installed commands contain the resolved socket path. Changing the daemon
+socket therefore requires reinstalling and trusting the updated hooks.
 
 ## A Background Session Replaced the Center
 
@@ -98,7 +101,7 @@ messages without identity all share `local/default`.
 Inspect the daemon's exact target and slot assignments:
 
 ```bash
-pad-lattice status
+pad-lattice status --watch
 ```
 
 ## Amber Overflow Light Stays On
@@ -111,13 +114,33 @@ end sessions that are no longer active:
 pad-lattice end-session --backend codex --session-id SESSION_ID
 ```
 
-Quiet unselected sessions are also retired by the daemon TTL. Sessions waiting
-for approval are intentionally protected.
+Closing a `pad-lattice codex` launcher removes its leased Scene immediately.
+Inactive sessions started with plain `codex` are retired by the daemon TTL or
+can be ended explicitly.
 
-## Action Pads Are Dim
+## Approve or Reject Does Nothing
 
-Dim means the selected session has no connected subscriber for that action.
-This is expected for interactive Codex lifecycle hooks, which are state-only.
+An action control is completely dark when no live request can consume it. A
+lit Approve or Reject control means an interactive Codex `PermissionRequest`
+hook is waiting for that exact session.
+
+Confirm all of the following:
+
+- the requesting agent's right-side Scene is selected;
+- `/hooks` shows the current Pad-Lattice `PermissionRequest` handler as trusted;
+- the daemon and installed hooks use the same socket;
+- the 60-second hardware window has not elapsed.
+
+Reinstall changed hooks and review them again:
+
+```bash
+pad-lattice install-codex-hooks
+```
+
+If the hardware window expires, Codex presents its normal keyboard approval
+prompt. Approve applies only to the current permission request.
+
+Test generic routing with an explicit identity:
 
 Test routing with an explicit identity:
 
@@ -125,12 +148,28 @@ Test routing with an explicit identity:
 pad-lattice listen-actions --backend test --session-id agent-a
 ```
 
-Select that session's pad, then press an action. The listener should receive a
+Select that session's Scene, then press an action. The listener should receive a
 JSON message containing the same identity. Actions are intentionally ignored
 instead of broadcast when no matching subscriber exists.
 
-For `codex-exec`, only Stop is advertised. Approve, reject, and retry remain
-dim.
+For `codex-exec`, only Stop is available. Interactive Stop, Retry, and ordinary
+chat replies are not provided by Codex permission hooks.
+
+## A Closed Codex Session Remains Colored
+
+Use the leased launcher for immediate process-lifecycle cleanup:
+
+```bash
+pad-lattice codex --label task -- resume <SESSION_ID>
+```
+
+Plain Codex exposes no terminal-close hook. Remove a direct session manually
+or let the unleased-session TTL retire it:
+
+```bash
+pad-lattice status
+pad-lattice end-session --backend codex --session-id <SESSION_ID>
+```
 
 ## Validate a Profile
 

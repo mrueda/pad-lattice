@@ -93,5 +93,5 @@ class VisualProtocolTest(TestCase):
             "state:waiting_for_approval:summary",
         )
         self.assertEqual(frame.actions[ControlAction.APPROVE], "action:approve:enabled")
-        self.assertEqual(frame.actions[ControlAction.REJECT], "action:reject:disabled")
+        self.assertEqual(frame.actions[ControlAction.REJECT], "off")
         self.assertEqual(frame.overflow, "system:overflow")

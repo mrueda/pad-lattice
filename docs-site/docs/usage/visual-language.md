@@ -35,7 +35,7 @@ Read the square; press the round button.
 <div className="matrixDiagram" aria-label="Pad-Lattice common Launchpad surface">
   <div className="surfaceTierLabel"><strong>ACTION</strong><span>top rail: selected-agent commands and system state</span></div>
   <div className="topRail" aria-label="Top action and system controls">
-    <span className="externalPad approve">approve<br />CC91</span><span className="externalPad reject">reject<br />CC92</span><span className="externalPad">CC93</span><span className="externalPad">CC94</span><span className="overflowPad">more<br />CC95</span><span className="externalPad">CC96</span><span className="externalPad retry">retry<br />CC97</span><span className="externalPad stop">stop<br />CC98</span>
+    <span className="externalPad approve">approve<br />CC91</span><span className="externalPad reject">reject<br />CC92</span><span className="externalPad">CC93</span><span className="externalPad">CC94</span><span className="externalPad">more<br />CC95</span><span className="externalPad">CC96</span><span className="externalPad">retry<br />CC97</span><span className="externalPad">stop<br />CC98</span>
   </div>
   <div className="surfaceTierLabel"><strong>STATE</strong><span>7x8 selected-agent glyph, status column, and Agent Scene strip</span></div>
   <div className="controllerBody">
@@ -108,6 +108,50 @@ remain recognizable without writing raw session IDs to disk.
 
 The selected-agent canvas is 7x8. Shape and color are both normative.
 
+<div className="matrixDiagram">
+  <div className="stateExampleGrid">
+    <div>
+      <p><strong>Waiting for reply (?)</strong></p>
+      <div className="stateMatrix" aria-label="White question mark for waiting for reply">
+        <span></span><span className="semanticWhite"></span><span className="semanticWhite"></span><span className="semanticWhite"></span><span className="semanticWhite"></span><span className="semanticWhite"></span><span></span>
+        <span className="semanticWhite"></span><span></span><span></span><span></span><span></span><span></span><span className="semanticWhite"></span>
+        <span></span><span></span><span></span><span></span><span></span><span className="semanticWhite"></span><span className="semanticWhite"></span>
+        <span></span><span></span><span></span><span></span><span className="semanticWhite"></span><span className="semanticWhite"></span><span></span>
+        <span></span><span></span><span></span><span></span><span className="semanticWhite"></span><span></span><span></span>
+        <span></span><span></span><span></span><span className="semanticWhite"></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span className="semanticWhite"></span><span></span><span></span><span></span>
+      </div>
+    </div>
+    <div>
+      <p><strong>Waiting for approval (!)</strong></p>
+      <div className="stateMatrix" aria-label="Amber exclamation mark for waiting for approval">
+        <span></span><span></span><span></span><span className="semanticAmber"></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span className="semanticAmber"></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span className="semanticAmber"></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span className="semanticAmber"></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span className="semanticAmber"></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span className="semanticAmber"></span><span></span><span></span><span></span>
+      </div>
+    </div>
+    <div>
+      <p><strong>Success :-)</strong></p>
+      <div className="stateMatrix" aria-label="Green happy face for success">
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        <span></span><span className="semanticGreen"></span><span></span><span></span><span></span><span className="semanticGreen"></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        <span className="semanticGreen"></span><span></span><span></span><span></span><span></span><span></span><span className="semanticGreen"></span>
+        <span></span><span className="semanticGreen"></span><span></span><span></span><span></span><span className="semanticGreen"></span><span></span>
+        <span></span><span></span><span className="semanticGreen"></span><span></span><span className="semanticGreen"></span><span></span><span></span>
+        <span></span><span></span><span></span><span className="semanticGreen"></span><span></span><span></span><span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
 | State | Shape and color |
 | --- | --- |
 | running | Blue three-dot ellipsis |
@@ -131,10 +175,11 @@ unless the daemon starts with --activity-motion.
 | CC 97 | retry | Selected session is failed or cancelled and advertises Retry. |
 | CC 98 | stop | Selected session is running and advertises Stop. |
 
-An enabled action is bright; a mapped but unavailable action is dim. Presses
-are debounced and routed only to the selected identity. They are never
-broadcast. CC 93, 94, and 96 remain unassigned. CC 95 is a steady amber
-overflow indicator.
+An enabled action is bright; a mapped but unavailable action is completely
+dark. Color is therefore a strict promise that pressing the control will do
+something now. Presses are debounced and routed only to one pending request
+for the selected identity. They are never broadcast. CC 93, 94, and 96 remain
+unassigned. CC 95 is a steady amber overflow indicator.
 
 ## Capacity and Device Independence
 
