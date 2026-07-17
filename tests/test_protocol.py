@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from unittest import TestCase
 
-from pad_lattice.events import AgentState, ControlAction
+from pad_lattice.events import AgentIdentity, AgentState, ControlAction
 from pad_lattice.protocol import (
     ProtocolError,
     action_message,
     decode_message,
     encode_message,
     parse_action,
+    parse_actions,
+    parse_agent,
     parse_state,
     state_message,
     subscribe_actions_message,
@@ -24,27 +26,61 @@ class ProtocolTest(TestCase):
             {"type": "state", "state": "waiting_for_reply"},
         )
 
-    def test_state_message_can_include_agent_identity(self) -> None:
+    def test_state_message_can_include_agent_identity_and_metadata(self) -> None:
         self.assertEqual(
             state_message(
                 AgentState.RUNNING,
-                agent={"backend": "codex", "session_id": "session-123"},
+                agent={
+                    "backend": "codex",
+                    "session_id": "session-123",
+                    "model": "gpt-test",
+                },
             ),
             {
                 "type": "state",
                 "state": "running",
+                "agent": {
+                    "backend": "codex",
+                    "session_id": "session-123",
+                    "model": "gpt-test",
+                },
+            },
+        )
+
+    def test_action_message_is_agent_scoped(self) -> None:
+        identity = AgentIdentity("codex", "session-123")
+
+        self.assertEqual(
+            action_message(ControlAction.APPROVE, identity),
+            {
+                "type": "action",
+                "action": "approve",
                 "agent": {"backend": "codex", "session_id": "session-123"},
             },
         )
 
-    def test_action_message_uses_action_type(self) -> None:
+    def test_subscribe_actions_message_advertises_capabilities(self) -> None:
+        identity = AgentIdentity("codex", "session-123")
+
         self.assertEqual(
-            action_message(ControlAction.APPROVE),
-            {"type": "action", "action": "approve"},
+            subscribe_actions_message(
+                identity,
+                (ControlAction.APPROVE, ControlAction.REJECT),
+            ),
+            {
+                "type": "subscribe_actions",
+                "agent": {"backend": "codex", "session_id": "session-123"},
+                "actions": ["approve", "reject"],
+            },
         )
 
-    def test_subscribe_actions_message(self) -> None:
-        self.assertEqual(subscribe_actions_message(), {"type": "subscribe_actions"})
+    def test_parse_agent_rejects_incomplete_identity(self) -> None:
+        with self.assertRaises(ProtocolError):
+            parse_agent({"backend": "codex"}, default=None)
+
+    def test_parse_actions_rejects_empty_capabilities(self) -> None:
+        with self.assertRaises(ProtocolError):
+            parse_actions([])
 
     def test_parse_state_rejects_unknown_state(self) -> None:
         with self.assertRaises(ProtocolError):

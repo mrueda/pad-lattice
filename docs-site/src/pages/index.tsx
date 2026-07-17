@@ -7,7 +7,7 @@ const featureLinks = [
   {
     label: 'Setup',
     title: 'Start the daemon',
-    text: 'Install Pad-Lattice, find MIDI ports, and run the sidecar process that owns the Launchpad.',
+    text: 'Install Pad-Lattice, detect a device profile, and run the sidecar process that owns the MIDI controller.',
     to: '/docs/usage/quickstart',
   },
   {
@@ -17,10 +17,10 @@ const featureLinks = [
     to: '/docs/usage/codex-integration',
   },
   {
-    label: 'Hardware',
-    title: 'Read the surface',
-    text: 'Understand the color and shape language for running, waiting, approval, success, and error.',
-    to: '/docs/usage/visual-language',
+    label: 'Profiles',
+    title: 'Test more hardware',
+    text: 'Validate an experimental or community device with a guided, privacy-preserving physical report.',
+    to: '/docs/usage/device-testing',
   },
   {
     label: 'Protocol',
@@ -47,8 +47,8 @@ export default function Home() {
               <h1>Repurpose MIDI controllers for AI agents.</h1>
               <p className={styles.lede}>
                 Bring tactile input and RGB feedback beyond music. Pad-Lattice
-                turns a <strong>Novation Launchpad Pro Mk1</strong> into a local
-                supervisor that integrates directly with <strong>Codex CLI</strong>.
+                turns compatible <strong>Novation Launchpads</strong> into local
+                supervisors that integrate directly with <strong>Codex CLI</strong>.
               </p>
               <div className={styles.actions}>
                 <Link className="button button--primary button--lg" to="/docs/overview">

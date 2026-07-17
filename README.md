@@ -7,145 +7,128 @@
 
 # Pad-Lattice
 
-**Pad-Lattice repurposes MIDI grid controllers as physical control surfaces for
-AI agents.**
-
 [![Build](https://github.com/mrueda/pad-lattice/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/mrueda/pad-lattice/actions/workflows/build-and-test.yml)
 [![Documentation Status](https://github.com/mrueda/pad-lattice/actions/workflows/documentation.yml/badge.svg)](https://github.com/mrueda/pad-lattice/actions/workflows/documentation.yml)
-[![Documentation](https://img.shields.io/badge/docs-online-blue)](https://mrueda.github.io/pad-lattice/)
 [![Python](https://img.shields.io/badge/python-%3E%3D3.10-blue)](https://github.com/mrueda/pad-lattice/blob/main/pyproject.toml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/mrueda/pad-lattice/blob/main/LICENSE)
 
-MIDI controllers already provide durable pads, RGB feedback, low-latency input,
-and a mature cross-platform protocol. Pad-Lattice brings that hardware
-ecosystem beyond music by turning a grid controller into a physical supervisor
-for coding agents. Its daemon owns the hardware, renders agent state on the
-LEDs, and exposes a small local protocol for agent integrations.
+**📘 Documentation:** <https://mrueda.github.io/pad-lattice/>
 
-The first supported device is the **Novation Launchpad Pro Mk1**. The first
-agent integration is **Codex CLI**, including direct lifecycle state updates
-for normal terminal sessions. Pad-Lattice does not require a browser or
-graphical agent UI to be open or focused.
+**🚀 Quick Start:** <https://mrueda.github.io/pad-lattice/docs/usage/quickstart>
 
-Pad-Lattice is currently **alpha software**. The hardware demo, local daemon,
-socket protocol, interactive Codex state hooks, and non-interactive Codex
-adapter are functional. Applying Launchpad actions directly to interactive
-Codex approval prompts remains on the roadmap.
+**🎛️ Device Testing:** <https://mrueda.github.io/pad-lattice/docs/usage/device-testing>
 
-Pad-Lattice is not a token-probability visualizer, macro keyboard, or browser
-WebMIDI app. It is a local agent state and action surface: running, waiting for
-reply, waiting for approval, success, error, approve, reject, retry, and stop.
+**📦 GitHub Repository:** <https://github.com/mrueda/pad-lattice>
 
-**Documentation:** <a href="https://mrueda.github.io/pad-lattice/" target="_blank">https://mrueda.github.io/pad-lattice/</a>
+**Pad-Lattice repurposes MIDI grid controllers as physical control surfaces for
+AI agents.** A local daemon owns the controller, renders agent state with
+steady RGB feedback, and routes physical actions through a small Unix-socket
+protocol. No browser or graphical agent UI is required.
 
-**Quick Start:** <a href="https://mrueda.github.io/pad-lattice/docs/usage/quickstart" target="_blank">https://mrueda.github.io/pad-lattice/docs/usage/quickstart</a>
+The first integration is **Codex CLI**. Interactive `codex` and `codex resume`
+sessions report lifecycle state through hooks, while `codex-exec` supports
+non-interactive tasks and a hardware Stop action.
 
-**Production Use:** <a href="https://mrueda.github.io/pad-lattice/docs/usage/production" target="_blank">https://mrueda.github.io/pad-lattice/docs/usage/production</a>
+Pad-Lattice is alpha software. State rendering, device profiles, multi-agent
+selection, targeted action routing, Codex lifecycle hooks, and the
+non-interactive Codex adapter are implemented. Directly applying approval,
+reject, and retry actions to an interactive Codex terminal remains planned.
 
-**GitHub Repository:** <a href="https://github.com/mrueda/pad-lattice" target="_blank">https://github.com/mrueda/pad-lattice</a>
+## Hardware
+
+| Device | Profile ID | Status |
+| --- | --- | --- |
+| Novation Launchpad Pro Mk1 | `novation/launchpad/pro-mk1` | **Supported and physically tested** |
+| Novation Launchpad Mini Mk3 | `novation/launchpad/mini-mk3` | **Experimental; testers wanted** |
+
+The generic `midi.palette-grid` driver reads declarative JSON profiles. New
+controllers can define port matching, programmer-mode messages, note maps,
+static palette colors, action controls, and agent selectors without changing
+the agent protocol.
 
 ## Installation
 
-Install the command in an isolated environment with
-[pipx](https://pipx.pypa.io/):
+Install the current GitHub version in an isolated environment:
 
 ```bash
-pipx install pad-lattice
+pipx install git+https://github.com/mrueda/pad-lattice.git
 ```
 
-Alternatively, install it into the active Python environment:
+For development:
 
 ```bash
-python3 -m pip install pad-lattice
-```
-
-Confirm the installed version:
-
-```bash
-pad-lattice --version
+git clone https://github.com/mrueda/pad-lattice.git
+cd pad-lattice
+python3 -m venv .venv
+.venv/bin/python -m pip install -e .
 ```
 
 ## Quick Start
 
-List MIDI ports:
+Discover hardware and run the supported-device demo:
 
 ```bash
-pad-lattice ports
-```
-
-Run the hardware demo:
-
-```bash
+pad-lattice devices
 pad-lattice demo
 ```
 
-Run the production daemon:
+Start the daemon and install Codex lifecycle hooks:
 
 ```bash
-pad-lattice daemon
-```
-
-Install lifecycle hooks for normal `codex` and `codex resume` sessions:
-
-```bash
+pad-lattice daemon --no-greeting
 pad-lattice install-codex-hooks
 ```
 
-Start a new Codex CLI session, run `/hooks`, and explicitly review and trust
-the installed commands. Interactive prompt, running, approval, and completion
-states will then update the Launchpad automatically.
+Start a new Codex session, run `/hooks`, and review and trust the installed
+commands. The controller will then follow prompt, running, approval, and
+completion states.
 
-Send a state from another process:
-
-```bash
-pad-lattice send-state waiting_for_reply
-pad-lattice send-state running
-pad-lattice send-state waiting_for_approval
-```
-
-Run a non-interactive Codex task with Launchpad state updates:
+The experimental Mini Mk3 profile must be selected explicitly:
 
 ```bash
-pad-lattice codex-exec "summarize this repository in one sentence"
+pad-lattice demo --profile novation/launchpad/mini-mk3
 ```
 
-## Hardware
+Run its guided physical verification and create a privacy-preserving report:
 
-Currently tested:
+```bash
+pad-lattice profile test novation/launchpad/mini-mk3 \
+  --report mini-mk3-report.json
+```
 
-- Novation Launchpad Pro Mk1
+## Surface
 
-Planned extension point:
+The top six rows show the selected agent state. The bottom two rows expose
+four session slots and four actions:
 
-- Additional Launchpad and MIDI grid controllers through device profiles.
+```text
+selected agent state                                     rows 81-38
+--  -- [S1][S2][S3][S4] --  --                         status LEDs
+AP  NO [A1][A2][A3][A4] RE  ST                         actions/selectors
+11  12  13  14  15  16  17  18
+```
 
-The protocol is intentionally device-agnostic so controller manufacturers and
-hardware developers can add profiles without coupling their devices to Codex.
+| Visual | Meaning |
+| --- | --- |
+| Blue symbol + white activity dot | Running |
+| White `?` | Waiting for reply |
+| Yellow `!` | Waiting for approval |
+| Green happy face | Success |
+| Red X | Error |
 
-Only one process can own the Launchpad MIDI ports at a time. For normal use,
-run one long-lived `pad-lattice daemon` and let agent integrations talk to it
-through the local socket.
-
-The current surface displays one global state. Hook messages already carry the
-Codex session identity, but selecting among simultaneous agents and routing
-actions to only the selected session are not implemented yet.
+Agent selectors use distinct accent colors. The selected slot is bright; other
+occupied slots are dim. Each status pad keeps the semantic state color of its
+session. Hardware actions are sent only to the selected session and only when
+that session has a live subscriber for the action.
 
 ## Development
 
-Install an editable checkout and run the Python test suite:
-
 ```bash
-python3 -m pip install -e .
-python3 -m unittest discover -s tests
+.venv/bin/python -m unittest discover -s tests
+python3 -m py_compile src/pad_lattice/*.py src/pad_lattice/devices/*.py tests/*.py
 ```
 
-Run bytecode checks:
-
-```bash
-python3 -m py_compile src/pad_lattice/*.py tests/*.py
-```
-
-Run the docs checks:
+Documentation checks:
 
 ```bash
 cd docs-site
@@ -154,25 +137,21 @@ npm run typecheck
 npm run build
 ```
 
-The maintainer release process is documented in
-[RELEASING.md](https://github.com/mrueda/pad-lattice/blob/main/RELEASING.md).
+Release instructions are in [RELEASING.md](RELEASING.md).
 
 ## Citation
 
-No formal citation is available yet. For now, cite the GitHub repository:
+No formal publication is available yet. For now, cite:
 
-Pad-Lattice: hardware control surface for coding agents.
-https://github.com/mrueda/pad-lattice
+> Pad-Lattice: repurposing MIDI grid controllers as physical control surfaces
+> for AI agents. <https://github.com/mrueda/pad-lattice>
 
 ## Author
 
 Written by Manuel Rueda.
 
-Repository: <https://github.com/mrueda/pad-lattice>
-
 ## Copyright and License
 
 Copyright (C) 2026 Manuel Rueda.
 
-This project is distributed under the Apache License 2.0. See the
-[LICENSE](https://github.com/mrueda/pad-lattice/blob/main/LICENSE) for details.
+Distributed under the Apache License 2.0. See [LICENSE](LICENSE).

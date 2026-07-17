@@ -150,6 +150,54 @@
   color: #ffffff;
 }
 
+.matrixCell.accentOne {
+  background: #0891b2;
+  border-color: #67e8f9;
+  color: #ffffff;
+}
+
+.matrixCell.accentTwo {
+  background: #9333ea;
+  border-color: #d8b4fe;
+  color: #ffffff;
+}
+
+.matrixCell.accentThree {
+  background: #db2777;
+  border-color: #f9a8d4;
+  color: #ffffff;
+}
+
+.matrixCell.accentFour {
+  background: #0d9488;
+  border-color: #5eead4;
+  color: #ffffff;
+}
+
+.matrixCell.statusBlue {
+  background: #2563eb;
+  border-color: #93c5fd;
+  color: #ffffff;
+}
+
+.matrixCell.statusWhite {
+  background: #f8fafc;
+  border-color: #ffffff;
+  color: #111827;
+}
+
+.matrixCell.statusYellow {
+  background: #eab308;
+  border-color: #fde047;
+  color: #111827;
+}
+
+.matrixCell.statusGreen {
+  background: #16a34a;
+  border-color: #86efac;
+  color: #ffffff;
+}
+
 .stateExampleGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

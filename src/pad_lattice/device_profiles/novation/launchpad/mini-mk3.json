@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "id": "novation/launchpad/mini-mk3",
+  "name": "Novation Launchpad Mini Mk3",
+  "manufacturer": "Novation",
+  "family": "Launchpad",
+  "model": "Mini Mk3",
+  "status": "experimental",
+  "driver": "midi.palette-grid",
+  "ports": {
+    "input": [
+      "LPMiniMK3.*MIDI",
+      "Launchpad Mini.*MIDI"
+    ],
+    "output": [
+      "LPMiniMK3.*MIDI",
+      "Launchpad Mini.*MIDI"
+    ]
+  },
+  "grid": {
+    "kind": "note",
+    "channel": 0,
+    "state_rows": 6,
+    "rows": [
+      [81, 82, 83, 84, 85, 86, 87, 88],
+      [71, 72, 73, 74, 75, 76, 77, 78],
+      [61, 62, 63, 64, 65, 66, 67, 68],
+      [51, 52, 53, 54, 55, 56, 57, 58],
+      [41, 42, 43, 44, 45, 46, 47, 48],
+      [31, 32, 33, 34, 35, 36, 37, 38],
+      [21, 22, 23, 24, 25, 26, 27, 28],
+      [11, 12, 13, 14, 15, 16, 17, 18]
+    ]
+  },
+  "controls": {
+    "approve": {"kind": "note", "number": 11},
+    "reject": {"kind": "note", "number": 12},
+    "retry": {"kind": "note", "number": 17},
+    "stop": {"kind": "note", "number": 18},
+    "selectors": [
+      {"kind": "note", "number": 13},
+      {"kind": "note", "number": 14},
+      {"kind": "note", "number": 15},
+      {"kind": "note", "number": 16}
+    ],
+    "statuses": [
+      {"kind": "note", "number": 23},
+      {"kind": "note", "number": 24},
+      {"kind": "note", "number": 25},
+      {"kind": "note", "number": 26}
+    ]
+  },
+  "colors": {
+    "off": 0,
+    "white": 3,
+    "blue": 45,
+    "yellow": 13,
+    "green": 21,
+    "red": 5,
+    "dim_blue": 41,
+    "dim_green": 17,
+    "dim_red": 7,
+    "dim_yellow": 9
+  },
+  "accents": [
+    {"bright": 37, "dim": 33},
+    {"bright": 53, "dim": 49},
+    {"bright": 21, "dim": 17},
+    {"bright": 9, "dim": 7}
+  ],
+  "messages": {
+    "startup": [
+      {"type": "sysex", "data": [0, 32, 41, 2, 13, 14, 1]}
+    ],
+    "clear": [],
+    "shutdown": [
+      {"type": "sysex", "data": [0, 32, 41, 2, 13, 14, 0]}
+    ]
+  },
+  "capabilities": {
+    "text_scroll": true
+  }
+}

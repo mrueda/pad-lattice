@@ -75,6 +75,11 @@ const config: Config = {
           position: 'left',
         },
         {
+          to: '/docs/usage/device-testing',
+          label: 'Test a Device',
+          position: 'left',
+        },
+        {
           href: 'https://github.com/mrueda/pad-lattice',
           label: 'GitHub',
           position: 'right',
@@ -98,6 +103,10 @@ const config: Config = {
             {
               label: 'Production Use',
               to: '/docs/usage/production',
+            },
+            {
+              label: 'Test a Device',
+              to: '/docs/usage/device-testing',
             },
             {
               label: 'Troubleshooting',

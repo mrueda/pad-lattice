@@ -1,76 +1,90 @@
 # Production Use
 
-Run one long-lived daemon to own the Launchpad MIDI ports. Other processes use
-the local Pad-Lattice socket and never open the MIDI device themselves.
+Run one long-lived daemon to own the controller's MIDI ports. Agent processes
+use the local socket and never open the hardware themselves.
 
-## Non-interactive Codex
+## Start the Daemon
 
-Terminal 1:
+For a supported, auto-detected device:
 
 ```bash
 pad-lattice daemon --no-greeting --terminal-hold 1.5
 ```
 
-Terminal 2:
+Select an experimental profile explicitly:
 
 ```bash
-pad-lattice codex-exec "summarize this repository"
+pad-lattice daemon \
+  --profile novation/launchpad/mini-mk3 \
+  --no-greeting
 ```
 
-The adapter maps `codex exec --json` events to Launchpad states. During the
-run, pad `18` sends `stop` and terminates the Codex process.
+Use `--input` and `--output` only when several ports match. The daemon fails on
+ambiguous detection instead of guessing.
 
 ## Interactive Codex
 
-Install the lifecycle hooks once:
+Install lifecycle hooks once:
 
 ```bash
 pad-lattice install-codex-hooks
 ```
 
-Start a new `codex` or `codex resume` session beside the daemon:
+Start one or more terminal sessions:
 
 ```bash
 codex
 codex resume <SESSION_ID>
 ```
 
-Run `/hooks` in Codex to review and trust the Pad-Lattice commands. Prompt,
-running, approval, and completion states then update automatically.
+Run `/hooks` in each new Codex session to review and trust the installed
+commands. Each hook update carries its Codex session identity. Up to four
+sessions remain visible on the controller, and pads `13` through `16` select
+which state is shown in the center.
 
-Test state rendering manually without opening the MIDI device from the Codex
-terminal:
+The lifecycle hook is a passive state source. It does not advertise action
+capabilities, so action pads remain dim for interactive Codex sessions until a
+native action bridge is implemented.
+
+## Non-Interactive Codex
+
+Run independent tasks from other terminals:
 
 ```bash
-pad-lattice send-state running
-pad-lattice send-state waiting_for_approval
-pad-lattice send-state success
+pad-lattice codex-exec "summarize this repository"
+pad-lattice codex-exec "review the current diff"
 ```
 
-Listen for pad actions:
+Each process receives its own ephemeral agent identity and visible slot. Select
+the desired task, then press pad `18` to send Stop only to that process. Stop is
+bright only while the selected adapter has a live subscriber.
 
-```bash
-pad-lattice listen-actions
-```
+## Slot Policy
 
-The daemon emits `approve`, `reject`, `retry`, and `stop`, but the passive
-lifecycle hook does not yet apply those actions to an interactive session.
+The surface shows four sessions:
 
-## Multiple Codex sessions
+1. The first session is selected.
+2. Later sessions use free slots without stealing selection.
+3. The selected session and approval-waiting sessions are pinned.
+4. A fifth session replaces the least recently active unselected session that
+   is not waiting for approval.
+5. New activity can bring an overflow session back into a visible slot.
 
-Hook updates carry their Codex session ID, but the current daemon still renders
-one global state. If several sessions run simultaneously, the most recent event
-wins and the display can switch between them. Hardware actions are not yet
-routed to a selected session.
+Slot assignments are ephemeral and reset with the daemon.
 
-Until the planned session selector is implemented, use one hooked interactive
-session when the Launchpad state must be authoritative.
+## Custom Socket
 
-## Custom socket path
-
-The default socket is selected automatically. To override it, set the same path
-for the daemon and every client:
+The daemon and all clients must use the same path:
 
 ```bash
 export PAD_LATTICE_SOCKET=/tmp/pad-lattice.sock
 ```
+
+The default is `$XDG_RUNTIME_DIR/pad-lattice.sock` when available, otherwise a
+per-user socket under `/tmp`.
+
+## Shutdown
+
+Stop the daemon with `Ctrl-C`. The surface clears its LEDs, sends any profile
+shutdown command, and closes both MIDI ports. The Mini Mk3 profile explicitly
+returns the controller to Live mode.

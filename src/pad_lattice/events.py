@@ -27,8 +27,20 @@ class ControlAction(str, Enum):
 
 
 @dataclass(frozen=True)
+class AgentIdentity:
+    """Stable identity supplied by an agent integration."""
+
+    backend: str
+    session_id: str
+
+
+DEFAULT_AGENT = AgentIdentity("local", "default")
+
+
+@dataclass(frozen=True)
 class AgentEvent:
     """A state update from any supported coding agent backend."""
 
     state: AgentState
+    agent: AgentIdentity = DEFAULT_AGENT
     detail: str = ""

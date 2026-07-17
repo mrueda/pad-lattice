@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 
+from pad_lattice.devices.base import ActionPressed, ControlSurface, SurfaceView
 from pad_lattice.events import AgentState, ControlAction
 
 
@@ -49,3 +50,40 @@ class DemoAgent:
     def _set_state(self, state: AgentState) -> None:
         self._index = self._states.index(state)
         self._last_change = time.monotonic()
+
+
+def run_demo_surface(
+    surface: ControlSurface,
+    agent: DemoAgent,
+    *,
+    poll_interval: float = 0.03,
+) -> None:
+    """Run the hardware demo against any configured control surface."""
+
+    frame = 0
+    last_running_frame = time.monotonic()
+    on_action = agent.action_logger()
+    try:
+        surface.initialize()
+        while True:
+            state = agent.current_state()
+            now = time.monotonic()
+            if state is AgentState.RUNNING and now - last_running_frame >= 1.5:
+                frame += 1
+                last_running_frame = now
+            surface.render(
+                SurfaceView(
+                    selected_state=state,
+                    frame=frame,
+                    sessions=(),
+                    available_actions=frozenset(ControlAction),
+                )
+            )
+            for event in surface.poll_events():
+                if isinstance(event, ActionPressed):
+                    on_action(event.action)
+            time.sleep(poll_interval)
+    except KeyboardInterrupt:
+        return
+    finally:
+        surface.close()

@@ -7,7 +7,7 @@ import os
 import socket
 from typing import Any
 
-from pad_lattice.events import AgentState, ControlAction
+from pad_lattice.events import DEFAULT_AGENT, AgentIdentity, AgentState, ControlAction
 
 
 class ProtocolError(ValueError):
@@ -39,34 +39,78 @@ def decode_message(line: bytes) -> dict[str, Any]:
 def state_message(
     state: AgentState,
     *,
-    agent: dict[str, str] | None = None,
+    agent: AgentIdentity | dict[str, str] | None = None,
 ) -> dict[str, Any]:
     message: dict[str, Any] = {"type": "state", "state": state.value}
     if agent:
-        message["agent"] = agent
+        message["agent"] = encode_agent(agent)
     return message
 
 
-def action_message(action: ControlAction) -> dict[str, str]:
-    return {"type": "action", "action": action.value}
+def action_message(
+    action: ControlAction,
+    agent: AgentIdentity,
+) -> dict[str, Any]:
+    return {
+        "type": "action",
+        "action": action.value,
+        "agent": encode_agent(agent),
+    }
 
 
-def subscribe_actions_message() -> dict[str, str]:
-    return {"type": "subscribe_actions"}
+def subscribe_actions_message(
+    agent: AgentIdentity = DEFAULT_AGENT,
+    actions: tuple[ControlAction, ...] | None = None,
+) -> dict[str, Any]:
+    selected_actions = actions or tuple(ControlAction)
+    return {
+        "type": "subscribe_actions",
+        "agent": encode_agent(agent),
+        "actions": [action.value for action in selected_actions],
+    }
 
 
 def parse_state(value: Any) -> AgentState:
     try:
         return AgentState(value)
-    except ValueError as exc:
+    except (TypeError, ValueError) as exc:
         raise ProtocolError(f"unknown state: {value}") from exc
 
 
 def parse_action(value: Any) -> ControlAction:
     try:
         return ControlAction(value)
-    except ValueError as exc:
+    except (TypeError, ValueError) as exc:
         raise ProtocolError(f"unknown action: {value}") from exc
+
+
+def encode_agent(agent: AgentIdentity | dict[str, str]) -> dict[str, str]:
+    if isinstance(agent, AgentIdentity):
+        return {"backend": agent.backend, "session_id": agent.session_id}
+    return dict(agent)
+
+
+def parse_agent(value: Any, *, default: AgentIdentity | None = DEFAULT_AGENT) -> AgentIdentity:
+    if value is None and default is not None:
+        return default
+    if not isinstance(value, dict):
+        raise ProtocolError("agent must be a JSON object")
+    backend = value.get("backend")
+    session_id = value.get("session_id")
+    if not isinstance(backend, str) or not backend:
+        raise ProtocolError("agent.backend must be a non-empty string")
+    if not isinstance(session_id, str) or not session_id:
+        raise ProtocolError("agent.session_id must be a non-empty string")
+    return AgentIdentity(backend, session_id)
+
+
+def parse_actions(value: Any) -> frozenset[ControlAction]:
+    if not isinstance(value, list) or not value:
+        raise ProtocolError("actions must be a non-empty JSON array")
+    try:
+        return frozenset(ControlAction(item) for item in value)
+    except (TypeError, ValueError) as exc:
+        raise ProtocolError("actions contains an unknown control action") from exc
 
 
 def send_message(socket_path: str, message: dict[str, Any]) -> None:

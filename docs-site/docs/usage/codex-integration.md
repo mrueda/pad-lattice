@@ -1,28 +1,20 @@
 # Codex Integration
 
-Pad-Lattice integrates directly with Codex CLI. Interactive terminal sessions
-use Codex lifecycle hooks; non-interactive tasks use the Codex JSONL event
-stream. Neither path requires a graphical agent UI.
+Pad-Lattice integrates with Codex CLI through two documented event paths.
+Interactive terminals use lifecycle hooks; non-interactive tasks use the
+`codex exec --json` event stream. Neither path requires a graphical UI.
 
-## Interactive Codex
+## Interactive Sessions
 
-Install Pad-Lattice's user-level lifecycle hooks once:
+Install the user-level hooks once:
 
 ```bash
 pad-lattice install-codex-hooks
 ```
 
-The command merges five handlers into `~/.codex/hooks.json` and preserves
-other hooks already present. Start a new `codex` or `codex resume` session,
-then run `/hooks` to review and explicitly trust the installed commands.
-
-Keep the daemon running in another terminal:
-
-```bash
-pad-lattice daemon --no-greeting
-```
-
-The hook adapter maps stable Codex lifecycle events to Pad-Lattice states:
+The installer merges five handlers into `~/.codex/hooks.json` and preserves
+other hooks. Start a new `codex` or `codex resume` session, then run `/hooks` to
+review and explicitly trust the commands.
 
 | Codex hook | Pad-Lattice state |
 | --- | --- |
@@ -32,34 +24,35 @@ The hook adapter maps stable Codex lifecycle events to Pad-Lattice states:
 | `PostToolUse` | `running` |
 | `Stop` | `success`, then `waiting_for_reply` |
 
-The hook is passive. It never approves, denies, rewrites, or stops a Codex
-operation. If the daemon is offline, it exits successfully so Codex continues
-normally.
+The hook forwards `session_id` as the stable agent identity. Working directory
+and model are optional display metadata, never identity keys. Simultaneous
+sessions occupy separate slots; an update from an unselected session changes
+only its status LED.
 
-Codex includes `session_id`, working directory, and model in each lifecycle
-event. Pad-Lattice forwards that metadata in the local state message in
-preparation for multi-agent selection and routing. The current daemon still
-shows one global state, so simultaneous sessions can overwrite one another on
-the display.
+The hook is deliberately passive. It never approves, denies, rewrites, or
+stops an operation. If the daemon is unavailable, it exits successfully so
+Codex continues normally. Hooks also do not expose individual keystrokes, so
+live `user_typing` state is unavailable on this path.
 
-Hooks do not expose individual keystrokes, so the surface cannot switch to a
-typing state as soon as the first character is entered.
+## Interactive Action Limitation
 
-## Non-interactive Codex
+Lifecycle hooks are reliable state inputs, but they do not provide a general
+external-interrupt channel. Pad-Lattice therefore does not scrape terminals,
+inject synthetic keys, or launch Codex inside a second pseudo-terminal.
 
-Use `codex-exec` for real Codex CLI runs that expose JSON-line events:
+An interactive session currently has no live action subscriber, so approve,
+reject, retry, and stop remain dim. Future work requires a supported Codex
+action bridge with request correlation and a keyboard fallback.
+
+## Non-Interactive Tasks
+
+Use `codex-exec` for a real Codex CLI run with JSON-line events:
 
 ```bash
 pad-lattice codex-exec "summarize this repository"
 ```
 
-The adapter runs:
-
-```bash
-codex exec --json ...
-```
-
-and maps Codex events to Pad-Lattice states:
+The adapter maps these events:
 
 | Codex event | Pad-Lattice state |
 | --- | --- |
@@ -70,21 +63,18 @@ and maps Codex events to Pad-Lattice states:
 | `turn.failed` | `error` |
 | `error` | `error` |
 
-`success` and `error` are transient. The daemon shows them briefly and then
-returns to `waiting_for_reply`.
+Each invocation generates a unique agent identity and subscribes only to Stop.
+After selecting that task on the controller, pad `18` terminates that process
+without affecting another concurrent `codex-exec` task.
 
-## Hook trust and scope
+## Hook Trust and Scope
 
-Codex hooks are enabled by default, but non-managed command hooks do not run
-until reviewed and trusted. Codex records trust against the exact hook
-definition; reinstalling a changed definition requires another review.
-
-The installer targets the user-level hook file so the integration follows you
-across repositories. Use an explicit path for a project-local setup:
+Codex records trust against the exact hook definition. Reinstalling a changed
+definition requires another review. To install project-local hooks instead:
 
 ```bash
 pad-lattice install-codex-hooks --path .codex/hooks.json
 ```
 
-Project-local hooks run only after Codex trusts both the project configuration
-layer and the hook definition.
+Project hooks run only after Codex trusts both the project configuration layer
+and the hook definition.

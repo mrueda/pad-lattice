@@ -41,6 +41,8 @@ jobs:
           cd /tmp
           /tmp/pad-lattice-wheel-test/bin/pad-lattice --version
           /tmp/pad-lattice-wheel-test/bin/pad-lattice --help
+          /tmp/pad-lattice-wheel-test/bin/pad-lattice profile list
+          /tmp/pad-lattice-wheel-test/bin/pad-lattice profile show novation/launchpad/pro-mk1
 
       - name: Upload distributions
         uses: actions/upload-artifact@v4

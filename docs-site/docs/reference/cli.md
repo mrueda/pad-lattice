@@ -1,118 +1,171 @@
 # CLI Reference
 
-## `pad-lattice --version`
-
-Print the installed Pad-Lattice version.
+## General
 
 ```bash
 pad-lattice --version
+pad-lattice --help
 ```
 
-## `pad-lattice ports`
+## Hardware Discovery
 
-List MIDI input and output ports.
+List raw MIDI ports:
 
 ```bash
 pad-lattice ports
 ```
 
+Show profile matches for attached hardware, including experimental matches:
+
+```bash
+pad-lattice devices
+```
+
 ## `pad-lattice demo`
 
-Run the standalone hardware demo loop.
+Run the standalone hardware demo:
 
 ```bash
 pad-lattice demo --no-greeting
 ```
 
-Useful options:
+Common device-selection options:
 
 ```bash
-pad-lattice demo --input "Launchpad Pro" --output "Launchpad Pro"
-pad-lattice demo --greeting-delay 0.12
+pad-lattice demo --profile novation/launchpad/pro-mk1
+pad-lattice demo --profile-file ./controller.json
+pad-lattice demo --input "MIDI input" --output "MIDI output"
 ```
+
+`--profile` and `--profile-file` are mutually exclusive. Without either,
+auto-detection considers only supported profiles.
 
 ## `pad-lattice daemon`
 
-Own the Launchpad MIDI ports and expose the local Unix socket API.
+Own the MIDI ports and expose the local Unix socket:
 
 ```bash
 pad-lattice daemon --no-greeting --terminal-hold 1.5
 ```
 
-## `pad-lattice send-state`
+The daemon accepts the same `--profile`, `--profile-file`, `--input`, and
+`--output` options as the demo. `--socket` overrides the local socket path.
 
-Send an agent state to the daemon.
+## State Commands
+
+Send a state to the default `local/default` identity:
 
 ```bash
 pad-lattice send-state running
 pad-lattice send-state waiting_for_reply
+pad-lattice send-state user_typing
 pad-lattice send-state waiting_for_approval
 pad-lattice send-state success
 pad-lattice send-state error
 ```
 
-## `pad-lattice hook-state`
+Target an explicit identity:
 
-Send a state from a Codex hook. If the daemon is offline, the command exits
-successfully so the hook does not block Codex.
+```bash
+pad-lattice send-state running \
+  --backend test \
+  --session-id agent-a
+```
+
+`hook-state` sends the same update but treats an unavailable daemon as a
+successful no-op, which is useful in external hook scripts:
 
 ```bash
 pad-lattice hook-state running
 ```
 
-## `pad-lattice codex-hook`
+## Codex Commands
 
-Process one Codex lifecycle hook event from standard input and mirror its state
-to the daemon. This is the low-level handler referenced by the installed Codex
-configuration, not normally a command users run directly.
-
-```bash
-pad-lattice codex-hook
-```
-
-The command always returns a no-op hook response and does not fail when the
-daemon is offline.
-
-## `pad-lattice install-codex-hooks`
-
-Merge Pad-Lattice handlers into the user-level Codex hook configuration:
+Install lifecycle handlers:
 
 ```bash
 pad-lattice install-codex-hooks
-```
-
-Install into a project-local file instead:
-
-```bash
 pad-lattice install-codex-hooks --path .codex/hooks.json
 ```
 
 After installation, start a new Codex session and use `/hooks` to review and
 trust the commands.
 
-## `pad-lattice listen-actions`
-
-Print Launchpad actions emitted by the daemon.
-
-```bash
-pad-lattice listen-actions
-```
-
-## `pad-lattice monitor-midi`
-
-Print raw MIDI input messages for pad mapping and debugging.
+`codex-hook` is the low-level stdin handler referenced by the installed
+configuration and is not normally invoked directly:
 
 ```bash
-pad-lattice monitor-midi --seconds 15
+pad-lattice codex-hook
 ```
 
-## `pad-lattice codex-exec`
-
-Run `codex exec --json` and mirror Codex state to the daemon.
+Run a non-interactive Codex task with state and Stop integration:
 
 ```bash
 pad-lattice codex-exec "summarize this repository"
 ```
 
-During `codex-exec`, pad `18` emits `stop` and terminates the running Codex
-process.
+Each invocation receives a unique session identity. Pad `18` stops only the
+selected live `codex-exec` process.
+
+## Action Listener
+
+Advertise all four actions for an identity and print targeted action messages:
+
+```bash
+pad-lattice listen-actions \
+  --backend test \
+  --session-id agent-a
+```
+
+The action pads become bright only while this listener is connected and its
+identity is selected.
+
+## MIDI Monitor
+
+Print raw input messages for mapping and debugging:
+
+```bash
+pad-lattice monitor-midi --seconds 15
+pad-lattice monitor-midi --input "MIDI input" --seconds 15
+```
+
+With more than one input port, `--input` is required.
+
+## Profile Catalog
+
+List installed profiles:
+
+```bash
+pad-lattice profile list
+```
+
+Show discovery and capability metadata:
+
+```bash
+pad-lattice profile show novation/launchpad/pro-mk1
+```
+
+Validate a JSON file without opening MIDI ports:
+
+```bash
+pad-lattice profile validate ./controller.json
+```
+
+Run guided physical verification for an installed profile:
+
+```bash
+pad-lattice profile test novation/launchpad/mini-mk3 \
+  --report mini-mk3-report.json
+```
+
+Test an uninstalled file:
+
+```bash
+pad-lattice profile test \
+  --profile-file ./controller.json \
+  --report controller-report.json
+```
+
+Useful test options are `--input`, `--output`, `--event-timeout`, and
+`--settle-delay`. The report is sanitized for submission to the public device
+validation issue form.

@@ -7,14 +7,16 @@ import socket
 import subprocess
 import sys
 import threading
+import uuid
 from collections.abc import Callable, Sequence
 from typing import Any, TextIO
 
-from pad_lattice.events import AgentState, ControlAction
+from pad_lattice.events import AgentIdentity, AgentState, ControlAction
 from pad_lattice.protocol import (
     decode_message,
     encode_message,
     parse_action,
+    parse_agent,
     send_message,
     state_message,
     subscribe_actions_message,
@@ -50,16 +52,21 @@ def run_codex_exec(
     if not prompt:
         raise ValueError("codex-exec requires a prompt")
 
-    sender(socket_path, state_message(AgentState.RUNNING))
-    process = subprocess.Popen(
-        [codex_binary, "exec", "--json", *prompt],
-        stdout=subprocess.PIPE,
-        stderr=stderr,
-        text=True,
-    )
+    identity = AgentIdentity("codex-exec", uuid.uuid4().hex)
+    sender(socket_path, state_message(AgentState.RUNNING, agent=identity))
+    try:
+        process = subprocess.Popen(
+            [codex_binary, "exec", "--json", *prompt],
+            stdout=subprocess.PIPE,
+            stderr=stderr,
+            text=True,
+        )
+    except OSError:
+        sender(socket_path, state_message(AgentState.ERROR, agent=identity))
+        raise
     action_thread = threading.Thread(
         target=_stop_process_on_pad_action,
-        args=(socket_path, process, stderr),
+        args=(socket_path, identity, process, stderr),
         daemon=True,
     )
     action_thread.start()
@@ -77,7 +84,7 @@ def run_codex_exec(
 
         state = state_for_codex_event(event)
         if state is not None:
-            sender(socket_path, state_message(state))
+            sender(socket_path, state_message(state, agent=identity))
 
         if event.get("type") == "item.completed":
             item = event.get("item")
@@ -90,12 +97,13 @@ def run_codex_exec(
 
     return_code = process.wait()
     if return_code != 0:
-        sender(socket_path, state_message(AgentState.ERROR))
+        sender(socket_path, state_message(AgentState.ERROR, agent=identity))
     return return_code
 
 
 def _stop_process_on_pad_action(
     socket_path: str,
+    identity: AgentIdentity,
     process: subprocess.Popen[str],
     stderr: TextIO,
 ) -> None:
@@ -104,7 +112,11 @@ def _stop_process_on_pad_action(
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
             client.connect(socket_path)
-            client.sendall(encode_message(subscribe_actions_message()))
+            client.sendall(
+                encode_message(
+                    subscribe_actions_message(identity, (ControlAction.STOP,))
+                )
+            )
             buffer = b""
             while process.poll() is None:
                 data = client.recv(4096)
@@ -118,9 +130,14 @@ def _stop_process_on_pad_action(
                     try:
                         message = decode_message(line)
                         action = parse_action(message.get("action"))
+                        target = parse_agent(message.get("agent"), default=None)
                     except ValueError:
                         continue
-                    if action is ControlAction.STOP and process.poll() is None:
+                    if (
+                        target == identity
+                        and action is ControlAction.STOP
+                        and process.poll() is None
+                    ):
                         print("pad-lattice: stop requested from Launchpad", file=stderr)
                         process.terminate()
                         return

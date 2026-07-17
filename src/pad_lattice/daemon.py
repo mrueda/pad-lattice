@@ -1,4 +1,4 @@
-"""Pad-Lattice daemon: Launchpad owner and local socket control plane."""
+"""Pad-Lattice daemon: device owner and multi-agent control plane."""
 
 from __future__ import annotations
 
@@ -6,16 +6,26 @@ import os
 import selectors
 import socket
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
-from pad_lattice.events import AgentState, ControlAction
-from pad_lattice.launchpad import RUNNING_ACTIVITY_INTERVAL, LaunchpadSurface
+from pad_lattice.devices.base import (
+    ActionPressed,
+    ControlSurface,
+    SessionIndicator,
+    SessionSelected,
+    SurfaceEvent,
+    SurfaceView,
+)
+from pad_lattice.devices.midi_grid import RUNNING_ACTIVITY_INTERVAL
+from pad_lattice.events import DEFAULT_AGENT, AgentIdentity, AgentState, ControlAction
 from pad_lattice.protocol import (
     ProtocolError,
     action_message,
     decode_message,
     encode_message,
+    parse_actions,
+    parse_agent,
     parse_state,
 )
 
@@ -24,15 +34,26 @@ from pad_lattice.protocol import (
 class Client:
     socket: socket.socket
     buffer: bytes = b""
-    subscribed_to_actions: bool = False
+    agent: AgentIdentity | None = None
+    actions: frozenset[ControlAction] = field(default_factory=frozenset)
+
+
+@dataclass
+class AgentSession:
+    identity: AgentIdentity
+    state: AgentState = AgentState.WAITING_FOR_REPLY
+    slot: int | None = None
+    last_seen: int = 0
+    metadata: dict[str, str] = field(default_factory=dict)
+    terminal_state_until: float | None = None
 
 
 class PadLatticeDaemon:
-    """Own a Launchpad surface and expose state/action messages over a Unix socket."""
+    """Own one surface and route state/actions for multiple agent sessions."""
 
     def __init__(
         self,
-        surface: LaunchpadSurface,
+        surface: ControlSurface,
         socket_path: str,
         *,
         poll_interval: float = 0.03,
@@ -44,32 +65,57 @@ class PadLatticeDaemon:
         self.poll_interval = poll_interval
         self.terminal_hold = terminal_hold
         self.action_debounce = action_debounce
-        self.state = AgentState.WAITING_FOR_REPLY
         self._selector = selectors.DefaultSelector()
         self._server: socket.socket | None = None
         self._clients: dict[int, Client] = {}
+        self._sessions: dict[AgentIdentity, AgentSession] = {}
+        self._slots: list[AgentIdentity | None] = [None] * surface.selector_capacity
+        self._selected_agent: AgentIdentity | None = None
+        self._sequence = 0
         self._frame = 0
-        self._last_rendered_state: AgentState | None = None
+        self._render_dirty = True
         self._next_activity_render = 0.0
-        self._terminal_state_until: float | None = None
-        self._last_action_at: dict[ControlAction, float] = {}
+        self._last_action_at: dict[tuple[AgentIdentity, ControlAction], float] = {}
+        self._closed = False
+
+    @property
+    def state(self) -> AgentState:
+        session = self.selected_session
+        return session.state if session is not None else AgentState.WAITING_FOR_REPLY
+
+    @property
+    def selected_agent(self) -> AgentIdentity | None:
+        return self._selected_agent
+
+    @property
+    def selected_session(self) -> AgentSession | None:
+        if self._selected_agent is None:
+            return None
+        return self._sessions.get(self._selected_agent)
+
+    @property
+    def sessions(self) -> tuple[AgentSession, ...]:
+        return tuple(sorted(self._sessions.values(), key=lambda session: session.last_seen))
 
     def run(self) -> None:
         self._server = self._open_server()
         self._selector.register(self._server, selectors.EVENT_READ, self._accept_client)
-        self.surface.initialize()
-
         try:
+            self.surface.initialize()
             while True:
                 self._render_if_needed()
                 for key, _ in self._selector.select(timeout=self.poll_interval):
                     callback = key.data
                     callback(key.fileobj)
-                self.surface.poll_controls(self._handle_action)
+                for event in self.surface.poll_events():
+                    self._handle_surface_event(event)
         finally:
             self.close()
 
     def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
         for client in list(self._clients.values()):
             self._close_client(client)
         if self._server is not None:
@@ -84,15 +130,21 @@ class PadLatticeDaemon:
             os.unlink(self.socket_path)
         except FileNotFoundError:
             pass
-        self.surface.clear()
+        self.surface.close()
 
     def handle_message(self, client: Client, message: dict[str, Any]) -> None:
         message_type = message.get("type")
         if message_type == "state":
-            self.set_state(parse_state(message.get("state")))
+            identity = parse_agent(message.get("agent"))
+            metadata = _agent_metadata(message.get("agent"))
+            self.update_agent(identity, parse_state(message.get("state")), metadata=metadata)
             return
         if message_type == "subscribe_actions":
-            client.subscribed_to_actions = True
+            identity = parse_agent(message.get("agent"))
+            client.agent = identity
+            client.actions = parse_actions(message.get("actions"))
+            self._ensure_session(identity)
+            self._render_dirty = True
             return
         if message_type == "ping":
             self._send(client, {"type": "pong"})
@@ -100,18 +152,81 @@ class PadLatticeDaemon:
         raise ProtocolError(f"unknown message type: {message_type}")
 
     def set_state(self, state: AgentState) -> None:
-        self.state = state
+        """Update the default local session used by manual state commands."""
+
+        self.update_agent(DEFAULT_AGENT, state)
+
+    def update_agent(
+        self,
+        identity: AgentIdentity,
+        state: AgentState,
+        *,
+        metadata: dict[str, str] | None = None,
+    ) -> None:
+        session = self._ensure_session(identity)
+        self._sequence += 1
+        session.last_seen = self._sequence
+        session.state = state
+        if metadata:
+            session.metadata.update(metadata)
         if state in {AgentState.SUCCESS, AgentState.ERROR}:
-            self._terminal_state_until = time.monotonic() + self.terminal_hold
+            session.terminal_state_until = time.monotonic() + self.terminal_hold
         else:
-            self._terminal_state_until = None
+            session.terminal_state_until = None
+        if session.slot is None:
+            self._assign_slot(session)
+        self._render_dirty = True
+
+    def select_slot(self, slot: int) -> bool:
+        if not 0 <= slot < len(self._slots):
+            return False
+        identity = self._slots[slot]
+        if identity is None:
+            return False
+        self._selected_agent = identity
+        self._render_dirty = True
+        return True
+
+    def _ensure_session(self, identity: AgentIdentity) -> AgentSession:
+        session = self._sessions.get(identity)
+        if session is not None:
+            return session
+        self._sequence += 1
+        session = AgentSession(identity=identity, last_seen=self._sequence)
+        self._sessions[identity] = session
+        self._assign_slot(session)
+        if self._selected_agent is None:
+            self._selected_agent = identity
+        self._render_dirty = True
+        return session
+
+    def _assign_slot(self, session: AgentSession) -> None:
+        if session.slot is not None:
+            return
+        try:
+            slot = self._slots.index(None)
+        except ValueError:
+            candidates = [
+                candidate
+                for candidate in self._sessions.values()
+                if candidate.slot is not None
+                and candidate.identity != self._selected_agent
+                and candidate.state is not AgentState.WAITING_FOR_APPROVAL
+            ]
+            if not candidates:
+                return
+            evicted = min(candidates, key=lambda candidate: candidate.last_seen)
+            assert evicted.slot is not None
+            slot = evicted.slot
+            evicted.slot = None
+        self._slots[slot] = session.identity
+        session.slot = slot
 
     def _open_server(self) -> socket.socket:
         try:
             os.unlink(self.socket_path)
         except FileNotFoundError:
             pass
-
         server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         server.bind(self.socket_path)
         server.listen()
@@ -131,7 +246,6 @@ class PadLatticeDaemon:
         if not data:
             self._close_client(client)
             return
-
         client.buffer += data
         while b"\n" in client.buffer:
             line, client.buffer = client.buffer.split(b"\n", 1)
@@ -142,41 +256,82 @@ class PadLatticeDaemon:
             except ProtocolError as exc:
                 self._send(client, {"type": "error", "error": str(exc)})
 
-    def _handle_action(self, action: ControlAction) -> None:
-        now = time.monotonic()
-        last_action_at = self._last_action_at.get(action)
-        if (
-            last_action_at is not None
-            and now - last_action_at < self.action_debounce
-        ):
-            return
-        self._last_action_at[action] = now
+    def _handle_surface_event(self, event: SurfaceEvent) -> None:
+        if isinstance(event, SessionSelected):
+            self.select_slot(event.slot)
+        elif isinstance(event, ActionPressed):
+            self._handle_action(event.action)
 
-        message = action_message(action)
-        for client in list(self._clients.values()):
-            if client.subscribed_to_actions:
-                self._send(client, message)
+    def _handle_action(self, action: ControlAction) -> None:
+        identity = self._selected_agent
+        if identity is None:
+            return
+        recipients = [
+            client
+            for client in self._clients.values()
+            if client.agent == identity and action in client.actions
+        ]
+        if not recipients:
+            return
+
+        now = time.monotonic()
+        debounce_key = (identity, action)
+        last_action_at = self._last_action_at.get(debounce_key)
+        if last_action_at is not None and now - last_action_at < self.action_debounce:
+            return
+        self._last_action_at[debounce_key] = now
+
+        message = action_message(action, identity)
+        for client in recipients:
+            self._send(client, message)
 
     def _render_if_needed(self) -> None:
         now = time.monotonic()
-        if (
-            self._terminal_state_until is not None
-            and now >= self._terminal_state_until
-        ):
-            self.state = AgentState.WAITING_FOR_REPLY
-            self._terminal_state_until = None
+        for session in self._sessions.values():
+            if session.terminal_state_until is not None and now >= session.terminal_state_until:
+                session.state = AgentState.WAITING_FOR_REPLY
+                session.terminal_state_until = None
+                self._render_dirty = True
 
-        refresh_running = (
-            self.state is AgentState.RUNNING
-            and self._last_rendered_state is AgentState.RUNNING
-            and now >= self._next_activity_render
+        refresh_running = self.state is AgentState.RUNNING and now >= self._next_activity_render
+        if not self._render_dirty and not refresh_running:
+            return
+
+        self.surface.render(self._surface_view())
+        self._frame += 1
+        self._render_dirty = False
+        self._next_activity_render = now + RUNNING_ACTIVITY_INTERVAL
+
+    def _surface_view(self) -> SurfaceView:
+        indicators = tuple(
+            SessionIndicator(
+                slot=session.slot,
+                state=session.state,
+                selected=session.identity == self._selected_agent,
+            )
+            for session in sorted(
+                (session for session in self._sessions.values() if session.slot is not None),
+                key=lambda session: session.slot if session.slot is not None else -1,
+            )
+            if session.slot is not None
         )
-        if self.state != self._last_rendered_state or refresh_running:
-            self.surface.render_state_frame(self.state, self._frame)
-            self.surface.render_controls()
-            self._frame += 1
-            self._last_rendered_state = self.state
-            self._next_activity_render = now + RUNNING_ACTIVITY_INTERVAL
+        return SurfaceView(
+            selected_state=self.state,
+            frame=self._frame,
+            sessions=indicators,
+            available_actions=self._available_actions(),
+        )
+
+    def _available_actions(self) -> frozenset[ControlAction]:
+        identity = self._selected_agent
+        if identity is None:
+            return frozenset()
+        return frozenset(
+            action
+            for client in self._clients.values()
+            if client.agent == identity
+            for action in client.actions
+        )
 
     def _send(self, client: Client, message: dict[str, Any]) -> None:
         try:
@@ -188,8 +343,20 @@ class PadLatticeDaemon:
         fileno = client.socket.fileno()
         if fileno in self._clients:
             del self._clients[fileno]
+        if client.actions:
+            self._render_dirty = True
         try:
             self._selector.unregister(client.socket)
         except Exception:
             pass
         client.socket.close()
+
+
+def _agent_metadata(value: Any) -> dict[str, str]:
+    if not isinstance(value, dict):
+        return {}
+    return {
+        key: item
+        for key, item in value.items()
+        if key not in {"backend", "session_id"} and isinstance(item, str) and item
+    }

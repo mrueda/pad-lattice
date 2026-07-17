@@ -15,19 +15,30 @@ from pad_lattice.codex_hooks import (
     run_codex_hook,
 )
 from pad_lattice.codex_exec import run_codex_exec
-from pad_lattice.demo_agent import DemoAgent
-from pad_lattice.events import AgentState
 from pad_lattice.daemon import PadLatticeDaemon
-from pad_lattice.launchpad import (
-    LaunchpadError,
+from pad_lattice.demo_agent import DemoAgent, run_demo_surface
+from pad_lattice.devices.factory import (
+    discover_devices,
+    open_resolved_surface,
+    resolve_device,
+)
+from pad_lattice.devices.midi_grid import (
+    MidiDeviceError,
     list_midi_ports,
     monitor_midi_input,
-    open_launchpad,
-    run_surface,
 )
+from pad_lattice.devices.profiles import (
+    DeviceProfile,
+    ProfileCatalog,
+    ProfileError,
+    load_profile_file,
+)
+from pad_lattice.devices.testing import run_profile_test
+from pad_lattice.events import AgentIdentity, AgentState
 from pad_lattice.protocol import (
     default_socket_path,
     decode_message,
+    encode_message,
     send_message,
     state_message,
     subscribe_actions_message,
@@ -48,9 +59,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("ports", help="list MIDI input and output ports")
 
-    demo = subparsers.add_parser("demo", help="run the Launchpad MVP demo loop")
-    demo.add_argument("--input", help="MIDI input port name")
-    demo.add_argument("--output", help="MIDI output port name")
+    subparsers.add_parser("devices", help="detect supported and experimental devices")
+
+    demo = subparsers.add_parser("demo", help="run the hardware demo loop")
+    _add_device_arguments(demo)
     demo.add_argument(
         "--seconds-per-state",
         type=float,
@@ -66,13 +78,12 @@ def build_parser() -> argparse.ArgumentParser:
     demo.add_argument(
         "--no-greeting",
         action="store_true",
-        help="skip the Launchpad startup greeting",
+        help="skip the device startup greeting",
     )
 
-    daemon = subparsers.add_parser("daemon", help="run the Launchpad sidecar daemon")
+    daemon = subparsers.add_parser("daemon", help="run the hardware sidecar daemon")
     daemon.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
-    daemon.add_argument("--input", help="MIDI input port name")
-    daemon.add_argument("--output", help="MIDI output port name")
+    _add_device_arguments(daemon)
     daemon.add_argument(
         "--greeting-delay",
         type=float,
@@ -82,7 +93,7 @@ def build_parser() -> argparse.ArgumentParser:
     daemon.add_argument(
         "--no-greeting",
         action="store_true",
-        help="skip the Launchpad startup greeting",
+        help="skip the device startup greeting",
     )
     daemon.add_argument(
         "--terminal-hold",
@@ -96,8 +107,9 @@ def build_parser() -> argparse.ArgumentParser:
     send_state.add_argument(
         "state",
         choices=[state.value for state in AgentState],
-        help="state to render on the Launchpad",
+        help="state to render on the control surface",
     )
+    _add_agent_arguments(send_state)
 
     hook_state = subparsers.add_parser(
         "hook-state", help="send a state from a Codex hook without failing the hook"
@@ -106,8 +118,9 @@ def build_parser() -> argparse.ArgumentParser:
     hook_state.add_argument(
         "state",
         choices=[state.value for state in AgentState],
-        help="state to render on the Launchpad",
+        help="state to render on the control surface",
     )
+    _add_agent_arguments(hook_state)
 
     codex_hook = subparsers.add_parser(
         "codex-hook", help="process one Codex lifecycle hook event from stdin"
@@ -125,9 +138,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     listen_actions = subparsers.add_parser(
-        "listen-actions", help="print Launchpad actions from the daemon"
+        "listen-actions", help="print hardware actions from the daemon"
     )
     listen_actions.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
+    _add_agent_arguments(listen_actions)
 
     monitor_midi = subparsers.add_parser(
         "monitor-midi", help="print raw MIDI input messages for pad mapping"
@@ -147,6 +161,48 @@ def build_parser() -> argparse.ArgumentParser:
     codex_exec.add_argument("--codex", default="codex", help="Codex CLI executable")
     codex_exec.add_argument("prompt", nargs=argparse.REMAINDER, help="prompt passed to Codex")
 
+    profile = subparsers.add_parser("profile", help="inspect and test device profiles")
+    profile_commands = profile.add_subparsers(dest="profile_command", required=True)
+    profile_commands.add_parser("list", help="list installed device profiles")
+
+    profile_show = profile_commands.add_parser("show", help="show a device profile")
+    profile_show.add_argument("profile_id", help="manufacturer/family/model profile ID")
+
+    profile_validate = profile_commands.add_parser(
+        "validate", help="validate a device profile JSON file"
+    )
+    profile_validate.add_argument("path", type=Path, help="profile JSON file")
+
+    profile_test = profile_commands.add_parser(
+        "test", help="run an interactive hardware profile verification"
+    )
+    profile_test.add_argument(
+        "profile_id",
+        nargs="?",
+        help="manufacturer/family/model profile ID",
+    )
+    profile_test.add_argument("--profile-file", type=Path, help="profile JSON file")
+    profile_test.add_argument("--input", help="MIDI input port name")
+    profile_test.add_argument("--output", help="MIDI output port name")
+    profile_test.add_argument(
+        "--report",
+        required=True,
+        type=Path,
+        help="path for the sanitized JSON test report",
+    )
+    profile_test.add_argument(
+        "--event-timeout",
+        type=float,
+        default=15.0,
+        help="seconds to wait for each requested pad press",
+    )
+    profile_test.add_argument(
+        "--settle-delay",
+        type=float,
+        default=0.15,
+        help="seconds to wait after rendering each visual",
+    )
+
     return parser
 
 
@@ -164,21 +220,44 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  {name}")
             return 0
 
+        if args.command == "devices":
+            candidates = discover_devices()
+            if not candidates:
+                print("No matching MIDI devices found.")
+                return 0
+            for candidate in candidates:
+                print(
+                    f"{candidate.profile.id} [{candidate.profile.status}]\n"
+                    f"  input:  {candidate.input_name}\n"
+                    f"  output: {candidate.output_name}"
+                )
+            return 0
+
         if args.command == "demo":
             agent = DemoAgent(seconds_per_state=args.seconds_per_state)
-            surface = open_launchpad(
+            device = resolve_device(
+                profile_id=args.profile_id,
+                profile_file=args.profile_file,
                 input_name=args.input,
                 output_name=args.output,
+            )
+            surface = open_resolved_surface(
+                device,
                 startup_greeting=None if args.no_greeting else "HELLO FROM CODEX CLI",
                 scroll_delay=args.greeting_delay,
             )
-            run_surface(surface, agent.current_state, agent.action_logger())
+            run_demo_surface(surface, agent)
             return 0
 
         if args.command == "daemon":
-            surface = open_launchpad(
+            device = resolve_device(
+                profile_id=args.profile_id,
+                profile_file=args.profile_file,
                 input_name=args.input,
                 output_name=args.output,
+            )
+            surface = open_resolved_surface(
+                device,
                 startup_greeting=None if args.no_greeting else "HELLO FROM CODEX CLI",
                 scroll_delay=args.greeting_delay,
             )
@@ -186,12 +265,18 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command == "send-state":
-            send_message(args.socket, state_message(AgentState(args.state)))
+            send_message(
+                args.socket,
+                state_message(AgentState(args.state), agent=_agent_from_args(args)),
+            )
             return 0
 
         if args.command == "hook-state":
             try:
-                send_message(args.socket, state_message(AgentState(args.state)))
+                send_message(
+                    args.socket,
+                    state_message(AgentState(args.state), agent=_agent_from_args(args)),
+                )
             except (ConnectionError, FileNotFoundError, OSError):
                 pass
             return 0
@@ -207,10 +292,10 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command == "listen-actions":
-            return listen_actions(args.socket)
+            return listen_actions(args.socket, _agent_from_args(args))
 
         if args.command == "monitor-midi":
-            monitor_midi_input(input_name=args.input, seconds=args.seconds)
+            monitor_midi_input(input_name=args.input, timeout=args.seconds)
             return 0
 
         if args.command == "codex-exec":
@@ -218,6 +303,61 @@ def main(argv: list[str] | None = None) -> int:
             if prompt and prompt[0] == "--":
                 prompt = prompt[1:]
             return run_codex_exec(prompt, args.socket, codex_binary=args.codex)
+
+        if args.command == "profile":
+            if args.profile_command == "validate":
+                validated = load_profile_file(args.path)
+                print(f"Valid profile: {validated.id} [{validated.status}]")
+                return 0
+
+            if args.profile_command == "test":
+                if args.profile_id is None and args.profile_file is None:
+                    raise ProfileError(
+                        "profile test requires a profile ID or --profile-file"
+                    )
+                catalog = None if args.profile_file else ProfileCatalog.load()
+                device = resolve_device(
+                    profile_id=args.profile_id,
+                    profile_file=args.profile_file,
+                    input_name=args.input,
+                    output_name=args.output,
+                    catalog=catalog,
+                )
+                surface = open_resolved_surface(
+                    device,
+                    startup_greeting=None,
+                    scroll_delay=0.0,
+                )
+                report = run_profile_test(
+                    surface,
+                    device.profile,
+                    args.report,
+                    event_timeout=args.event_timeout,
+                    settle_delay=args.settle_delay,
+                )
+                print(f"Profile test report: {args.report}")
+                return 0 if report["passed"] else 1
+
+            catalog = ProfileCatalog.load()
+            if args.profile_command == "list":
+                for installed_profile in catalog.profiles:
+                    print(
+                        f"{installed_profile.id}\t{installed_profile.status}\t"
+                        f"{installed_profile.name}"
+                    )
+                return 0
+            if args.profile_command == "show":
+                print(
+                    json.dumps(
+                        _profile_summary(catalog.get(args.profile_id)),
+                        indent=2,
+                        sort_keys=True,
+                    )
+                )
+                return 0
+    except (MidiDeviceError, ProfileError) as exc:
+        print(f"pad-lattice: {exc}", file=sys.stderr)
+        return 1
     except ValueError as exc:
         print(f"pad-lattice: {exc}", file=sys.stderr)
         return 2
@@ -226,17 +366,14 @@ def main(argv: list[str] | None = None) -> int:
     except (ConnectionError, FileNotFoundError, OSError) as exc:
         print(f"pad-lattice: {exc}", file=sys.stderr)
         return 1
-    except LaunchpadError as exc:
-        print(f"pad-lattice: {exc}", file=sys.stderr)
-        return 1
 
     raise AssertionError(f"unhandled command: {args.command}")
 
 
-def listen_actions(socket_path: str) -> int:
+def listen_actions(socket_path: str, agent: AgentIdentity) -> int:
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
         client.connect(socket_path)
-        client.sendall(json.dumps(subscribe_actions_message()).encode("utf-8") + b"\n")
+        client.sendall(encode_message(subscribe_actions_message(agent)))
         buffer = b""
         while True:
             data = client.recv(4096)
@@ -247,6 +384,42 @@ def listen_actions(socket_path: str) -> int:
                 line, buffer = buffer.split(b"\n", 1)
                 if line.strip():
                     print(json.dumps(decode_message(line), separators=(",", ":")), flush=True)
+
+
+def _add_device_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--profile",
+        dest="profile_id",
+        help="manufacturer/family/model device profile ID",
+    )
+    parser.add_argument("--profile-file", type=Path, help="device profile JSON file")
+    parser.add_argument("--input", help="MIDI input port name")
+    parser.add_argument("--output", help="MIDI output port name")
+
+
+def _add_agent_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--backend", default="local", help="agent backend identity")
+    parser.add_argument("--session-id", default="default", help="agent session identity")
+
+
+def _agent_from_args(args: argparse.Namespace) -> AgentIdentity:
+    return AgentIdentity(args.backend, args.session_id)
+
+
+def _profile_summary(profile: DeviceProfile) -> dict[str, object]:
+    return {
+        "id": profile.id,
+        "name": profile.name,
+        "manufacturer": profile.manufacturer,
+        "family": profile.family,
+        "model": profile.model,
+        "status": profile.status,
+        "driver": profile.driver,
+        "input_patterns": profile.input_patterns,
+        "output_patterns": profile.output_patterns,
+        "selector_slots": profile.selector_capacity,
+        "text_scroll": profile.text_scroll,
+    }
 
 
 if __name__ == "__main__":

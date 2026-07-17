@@ -1,61 +1,72 @@
 # Overview
 
 Pad-Lattice repurposes MIDI grid controllers as physical control surfaces for
-AI agents. It currently targets the Novation Launchpad Pro Mk1, but the
-protocol is device-agnostic so other controllers can be added through device
-profiles.
+AI agents. It separates agent integrations from hardware details so existing
+musical controllers can supervise terminal agents without a browser or
+graphical agent UI.
 
 ## Why MIDI
 
 MIDI hardware already combines tactile input, RGB feedback, low-latency local
-communication, and broad operating-system support. Those capabilities are
-useful well beyond music. Pad-Lattice separates the common agent protocol from
-the device profile so existing controller ecosystems can support new agent
-workflows without requiring new hardware.
+communication, and mature operating-system support. Those capabilities are
+useful beyond music. Pad-Lattice turns the controller into a local agent
+surface while preserving MIDI as the hardware boundary.
 
-The first direct integration is **Codex CLI**. It works with terminal sessions
-through local lifecycle hooks; no browser or graphical agent UI needs to be
-open or focused.
+The first integration is **Codex CLI**. The first supported controller is the
+**Novation Launchpad Pro Mk1**. An experimental profile for the **Launchpad Mini
+Mk3** establishes the community testing path for additional devices.
 
-The project is not a token-level LLM sampler. It does not visualize token
-probabilities, top-k candidates, or model internals. Pad-Lattice focuses on
-agent supervision:
+Pad-Lattice is not a token-level sampler. It does not visualize token
+probabilities, top-k candidates, or model internals. It focuses on supervision:
 
-- Is the agent running?
-- Is it waiting for a reply?
-- Does it need approval?
-- Did the task succeed or fail?
-- Can the user approve, reject, retry, or stop from hardware?
+- Is the selected agent running or waiting?
+- Does any visible session need approval?
+- Did the selected task succeed or fail?
+- Which agent will receive a physical action?
+- Is that action currently accepted by a live integration?
 
-The first tested agent integration is Codex CLI. The first tested hardware
-target is Novation Launchpad Pro Mk1.
+## Current Capabilities
 
-## Current capabilities
-
-- Launchpad LED rendering for common agent states.
-- A local Unix socket daemon that owns the MIDI ports.
-- JSON-line protocol for state updates and hardware actions.
+- Steady, shape-plus-color rendering for common agent states.
+- A local Unix socket daemon that exclusively owns the MIDI ports.
+- A multi-agent registry keyed by backend and session ID.
+- Four visible session selectors with distinct accent colors and state LEDs.
+- Agent-scoped action subscriptions; actions are never broadcast.
+- Declarative JSON device profiles behind a trusted generic MIDI-grid driver.
+- Supported Launchpad Pro Mk1 and experimental Launchpad Mini Mk3 profiles.
 - Lifecycle hooks for interactive `codex` and `codex resume` sessions.
-- `codex-exec` adapter for non-interactive `codex exec --json` runs.
-- Raw MIDI monitor for controller mapping and debugging.
-- Production instructions for running the daemon outside the Codex session.
+- A `codex-exec` adapter with a targeted Stop action.
+- Guided, privacy-preserving physical profile verification.
 
-## Non-goals
+## Hardware Boundary
+
+The daemon works with semantic states and actions. A device profile owns:
+
+- MIDI port discovery;
+- programmer-mode startup and shutdown;
+- 8x8 note or control-change maps;
+- static palette values;
+- action controls;
+- session selector and status locations.
+
+This boundary lets controller manufacturers and community developers add
+hardware without coupling it to Codex-specific events.
+
+## Multi-Agent Boundary
+
+The first observed session is selected. Later sessions occupy free slots
+without stealing the center display. Pressing a selector changes the active
+session, and background updates remain visible on that session's status LED.
+
+Physical actions are emitted only when the selected identity has a connected
+subscriber advertising that action. Interactive Codex lifecycle hooks are
+currently state-only, so their action pads remain dim. The `codex-exec` adapter
+advertises Stop while its process is live.
+
+## Non-Goals
 
 - Direct token decoding control.
-- WebMIDI browser application.
+- A WebMIDI browser application.
 - Open-weights model probability visualization.
+- Terminal scraping or synthetic keyboard input.
 - Replacing the Codex CLI terminal interface.
-
-## Multi-agent boundary
-
-One physical surface can display only a limited amount of information at once.
-The current daemon displays the most recent global state and does not route
-actions to an individual interactive session. Codex hook messages already
-include their session identity so this limitation can be removed without
-changing the integration contract.
-
-The planned Launchpad layout assigns pads `13` through `16` to four active
-sessions. Each session receives a stable accent color; pressing its pad selects
-it, while the center shape continues to communicate the selected agent's
-state. Approve, reject, retry, and stop will then be routed only to that agent.

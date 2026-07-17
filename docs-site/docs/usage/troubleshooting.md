@@ -1,129 +1,136 @@
 # Troubleshooting
 
-Most Pad-Lattice problems fall into one of three areas: MIDI ownership,
-Launchpad mode, or socket mismatch.
+Most problems are profile selection, MIDI ownership, controller mode, or a
+socket mismatch.
 
-## No LEDs Change
+## No Device Is Detected
 
-Check that Pad-Lattice can see the Launchpad:
+Inspect raw ports, profile matches, and installed profiles:
 
 ```bash
 pad-lattice ports
+pad-lattice devices
+pad-lattice profile list
 ```
 
-Then start with the hardware demo:
+Auto-detection uses supported profiles only. Select experimental hardware such
+as the Mini Mk3 explicitly:
 
 ```bash
-pad-lattice demo
+pad-lattice demo --profile novation/launchpad/mini-mk3
 ```
 
-If the demo does not change the LEDs:
-
-- Confirm the Launchpad Pro Mk1 is attached to the same machine or VM where
-  Pad-Lattice is running.
-- Confirm USB passthrough is assigned to the VM if you are using virtualization.
-- Stop Ableton Live, browser MIDI tools, or any other app that may own the
-  Launchpad MIDI ports.
-- Pass explicit port names if auto-detection chooses the wrong port:
+If multiple ports match, pass exact names:
 
 ```bash
-pad-lattice demo --input "Launchpad Pro" --output "Launchpad Pro"
+pad-lattice demo \
+  --profile novation/launchpad/pro-mk1 \
+  --input "Launchpad Pro Live Port" \
+  --output "Launchpad Pro Live Port"
 ```
 
-## Only One Green Button Is Lit
+## No LEDs Change
 
-This usually means the Launchpad is not fully under Pad-Lattice control yet, or
-the wrong MIDI port is being used.
-
-Try:
+Start with the demo:
 
 ```bash
 pad-lattice demo --no-greeting
 ```
 
-If that still does not render the state display, run:
+Check that the controller is attached to the same host or VM, USB passthrough
+is active, and Ableton Live or another MIDI application does not own the port.
+
+Monitor raw input:
 
 ```bash
-pad-lattice monitor-midi
+pad-lattice monitor-midi --seconds 15
 ```
 
-Press a few pads. If no messages appear, the input port is wrong or another
-process owns the device.
+If pad messages appear but LEDs remain unchanged, verify the output port and
+programmer-mode messages in the selected profile.
 
-## Daemon Starts but Codex Does Not Update LEDs
+## Controller Does Not Return to Normal Mode
 
-Use one socket path everywhere:
+Stop Pad-Lattice with `Ctrl-C` so profile shutdown runs. The Mini Mk3 profile
+returns to Live mode on close. If a process was terminated without cleanup,
+power-cycle the controller or select Live mode from the hardware.
 
-```bash
-export PAD_LATTICE_SOCKET=/tmp/pad-lattice.sock
-```
+## Another Process Owns MIDI
 
-Start the daemon in one terminal:
-
-```bash
-pad-lattice daemon --no-greeting --terminal-hold 1.5
-```
-
-From another terminal, test the same socket:
-
-```bash
-export PAD_LATTICE_SOCKET=/tmp/pad-lattice.sock
-pad-lattice send-state running
-pad-lattice send-state waiting_for_reply
-```
-
-If this works, the daemon is healthy and the problem is in the agent
-integration layer.
-
-For interactive Codex, confirm the lifecycle hooks are installed:
-
-```bash
-pad-lattice install-codex-hooks
-```
-
-Then start a new Codex session and run `/hooks`. The Pad-Lattice commands must
-be enabled and trusted before Codex will run them.
-
-## Pad Actions Do Not Reach the Terminal
-
-First verify that the daemon emits actions:
-
-```bash
-pad-lattice listen-actions
-```
-
-Press the control pads:
-
-| Pad | Expected action |
-| --- | --- |
-| `11` | `approve` |
-| `12` | `reject` |
-| `17` | `retry` |
-| `18` | `stop` |
-
-If actions appear there, the hardware and daemon are working. The remaining
-piece is the agent-side listener or adapter.
-
-## Another Process Owns the MIDI Port
-
-Only one process can own the Launchpad MIDI ports at a time. Stop any existing
-demo or daemon process before starting another one:
+Only one demo, daemon, test, DAW, or MIDI tool can own a port at a time:
 
 ```bash
 ps -ef | grep pad-lattice
 ```
 
-Then stop the stale process from the terminal where it is running, or kill it
-if needed.
+Stop the existing process before starting another.
+
+## Daemon Works but Codex Does Not Update
+
+Use one socket path everywhere:
+
+```bash
+export PAD_LATTICE_SOCKET=/tmp/pad-lattice.sock
+pad-lattice daemon --no-greeting
+```
+
+From another terminal:
+
+```bash
+export PAD_LATTICE_SOCKET=/tmp/pad-lattice.sock
+pad-lattice send-state running
+```
+
+If this renders, reinstall the hooks, start a new Codex session, and run
+`/hooks` to verify that every Pad-Lattice command is trusted:
+
+```bash
+pad-lattice install-codex-hooks
+```
+
+## A Background Session Replaced the Center
+
+Background state updates should change only their slot status LED. Press pads
+`13` through `16` to confirm the selected session. If behavior differs, verify
+that every integration sends a stable `backend` and `session_id`; messages
+without identity all share `local/default`.
+
+## Action Pads Are Dim
+
+Dim means the selected session has no connected subscriber for that action.
+This is expected for interactive Codex lifecycle hooks, which are state-only.
+
+Test routing with an explicit identity:
+
+```bash
+pad-lattice listen-actions --backend test --session-id agent-a
+```
+
+Select that session's pad, then press an action. The listener should receive a
+JSON message containing the same identity. Actions are intentionally ignored
+instead of broadcast when no matching subscriber exists.
+
+For `codex-exec`, only Stop is advertised. Approve, reject, and retry remain
+dim.
+
+## Validate a Profile
+
+Run schema validation without opening MIDI:
+
+```bash
+pad-lattice profile validate ./controller.json
+```
+
+For physical mapping problems, create a guided report:
+
+```bash
+pad-lattice profile test \
+  --profile-file ./controller.json \
+  --report controller-report.json
+```
 
 ## GitHub Pages Does Not Update
 
-The documentation workflow is intentionally on demand. After pushing, open the
-repository Actions tab and run:
-
-```text
-Documentation
-```
-
-That workflow builds `docs-site/`, verifies the search index, uploads the Pages
-artifact, and deploys the site to GitHub Pages.
+The documentation workflow runs on demand. In the repository Actions tab,
+select **Documentation** and choose **Run workflow**. It builds the site,
+checks the search index, and deploys the Pages artifact.

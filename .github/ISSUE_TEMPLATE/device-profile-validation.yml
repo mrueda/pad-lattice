@@ -1,0 +1,71 @@
+name: Device profile validation
+description: Submit a physical controller test report for a built-in or community profile.
+title: "[device] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for testing real hardware. The generated report excludes prompts, agent session IDs, working directories, and model output. Please still review the JSON before attaching it.
+
+  - type: input
+    id: profile
+    attributes:
+      label: Profile ID
+      description: Use the exact manufacturer/family/model ID shown by `pad-lattice profile list`.
+      placeholder: novation/launchpad/mini-mk3
+    validations:
+      required: true
+
+  - type: input
+    id: hardware
+    attributes:
+      label: Controller and firmware
+      description: Give the exact model and firmware version when available.
+      placeholder: Novation Launchpad Mini Mk3, firmware 1.x
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: Host platform
+      description: Operating system and connection type, without usernames or local paths.
+      placeholder: Ubuntu Linux, direct USB connection
+    validations:
+      required: true
+
+  - type: dropdown
+    id: result
+    attributes:
+      label: Test result
+      options:
+        - All checks passed
+        - One or more checks failed
+        - Test could not complete
+    validations:
+      required: true
+
+  - type: textarea
+    id: report
+    attributes:
+      label: Sanitized JSON report
+      description: Drag the file produced by `pad-lattice profile test ... --report FILE` into this field.
+      placeholder: Attach the JSON report here.
+    validations:
+      required: true
+
+  - type: textarea
+    id: observations
+    attributes:
+      label: Observations
+      description: Describe incorrect colors, mappings, modes, or port names. A video is welcome but not required.
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmation
+      options:
+        - label: I physically tested the controller named above.
+          required: true
+        - label: I reviewed the attached report and found no prompts, session IDs, working directories, or model output.
+          required: true

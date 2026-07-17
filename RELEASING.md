@@ -47,6 +47,7 @@ python3 -m venv /tmp/pad-lattice-testpypi
   --extra-index-url https://pypi.org/simple/ \
   pad-lattice==0.1.0
 /tmp/pad-lattice-testpypi/bin/pad-lattice --version
+/tmp/pad-lattice-testpypi/bin/pad-lattice profile list
 ```
 
 PyPI versions and distribution files are immutable. Change `__version__` before
@@ -70,4 +71,5 @@ Verify the public installation:
 ```bash
 pipx install pad-lattice
 pad-lattice --version
+pad-lattice profile list
 ```

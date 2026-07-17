@@ -23,10 +23,11 @@ faces you. Pad `11` is bottom left and pad `88` is top right.
   </div>
 </div>
 
-### Current Agent Surface
+### Multi-Agent Surface
 
-The center of the grid is reserved for the current agent state. The bottom row
-contains the direct action pads.
+The top six rows show the selected session. The next row retains the state of
+each visible session, and the bottom row combines direct actions with session
+selectors.
 
 <div className="matrixDiagram" aria-label="Current Pad-Lattice action and state layout">
   <div className="matrixGrid">
@@ -36,21 +37,20 @@ contains the direct action pads.
     <span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell state">state</span><span className="matrixCell state">state</span><span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span>
     <span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span>
     <span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span>
-    <span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell idle"></span>
-    <span className="matrixCell approve">approve<br />11</span><span className="matrixCell reject">reject<br />12</span><span className="matrixCell idle">13</span><span className="matrixCell idle">14</span><span className="matrixCell idle">15</span><span className="matrixCell idle">16</span><span className="matrixCell retry">retry<br />17</span><span className="matrixCell stop">stop<br />18</span>
+    <span className="matrixCell idle"></span><span className="matrixCell idle"></span><span className="matrixCell statusBlue">S1<br />23</span><span className="matrixCell statusWhite">S2<br />24</span><span className="matrixCell statusYellow">S3<br />25</span><span className="matrixCell statusGreen">S4<br />26</span><span className="matrixCell idle"></span><span className="matrixCell idle"></span>
+    <span className="matrixCell approve">approve<br />11</span><span className="matrixCell reject">reject<br />12</span><span className="matrixCell accentOne">A1<br />13</span><span className="matrixCell accentTwo">A2<br />14</span><span className="matrixCell accentThree">A3<br />15</span><span className="matrixCell accentFour">A4<br />16</span><span className="matrixCell retry">retry<br />17</span><span className="matrixCell stop">stop<br />18</span>
   </div>
 </div>
 
-Pads `13` through `16` are currently unused. The planned multi-agent layout
-assigns them to four active Codex sessions:
+Pads `13` through `16` select up to four visible agent sessions:
 
 | `11` | `12` | `13` | `14` | `15` | `16` | `17` | `18` |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | approve | reject | agent 1 | agent 2 | agent 3 | agent 4 | retry | stop |
 
-Each agent selector will keep a stable accent color. Brightness will indicate
-the selected session; the center shape and semantic state color remain
-unchanged.
+Each occupied selector keeps its slot accent color. Brightness indicates the
+selected session. Pads `23` through `26` independently retain each session's
+semantic state, so a background approval request remains visible.
 
 ### State Examples
 
@@ -116,6 +116,17 @@ unchanged.
 | `17` | `retry` | Try again. |
 | `18` | `stop` | Stop or interrupt. |
 
+Actions are bright only when the selected session has a connected subscriber
+for that capability. Dim pads are mapped but unavailable; pressing one does
+not broadcast an action.
+
+## Session Indicators
+
+| Pads | Role |
+| --- | --- |
+| `13`-`16` | Accent-colored agent selectors; bright means selected. |
+| `23`-`26` | Semantic state colors for those four slots. |
+
 ## Grid map
 
 Launchpad Pro Mk1 programmer-grid note numbers in table form:
@@ -128,5 +139,5 @@ Launchpad Pro Mk1 programmer-grid note numbers in table form:
 | `51` | `52` | `53` | `54` | `55` | `56` | `57` | `58` |
 | `41` | `42` | `43` | `44` | `45` | `46` | `47` | `48` |
 | `31` | `32` | `33` | `34` | `35` | `36` | `37` | `38` |
-| `21` | `22` | `23` | `24` | `25` | `26` | `27` | `28` |
-| `11` approve | `12` reject | `13` | `14` | `15` | `16` | `17` retry | `18` stop |
+| `21` | `22` | `23` state 1 | `24` state 2 | `25` state 3 | `26` state 4 | `27` | `28` |
+| `11` approve | `12` reject | `13` agent 1 | `14` agent 2 | `15` agent 3 | `16` agent 4 | `17` retry | `18` stop |

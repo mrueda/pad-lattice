@@ -22,12 +22,20 @@ class CliTest(TestCase):
 
     def test_demo_accepts_greeting_delay(self) -> None:
         args = build_parser().parse_args(
-            ["demo", "--greeting-delay", "0.12", "--no-greeting"]
+            [
+                "demo",
+                "--profile",
+                "novation/launchpad/pro-mk1",
+                "--greeting-delay",
+                "0.12",
+                "--no-greeting",
+            ]
         )
 
         self.assertEqual(args.command, "demo")
         self.assertEqual(args.greeting_delay, 0.12)
         self.assertTrue(args.no_greeting)
+        self.assertEqual(args.profile_id, "novation/launchpad/pro-mk1")
 
     def test_daemon_accepts_socket_and_no_greeting(self) -> None:
         args = build_parser().parse_args(
@@ -76,11 +84,21 @@ class CliTest(TestCase):
 
     def test_listen_actions_accepts_socket(self) -> None:
         args = build_parser().parse_args(
-            ["listen-actions", "--socket", "/tmp/pad-lattice.sock"]
+            [
+                "listen-actions",
+                "--socket",
+                "/tmp/pad-lattice.sock",
+                "--backend",
+                "codex",
+                "--session-id",
+                "session-123",
+            ]
         )
 
         self.assertEqual(args.command, "listen-actions")
         self.assertEqual(args.socket, "/tmp/pad-lattice.sock")
+        self.assertEqual(args.backend, "codex")
+        self.assertEqual(args.session_id, "session-123")
 
     def test_codex_exec_accepts_prompt(self) -> None:
         args = build_parser().parse_args(
@@ -99,3 +117,24 @@ class CliTest(TestCase):
         self.assertEqual(args.command, "monitor-midi")
         self.assertEqual(args.input, "Launchpad Pro")
         self.assertEqual(args.seconds, 3.0)
+
+    def test_profile_test_accepts_experimental_profile_and_report(self) -> None:
+        args = build_parser().parse_args(
+            [
+                "profile",
+                "test",
+                "novation/launchpad/mini-mk3",
+                "--report",
+                "/tmp/mini-report.json",
+            ]
+        )
+
+        self.assertEqual(args.profile_command, "test")
+        self.assertEqual(args.profile_id, "novation/launchpad/mini-mk3")
+        self.assertEqual(str(args.report), "/tmp/mini-report.json")
+
+    def test_profile_validate_accepts_json_path(self) -> None:
+        args = build_parser().parse_args(["profile", "validate", "profile.json"])
+
+        self.assertEqual(args.profile_command, "validate")
+        self.assertEqual(str(args.path), "profile.json")

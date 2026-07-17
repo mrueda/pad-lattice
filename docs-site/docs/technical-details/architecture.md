@@ -1,47 +1,47 @@
 # Architecture
 
-Pad-Lattice separates agent integration from hardware ownership.
+Pad-Lattice separates agent integration, session routing, and physical
+hardware:
 
 ```text
 Agent backend
-  -> Pad-Lattice socket protocol
-  -> Pad-Lattice daemon
-  -> Device profile
-  -> Hardware LEDs and controls
+  -> JSON-line Unix socket protocol
+  -> multi-agent daemon
+  -> semantic ControlSurface interface
+  -> trusted driver + declarative device profile
+  -> MIDI controller
 ```
 
 ## Components
 
 | Module | Purpose |
 | --- | --- |
-| `pad_lattice.events` | Agent-agnostic states and control actions. |
-| `pad_lattice.protocol` | JSON-line socket protocol helpers. |
-| `pad_lattice.daemon` | Local Unix socket daemon and action broadcaster. |
-| `pad_lattice.launchpad` | Launchpad Pro Mk1 rendering and input mapping. |
-| `pad_lattice.codex_hooks` | Interactive Codex lifecycle hook adapter and installer. |
-| `pad_lattice.codex_exec` | Codex CLI JSONL adapter. |
-| `pad_lattice.cli` | Command-line interface. |
+| `pad_lattice.events` | Agent identities, semantic states, and actions. |
+| `pad_lattice.protocol` | JSON-line message encoding and validation. |
+| `pad_lattice.daemon` | MIDI ownership, session registry, selection, and targeted routing. |
+| `pad_lattice.devices.base` | Hardware-independent surface view and input events. |
+| `pad_lattice.devices.profiles` | JSON schema validation and profile catalog. |
+| `pad_lattice.devices.midi_grid` | Trusted static-palette MIDI grid driver. |
+| `pad_lattice.devices.factory` | Discovery, explicit selection, and port resolution. |
+| `pad_lattice.codex_hooks` | Interactive Codex lifecycle adapter and installer. |
+| `pad_lattice.codex_exec` | Non-interactive Codex JSONL adapter and Stop sink. |
+| `pad_lattice.cli` | User-facing orchestration and profile tools. |
 
-## Daemon
+## Daemon Ownership
 
-Only one process should own the MIDI ports. The daemon keeps that ownership and
-exposes a local Unix socket so agents and tools can send state updates without
-touching MIDI directly.
+Only one process should own a controller's MIDI ports. The daemon keeps that
+ownership and exposes a local Unix socket. Agent integrations never need to
+know the attached device model or emit MIDI directly.
 
-The daemon also broadcasts Launchpad button presses to action subscribers.
+The daemon converts its selected session into a `SurfaceView`. Drivers receive
+semantic state, visible session indicators, and currently available actions.
+Drivers return semantic `ActionPressed` or `SessionSelected` events.
 
 ## Protocol
 
-The protocol uses newline-delimited JSON.
+Messages are newline-delimited JSON.
 
-State message:
-
-```json
-{"type":"state","state":"running"}
-```
-
-Integrations can attach agent identity without coupling the core state model to
-a particular backend:
+State update:
 
 ```json
 {
@@ -50,36 +50,69 @@ a particular backend:
   "agent": {
     "backend": "codex",
     "session_id": "019f...",
-    "cwd": "/work/project"
+    "model": "gpt-5"
   }
 }
 ```
 
-Action message:
+Only `backend` and `session_id` form the identity key. Other string fields are
+optional metadata. A manual state message without `agent` uses
+`local/default`.
+
+Action subscription:
 
 ```json
-{"type":"action","action":"approve"}
+{
+  "type": "subscribe_actions",
+  "agent": {
+    "backend": "codex-exec",
+    "session_id": "6f3a..."
+  },
+  "actions": ["stop"]
+}
 ```
 
-Subscribe to actions:
+Targeted action response:
 
 ```json
-{"type":"subscribe_actions"}
+{
+  "type": "action",
+  "action": "stop",
+  "agent": {
+    "backend": "codex-exec",
+    "session_id": "6f3a..."
+  }
+}
 ```
 
-## Multi-agent routing
+An action is sent only when the subscription identity equals the selected
+session and its capability list contains that action. With no matching live
+subscriber, the action is ignored and rendered dim.
 
-The current daemon renders one global state and broadcasts actions to every
-subscriber. That is sufficient for one active agent, but it is not a safe
-approval model for multiple simultaneous sessions.
+## Session Registry
 
-The planned control-plane model is:
+Registry records hold identity, current semantic state, metadata, visible
+slot, recency, and terminal-state expiry. The first session is selected;
+background updates never steal selection. Four selector slots are available in
+the bundled profiles.
 
-1. Keep an agent registry keyed by backend and session ID.
-2. Assign active agents stable accent colors and selector slots.
-3. Use Launchpad pads `13` through `16` to select up to four visible sessions.
-4. Render the selected session's semantic state in the center of the grid.
-5. Route approve, reject, retry, and stop only to the selected subscriber.
+Success and error are tracked per session. After `--terminal-hold`, that
+session returns to `waiting_for_reply` without changing another session's
+state.
 
-This division is portable: device profiles may expose different selector
-controls, while session identity and action routing remain in the daemon.
+## Profile Resolution
+
+Supported profiles may be auto-detected by ordered input and output regexes.
+Experimental profiles require explicit selection. Ambiguous ports fail with a
+diagnostic. User profile IDs cannot override a built-in or another user
+profile.
+
+Profiles are data only. Schema version 1 can select the trusted
+`midi.palette-grid` driver but cannot import arbitrary Python.
+
+## Platform Scope
+
+The current transport uses Unix-domain sockets, so the supported runtime scope
+is Linux and other Unix-like systems with compatible MIDI backends. The
+protocol and surface interfaces do not require this transport forever, but a
+cross-platform replacement is not part of schema version 1.

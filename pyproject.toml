@@ -55,5 +55,10 @@ pad-lattice = "pad_lattice.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+pad_lattice = [
+  "device_profiles/*/*/*.json",
+]
+
 [tool.setuptools.dynamic]
 version = { attr = "pad_lattice.__version__" }

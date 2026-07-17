@@ -1,16 +1,11 @@
 # Quick Start
 
-Install Pad-Lattice as an isolated command with
-[pipx](https://pipx.pypa.io/):
+## Install
+
+Install the current GitHub version as an isolated command:
 
 ```bash
-pipx install pad-lattice
-```
-
-Alternatively, install it into the active Python environment:
-
-```bash
-python3 -m pip install pad-lattice
+pipx install git+https://github.com/mrueda/pad-lattice.git
 ```
 
 Confirm the installation:
@@ -19,48 +14,76 @@ Confirm the installation:
 pad-lattice --version
 ```
 
-List MIDI ports:
+## Find the Controller
+
+List raw MIDI ports and matched profiles:
 
 ```bash
 pad-lattice ports
+pad-lattice devices
 ```
 
-Run the hardware demo:
+Run the hardware demo. Auto-detection considers only supported profiles:
 
 ```bash
 pad-lattice demo
 ```
 
-Start the daemon:
+The Launchpad Mini Mk3 profile is experimental and must be selected explicitly:
+
+```bash
+pad-lattice demo --profile novation/launchpad/mini-mk3
+```
+
+## Start the Daemon
+
+Only the daemon should own the MIDI ports during normal operation:
 
 ```bash
 pad-lattice daemon --no-greeting
 ```
 
-Install interactive Codex lifecycle hooks:
+Keep it running in a dedicated terminal or user service. Other commands talk
+to it through the local Unix socket.
+
+## Connect Codex
+
+Install the interactive lifecycle hooks once:
 
 ```bash
 pad-lattice install-codex-hooks
 ```
 
-Start a new Codex CLI session and run `/hooks` to review and trust the
-Pad-Lattice commands. The Launchpad will then follow prompt, running, approval,
-and completion states automatically.
+Start a new `codex` or `codex resume` session and run `/hooks` to review and
+trust the Pad-Lattice commands. Prompt, running, approval, and completion
+states will then update the selected session automatically.
 
-Send a state from another terminal:
-
-```bash
-pad-lattice send-state running
-pad-lattice send-state success
-```
-
-Listen for hardware actions:
+Run a non-interactive task with a targeted hardware Stop action:
 
 ```bash
-pad-lattice listen-actions
+pad-lattice codex-exec "summarize this repository"
 ```
 
-Press the mapped control pads:
+## Exercise Multiple Sessions
+
+Manual state messages can use explicit identities:
+
+```bash
+pad-lattice send-state running --backend test --session-id agent-a
+pad-lattice send-state waiting_for_approval --backend test --session-id agent-b
+```
+
+Pads `13` through `16` select visible sessions. Pads `23` through `26` retain
+their semantic states. Background updates do not change the selected agent.
+
+Use an action listener to advertise controls for one test identity:
+
+```bash
+pad-lattice listen-actions --backend test --session-id agent-a
+```
+
+The four action pads become bright only for the selected session with a live
+listener:
 
 | Pad | Action |
 | --- | --- |
@@ -69,21 +92,14 @@ Press the mapped control pads:
 | `17` | `retry` |
 | `18` | `stop` |
 
-Interactive hooks currently display state only. Directly applying these
-hardware actions to an interactive Codex session is still planned.
+Interactive Codex hooks report state but do not yet apply these actions to a
+terminal approval prompt. See [Codex Integration](./codex-integration.md).
 
-Use the raw MIDI monitor when mapping or debugging hardware:
-
-```bash
-pad-lattice monitor-midi --seconds 15
-```
-
-## Development version
-
-Install the current GitHub version without cloning the repository:
+## Development Checkout
 
 ```bash
-pipx install git+https://github.com/mrueda/pad-lattice.git
+git clone https://github.com/mrueda/pad-lattice.git
+cd pad-lattice
+python3 -m venv .venv
+.venv/bin/python -m pip install -e .
 ```
-
-Use `pipx upgrade pad-lattice` after new commits are published.

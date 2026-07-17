@@ -33,6 +33,11 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'doc',
+          id: 'usage/device-testing',
+          label: 'Test a Device',
+        },
+        {
+          type: 'doc',
           id: 'usage/troubleshooting',
           label: 'Troubleshooting',
         },
