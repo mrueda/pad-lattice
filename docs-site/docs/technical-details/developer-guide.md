@@ -41,15 +41,16 @@ The launcher is deliberately **not** a terminal emulator. Codex inherits the
 terminal's stdin, stdout, and stderr. The launcher adds only environment
 metadata and a daemon lease.
 
-## The Four Contracts
+## The Five Contracts
 
-Pad-Lattice keeps four contracts separate:
+Pad-Lattice keeps five contracts separate:
 
 | Contract | Main code | What it defines |
 | --- | --- | --- |
 | Agent semantics | `events.py` | `AgentState`, `ControlAction`, and stable `AgentIdentity`. |
 | Local IPC | `protocol.py`, `client.py` | Wire Protocol 1 and the public typed integration API. |
 | Surface semantics | `devices/base.py`, `visual_protocol.py` | A hardware-independent `SurfaceView` and its semantic light tokens. |
+| Audio semantics | `audio.py` | Optional earcons, Scene pitch identity, authored score, and playback lifecycle. |
 | Hardware translation | `devices/profiles.py`, `devices/midi_grid.py` | Validated profile data, MIDI addresses, palette values, and physical events. |
 
 `daemon_runtime.py` joins these contracts at the I/O boundary.
@@ -61,7 +62,8 @@ Protocol 1 and Device Profile Schema 1. Runtime code uses direct typed parsers.
 Optional JSON Schema validation is an authoring-time dry run.
 
 The [Socket Protocol](../reference/socket-protocol.md), [Visual
-Language](../usage/visual-language.md), and [Device
+Language](../usage/visual-language.md), [Audio
+Feedback](../usage/audio-feedback.md), and [Device
 Profiles](./device-profiles.md) pages define each boundary in more detail.
 
 ## State Update Path
@@ -86,6 +88,11 @@ adapter and converge on the same `AgentState` and socket message contract.
 An update from a background session changes that session's registry record and
 compact status light. It does not change `_selected_agent`, so it cannot steal
 the center display or action target.
+
+With `--audio-feedback`, the daemon also compares the effective state with the
+last announced state for that identity. Important transitions enqueue one
+semantic `Earcon`; repeated reports, running, and typing remain silent. Slot
+number transposes the cue so multi-agent identity and meaning stay independent.
 
 ## Physical Action Path
 
@@ -150,6 +157,10 @@ Threads are confined to adapters that must wait independently:
 - a permission hook waits synchronously because Codex is waiting for that
   hook's decision.
 
+Audio uses short-lived operating-system player processes. Synthesis and
+playback are outside the control plane, and playback never blocks the selector
+loop.
+
 ## State Ownership
 
 | Data | Authority | Persistence |
@@ -176,6 +187,8 @@ overflow while retaining its identity and preferred accent.
 | Unleased client disappears without cleanup | The session expires after the configured inactivity TTL. |
 | Several MIDI ports or profiles match | Device resolution fails with a diagnostic instead of guessing. |
 | Invalid protocol message | The daemon returns a protocol error on that client connection. |
+| Requested audio player unavailable | Explicit audio startup fails clearly; operation without an audio flag is unaffected. |
+| Audio playback fails after startup | State, rendering, MIDI input, and action routing continue. |
 | Clean daemon shutdown | The surface clears and the profile's shutdown messages restore normal device mode. |
 
 ## Where To Make Changes
@@ -185,6 +198,8 @@ overflow while retaining its identity and preferred accent.
 | Add an agent backend | New adapter using `PadLatticeClient` and `events.py` | Adapter tests, `test_client.py` |
 | Change session selection or routing | `control_plane.py` | `test_control_plane.py` |
 | Change a glyph or semantic color role | `visual_protocol.py` | `test_visual_protocol.py`, `test_midi_grid.py` |
+| Change an earcon or show score | `audio.py` | `test_audio.py`, `test_daemon.py` |
+| Change the visual story | `show.py` | `test_show.py`, real-device performance test |
 | Add a palette-grid controller | A profile JSON file | `test_device_profiles.py`, guided profile test |
 | Add a new hardware driver | `devices/base.py`, `devices/factory.py`, new trusted driver | Driver tests and profile validation tests |
 | Change Codex lifecycle mapping | `codex_hooks.py` or `codex_exec.py` | Matching Codex adapter tests |
@@ -222,4 +237,5 @@ Device](../usage/device-testing.md).
 2. [Socket Protocol](../reference/socket-protocol.md) for client behavior.
 3. [Multi-Agent Design](./multi-agent-design.md) for routing invariants.
 4. [Visual Language](../usage/visual-language.md) for surface semantics.
-5. [Device Profiles](./device-profiles.md) for hardware extension.
+5. [Audio Feedback](../usage/audio-feedback.md) for optional sonification.
+6. [Device Profiles](./device-profiles.md) for hardware extension.

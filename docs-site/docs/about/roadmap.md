@@ -21,6 +21,8 @@
   Programmer's Reference Guide.
 - Guided physical profile testing with sanitized reports.
 - Read-only `pad-lattice doctor` diagnostics for profiles, MIDI, daemon, and hooks.
+- Full-surface **A Spark Becomes a Constellation** audiovisual performance.
+- Optional semantic earcons for agent states, actions, and Scene selection.
 - On-demand GitHub workflows for tests, documentation, TestPyPI, and PyPI.
 
 ## Next

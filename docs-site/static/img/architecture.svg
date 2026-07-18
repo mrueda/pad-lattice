@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 430" role="img" aria-labelledby="title description">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" role="img" aria-labelledby="title description">
   <title id="title">Pad-Lattice architecture</title>
-  <desc id="description">Interactive Codex, non-interactive Codex, and other agent integrations communicate through a local JSON-line Unix socket. The daemon runtime owns transport and MIDI while the deterministic control plane manages sessions, selection, leases, and targeted actions. Surface views pass through the visual protocol and a device profile to a MIDI grid controller, while physical actions return to the selected agent.</desc>
+  <desc id="description">Interactive Codex, non-interactive Codex, and other agent integrations communicate through a local JSON-line Unix socket. The daemon runtime owns transport and MIDI while the deterministic control plane manages sessions, selection, leases, and targeted actions. Surface views pass through the visual protocol and a device profile to a MIDI grid controller, standalone shows may use optional direct RGB, physical actions return to the selected agent, and optional semantic earcons play through computer audio.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M0 0L10 5L0 10Z" fill="#78909b"/>
@@ -10,7 +10,7 @@
     </marker>
   </defs>
 
-  <rect width="1200" height="430" fill="#ffffff"/>
+  <rect width="1200" height="520" fill="#ffffff"/>
   <g font-family="Arial">
     <text x="24" y="24" fill="#49616c" font-size="13" font-weight="700">AGENT INTEGRATIONS</text>
     <text x="310" y="24" fill="#49616c" font-size="13" font-weight="700">LOCAL CONTROL PLANE</text>
@@ -86,7 +86,7 @@
 
       <rect x="680" y="248" width="240" height="82" rx="6" fill="#fff9f4" stroke="#c47a45" stroke-width="2"/>
       <text x="702" y="278" fill="#8c4518" font-size="16" font-weight="700">Profile + trusted driver</text>
-      <text x="702" y="302" fill="#536871" font-size="13">MIDI addresses + static palette</text>
+      <text x="702" y="302" fill="#536871" font-size="13">MIDI palette + optional RGB</text>
       <text x="702" y="321" fill="#60747d" font-size="12">device-specific translation</text>
     </g>
 
@@ -127,9 +127,19 @@
     <path d="M970 350H650V320H612" fill="none" stroke="#b64141" stroke-width="2" stroke-dasharray="7 6" marker-end="url(#return-arrow)"/>
     <text x="680" y="370" fill="#9b3030" font-size="12" font-weight="700">SELECTION + TARGETED ACTIONS</text>
 
-    <line x1="24" y1="399" x2="76" y2="399" stroke="#78909b" stroke-width="2" marker-end="url(#arrow)"/>
-    <text x="90" y="404" fill="#60747d" font-size="12">state + light output</text>
-    <line x1="255" y1="399" x2="307" y2="399" stroke="#b64141" stroke-width="2" stroke-dasharray="7 6" marker-end="url(#return-arrow)"/>
-    <text x="321" y="404" fill="#60747d" font-size="12">selection + targeted actions</text>
+    <text x="680" y="396" fill="#49616c" font-size="12" font-weight="700">OPTIONAL SONIFICATION</text>
+    <path d="M630 342H650V428H676" fill="none" stroke="#78909b" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="680" y="404" width="240" height="62" rx="6" fill="#f3faf5" stroke="#6aa57e" stroke-width="2"/>
+    <text x="702" y="430" fill="#276749" font-family="monospace" font-size="15" font-weight="700">Semantic Earcon</text>
+    <text x="702" y="451" fill="#60747d" font-size="12">meaning + Scene pitch · nonblocking</text>
+    <path d="M920 435H966" fill="none" stroke="#78909b" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="970" y="404" width="206" height="62" rx="6" fill="#fff9f4" stroke="#c47a45" stroke-width="2"/>
+    <text x="990" y="430" fill="#8c4518" font-size="15" font-weight="700">Computer audio</text>
+    <text x="990" y="451" fill="#60747d" font-size="12">generated WAV · system player</text>
+
+    <line x1="24" y1="493" x2="76" y2="493" stroke="#78909b" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="90" y="498" fill="#60747d" font-size="12">state + output</text>
+    <line x1="255" y1="493" x2="307" y2="493" stroke="#b64141" stroke-width="2" stroke-dasharray="7 6" marker-end="url(#return-arrow)"/>
+    <text x="321" y="498" fill="#60747d" font-size="12">selection + targeted actions</text>
   </g>
 </svg>

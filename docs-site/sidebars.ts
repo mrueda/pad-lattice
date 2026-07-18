@@ -33,6 +33,16 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'doc',
+          id: 'usage/audio-feedback',
+          label: 'Audio Feedback',
+        },
+        {
+          type: 'doc',
+          id: 'usage/visual-show',
+          label: 'Visual Show',
+        },
+        {
+          type: 'doc',
           id: 'usage/device-testing',
           label: 'Test a Device',
         },

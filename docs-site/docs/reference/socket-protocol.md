@@ -207,8 +207,9 @@ transfers ownership safely.
 ## Inspection and Previews
 
 `{"protocol":1,"type":"status"}` returns profile and port metadata,
-selection, sessions, visible slots, accents, leases, overflow, TTL, and preview
-status. `{"protocol":1,"type":"ping"}` returns
+selection, sessions, visible slots, accents, leases, overflow, TTL, preview
+status, and whether optional audio feedback is enabled.
+`{"protocol":1,"type":"ping"}` returns
 `{"protocol":1,"type":"pong"}`.
 
 `preview` and `preview_end` are bounded diagnostic messages used by

@@ -11,6 +11,16 @@ For a supported, auto-detected device:
 pad-lattice daemon --no-greeting --terminal-hold 1.5
 ```
 
+Add short state and action earcons without changing agent behavior:
+
+```bash
+pad-lattice daemon --no-greeting --audio-feedback
+```
+
+Audio feedback is optional. Routine running and typing remain silent. See
+[Audio Feedback](./audio-feedback.md) for the complete vocabulary and local
+player requirements.
+
 Select an experimental profile explicitly:
 
 ```bash

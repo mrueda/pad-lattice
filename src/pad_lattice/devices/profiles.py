@@ -61,6 +61,13 @@ class GridRegion:
 
 
 @dataclass(frozen=True)
+class ShowRgbCapability:
+    sysex_prefix: tuple[int, ...]
+    channel_max: int
+    batch_size: int
+
+
+@dataclass(frozen=True)
 class DeviceProfile:
     schema_version: int
     visual_protocol: int
@@ -81,6 +88,8 @@ class DeviceProfile:
     selectors: tuple[MidiAddress, ...]
     statuses: tuple[MidiAddress, ...]
     overflow_indicator: MidiAddress | None
+    show_top: tuple[MidiAddress, ...]
+    show_right: tuple[MidiAddress, ...]
     palette: dict[str, int]
     accents: tuple[AccentColors, ...]
     conformance: frozenset[str]
@@ -88,6 +97,7 @@ class DeviceProfile:
     clear: tuple[MidiCommand, ...]
     shutdown: tuple[MidiCommand, ...]
     text_scroll: bool
+    show_rgb: ShowRgbCapability | None
     source: str = ""
 
     @property
@@ -370,6 +380,23 @@ def parse_profile(data: Any, *, source: str = "<profile>") -> DeviceProfile:
         if "overflow" in indicators_data
         else None
     )
+    showcase_data = _object(surface_data, "showcase", f"{source}.surface")
+    show_top = _address_array(
+        showcase_data.get("top"),
+        f"{source}.surface.showcase.top",
+    )
+    show_right = _address_array(
+        showcase_data.get("right"),
+        f"{source}.surface.showcase.right",
+    )
+    if len(show_top) != 8 or len(show_right) != 8:
+        raise ProfileError(
+            f"{source}.surface.showcase must define eight top and eight right lights"
+        )
+    _validate_unique_addresses(
+        [*show_top, *show_right],
+        f"{source}.surface.showcase",
+    )
     surface_addresses = [*action_addresses.values(), *selectors, *statuses]
     if overflow_indicator is not None:
         surface_addresses.append(overflow_indicator)
@@ -467,6 +494,20 @@ def parse_profile(data: Any, *, source: str = "<profile>") -> DeviceProfile:
     text_scroll = capabilities.get("text_scroll", True)
     if not isinstance(text_scroll, bool):
         raise ProfileError(f"{source}.capabilities.text_scroll must be boolean")
+    show_rgb = _show_rgb_capability(
+        capabilities.get("show_rgb"),
+        f"{source}.capabilities.show_rgb",
+    )
+    if show_rgb is not None:
+        show_numbers = [
+            *(number for row in rows for number in row),
+            *(address.number for address in show_top),
+            *(address.number for address in show_right),
+        ]
+        if len(set(show_numbers)) != len(show_numbers):
+            raise ProfileError(
+                f"{source}: direct RGB requires unique numeric show addresses"
+            )
 
     return DeviceProfile(
         schema_version=schema_version,
@@ -488,6 +529,8 @@ def parse_profile(data: Any, *, source: str = "<profile>") -> DeviceProfile:
         selectors=selectors,
         statuses=statuses,
         overflow_indicator=overflow_indicator,
+        show_top=show_top,
+        show_right=show_right,
         palette=palette,
         accents=accents,
         conformance=conformance,
@@ -495,6 +538,7 @@ def parse_profile(data: Any, *, source: str = "<profile>") -> DeviceProfile:
         clear=_commands(messages.get("clear", []), f"{source}.messages.clear"),
         shutdown=_commands(messages.get("shutdown", []), f"{source}.messages.shutdown"),
         text_scroll=text_scroll,
+        show_rgb=show_rgb,
         source=source,
     )
 
@@ -615,6 +659,42 @@ def _midi_channel(value: Any, location: str) -> int:
     if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= 15:
         raise ProfileError(f"{location} must be an integer from 0 to 15")
     return value
+
+
+def _show_rgb_capability(
+    value: Any,
+    location: str,
+) -> ShowRgbCapability | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise ProfileError(f"{location} must be a JSON object")
+    unknown = sorted(set(value) - {"sysex_prefix", "channel_max", "batch_size"})
+    if unknown:
+        raise ProfileError(
+            f"{location} contains unknown fields: " + ", ".join(unknown)
+        )
+    prefix = value.get("sysex_prefix")
+    if not isinstance(prefix, list) or not prefix:
+        raise ProfileError(f"{location}.sysex_prefix must be a non-empty array")
+    return ShowRgbCapability(
+        sysex_prefix=tuple(
+            _midi_value(byte, f"{location}.sysex_prefix[{index}]")
+            for index, byte in enumerate(prefix)
+        ),
+        channel_max=_bounded_integer(
+            value.get("channel_max"),
+            f"{location}.channel_max",
+            1,
+            127,
+        ),
+        batch_size=_bounded_integer(
+            value.get("batch_size"),
+            f"{location}.batch_size",
+            1,
+            127,
+        ),
+    )
 
 
 def _palette(data: dict[str, Any], location: str) -> dict[str, int]:

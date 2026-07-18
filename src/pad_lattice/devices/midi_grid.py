@@ -9,6 +9,7 @@ from typing import Any, TextIO
 from pad_lattice.devices.base import (
     ActionPressed,
     SessionSelected,
+    ShowFrame,
     SurfaceEvent,
     SurfaceView,
 )
@@ -84,7 +85,9 @@ class MidiGridSurface:
         self.scroll_delay = scroll_delay
         self._sleep = sleeper
         self._closed = False
+        self._showing = False
         self._address_values: dict[MidiAddress, int] = {}
+        self._show_rgb_values: dict[int, tuple[int, int, int]] = {}
         self._actions_by_address = {
             address: action for action, address in profile.controls.items()
         }
@@ -105,8 +108,46 @@ class MidiGridSurface:
             )
             self.clear(force=True)
 
+    @property
+    def startup_greeting_duration(self) -> float:
+        if not self.startup_greeting or not self.profile.text_scroll:
+            return 0.0
+        frame_count = (
+            len(_text_columns(self.startup_greeting))
+            + self.profile.width
+            + 1
+        )
+        return frame_count * self.scroll_delay
+
     def render(self, view: SurfaceView) -> None:
+        if self._showing:
+            self._show_rgb_values.clear()
+            off = self.profile.color("off")
+            for address in (*self.profile.show_top, *self.profile.show_right):
+                self._set_address(address, off)
+            self._showing = False
         self._render_frame(compile_visual_frame(view, self.selector_capacity))
+
+    def render_show_frame(self, frame: ShowFrame) -> None:
+        if (
+            len(frame.grid) != self.profile.height
+            or any(len(row) != self.profile.width for row in frame.grid)
+            or len(frame.top) != len(self.profile.show_top)
+            or len(frame.right) != len(self.profile.show_right)
+        ):
+            raise ValueError("show frame does not match the profile's 8x8 plus rails")
+
+        if self.profile.show_rgb is not None:
+            self._render_rgb_show_frame(frame)
+        else:
+            for y, row in enumerate(frame.grid):
+                for x, color in enumerate(row):
+                    self._set_grid_pad(x, y, self._resolve_color(color.fallback))
+            for address, color in zip(self.profile.show_top, frame.top):
+                self._set_address(address, self._resolve_color(color.fallback))
+            for address, color in zip(self.profile.show_right, frame.right):
+                self._set_address(address, self._resolve_color(color.fallback))
+        self._showing = True
 
     def poll_events(self) -> list[SurfaceEvent]:
         events: list[SurfaceEvent] = []
@@ -124,6 +165,8 @@ class MidiGridSurface:
         return events
 
     def clear(self, *, force: bool = False) -> None:
+        self._showing = False
+        self._show_rgb_values.clear()
         if self.profile.clear:
             for command in self.profile.clear:
                 self._send_command(command)
@@ -138,6 +181,8 @@ class MidiGridSurface:
         addresses.update(self.profile.controls.values())
         addresses.update(self.profile.selectors)
         addresses.update(self.profile.statuses)
+        addresses.update(self.profile.show_top)
+        addresses.update(self.profile.show_right)
         if self.profile.overflow_indicator is not None:
             addresses.add(self.profile.overflow_indicator)
         for address in addresses:
@@ -192,6 +237,45 @@ class MidiGridSurface:
                 self.profile.overflow_indicator,
                 self._resolve_color(frame.overflow),
             )
+
+    def _render_rgb_show_frame(self, frame: ShowFrame) -> None:
+        capability = self.profile.show_rgb
+        if capability is None:
+            raise AssertionError("RGB show rendering requires a profile capability")
+        if not self._showing:
+            self._address_values.clear()
+
+        values = (
+            *(
+                (self.profile.grid_address(x, y), color.rgb)
+                for y, row in enumerate(frame.grid)
+                for x, color in enumerate(row)
+            ),
+            *(
+                (address, color.rgb)
+                for address, color in zip(self.profile.show_top, frame.top)
+            ),
+            *(
+                (address, color.rgb)
+                for address, color in zip(self.profile.show_right, frame.right)
+            ),
+        )
+        updates: list[tuple[int, tuple[int, int, int]]] = []
+        for address, rgb in values:
+            native = tuple(
+                round(channel * capability.channel_max / 255)
+                for channel in rgb
+            )
+            if self._show_rgb_values.get(address.number) == native:
+                continue
+            self._show_rgb_values[address.number] = native
+            updates.append((address.number, native))
+
+        for offset in range(0, len(updates), capability.batch_size):
+            data = list(capability.sysex_prefix)
+            for address, rgb in updates[offset : offset + capability.batch_size]:
+                data.extend((address, *rgb))
+            self.output_port.send(self._message_factory("sysex", data=data))
 
     def _resolve_color(self, token: str) -> int:
         if not token.startswith("accent:"):

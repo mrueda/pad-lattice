@@ -2,7 +2,7 @@
   <a href="https://github.com/mrueda/pad-lattice">
     <img src="https://raw.githubusercontent.com/mrueda/pad-lattice/main/assets/pad-lattice-logo.svg" width="220" alt="Pad-Lattice logo">
   </a>
-  <p><em>Repurpose MIDI controllers as physical interfaces for AI agents</em></p>
+  <p><em>MIDI pad controllers, reimagined for AI agents</em></p>
 </div>
 
 # Pad-Lattice
@@ -75,15 +75,32 @@ Discover hardware and run the supported-device demo:
 ```bash
 pad-lattice devices
 pad-lattice demo
+pad-lattice demo --audio
+pad-lattice show
+pad-lattice show --audio
 ```
+
+Add `--audio` to `demo` to hear the scrolling **HELLO FROM CODEX CLI** greeting
+and the same brief semantic earcons used during normal daemon operation.
+
+`show` plays **A Spark Becomes a Constellation**, an authored 43-second story
+across the full 8x8 matrix and common outer rails. Add `--audio` for its
+synchronized, dependency-free piano-and-strings score and robotic final
+signature. Like `demo`, it opens the MIDI device directly, so the daemon must
+be stopped first.
 
 Start the daemon and install Codex lifecycle hooks:
 
 ```bash
-pad-lattice daemon --no-greeting
+pad-lattice daemon --audio-feedback
 pad-lattice install-codex-hooks
 pad-lattice codex --label pad-lattice
 ```
+
+`--audio-feedback` is optional. It speaks the scrolling startup greeting and
+plays brief semantic earcons for questions, approvals, physical actions,
+completion, errors, and Scene selection while leaving routine running and
+typing silent. Add `--no-greeting` to suppress both forms of startup greeting.
 
 In the first Codex session, run `/hooks` and review and trust the installed
 commands. When Codex requests permission, select its right-side Agent Scene

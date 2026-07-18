@@ -42,6 +42,11 @@
   align-items: center;
 }
 
+.copy,
+.surfacePanel {
+  min-width: 0;
+}
+
 .copy h1 {
   max-width: 760px;
   margin: 0;
@@ -112,77 +117,152 @@
   filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.24));
 }
 
-.launchpadGrid {
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 0.48rem;
+.surfaceTopology {
   padding: 0.8rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   background: #0b0f14;
 }
 
+.topRail {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.48rem;
+  margin: 0 calc(2.15rem + 0.48rem) 0.48rem 0;
+}
+
+.controllerBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.15rem;
+  gap: 0.48rem;
+}
+
+.launchpadGrid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.48rem;
+}
+
+.sceneRail {
+  display: grid;
+  grid-template-rows: repeat(8, minmax(0, 1fr));
+  gap: 0.48rem;
+}
+
 .pad,
-.activePad {
+.railPad,
+.scenePad {
   aspect-ratio: 1;
-  border-radius: 7px;
   border: 1px solid #29313a;
   background: #151b22;
 }
 
-.activePad:nth-child(20),
-.activePad:nth-child(21),
-.activePad:nth-child(28),
-.activePad:nth-child(29) {
-  border-color: #93c5fd;
-  background: #2563eb;
-  box-shadow: 0 0 18px rgba(37, 99, 235, 0.55);
+.pad {
+  border-radius: 7px;
 }
 
-.activePad:nth-child(57),
-.activePad:nth-child(58) {
+.railPad,
+.scenePad {
+  border-radius: 50%;
+}
+
+.glyphApproval {
+  border-color: #fcd34d;
+  background: #f59e0b;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.52);
+}
+
+.statusApproval {
+  border-color: #fbbf24;
+  background: #d97706;
+  box-shadow: 0 0 10px rgba(217, 119, 6, 0.32);
+}
+
+.statusRunning {
+  border-color: #60a5fa;
+  background: #1d4ed8;
+}
+
+.statusReply {
+  border-color: #f8fafc;
+  background: #cbd5e1;
+}
+
+.statusSuccess,
+.actionApprove {
   border-color: #86efac;
   background: #16a34a;
   box-shadow: 0 0 18px rgba(22, 163, 74, 0.5);
 }
 
-.activePad:nth-child(63) {
-  border-color: #fde047;
-  background: #eab308;
-  box-shadow: 0 0 18px rgba(234, 179, 8, 0.5);
-}
-
-.activePad:nth-child(64) {
+.actionReject {
   border-color: #fca5a5;
   background: #dc2626;
   box-shadow: 0 0 18px rgba(220, 38, 38, 0.5);
 }
 
-.statusRow {
+.sceneCyan {
+  border-color: #67e8f9;
+  background: #00aebb;
+  box-shadow: 0 0 18px rgba(0, 174, 187, 0.62);
+}
+
+.sceneMagenta {
+  border-color: rgba(240, 171, 252, 0.58);
+  background: rgba(200, 62, 201, 0.46);
+}
+
+.sceneLime {
+  border-color: rgba(190, 242, 100, 0.58);
+  background: rgba(112, 185, 45, 0.46);
+}
+
+.sceneOrange {
+  border-color: rgba(253, 186, 116, 0.58);
+  background: rgba(230, 126, 34, 0.46);
+}
+
+.railOff {
+  border-color: #29313a;
+  background: #151b22;
+  box-shadow: none;
+}
+
+.protocolReadout {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.55rem 1rem;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.76rem;
+  font-weight: 750;
 }
 
-.statusRow span {
-  padding: 0.36rem 0.62rem;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 999px;
-  color: rgba(255, 255, 255, 0.86);
-  font-size: 0.78rem;
-  font-weight: 800;
+.protocolReadout span {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
 }
 
-.approve {
-  background: rgba(22, 163, 74, 0.18);
+.protocolReadout i {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
 }
 
-.waiting {
-  background: rgba(234, 179, 8, 0.18);
+.cyanDot {
+  background: #00aebb;
 }
 
-.stop {
-  background: rgba(220, 38, 38, 0.18);
+.amberDot {
+  background: #f59e0b;
+}
+
+.greenDot {
+  background: #16a34a;
+}
+
+.redDot {
+  background: #dc2626;
 }
 
 .grid {
@@ -245,6 +325,7 @@
   }
 
   .surfacePanel {
+    width: 100%;
     max-width: 560px;
   }
 }

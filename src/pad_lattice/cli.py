@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import TextIO
 
 from pad_lattice import __version__
+from pad_lattice.audio import SystemAudioFeedback
 from pad_lattice.codex_hooks import (
     default_codex_hooks_path,
     install_codex_hooks,
@@ -62,6 +63,7 @@ from pad_lattice.protocol import (
     status_message,
     subscribe_actions_message,
 )
+from pad_lattice.show import run_show_surface
 from pad_lattice.visual_protocol import ACCENT_RGB
 
 
@@ -104,6 +106,28 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="skip the device startup greeting",
     )
+    demo.add_argument(
+        "--audio",
+        action="store_true",
+        help="play the default semantic sounds during the conversation",
+    )
+
+    show = subparsers.add_parser(
+        "show",
+        help="play an authored full-surface visual performance",
+    )
+    _add_device_arguments(show)
+    show.add_argument(
+        "--tempo",
+        type=float,
+        default=1.0,
+        help="performance speed multiplier; default 1.0",
+    )
+    show.add_argument(
+        "--audio",
+        action="store_true",
+        help="play the synchronized score through the computer",
+    )
 
     daemon = subparsers.add_parser("daemon", help="run the hardware sidecar daemon")
     daemon.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
@@ -135,6 +159,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--activity-motion",
         action="store_true",
         help="enable the optional slow running-state activity marker",
+    )
+    daemon.add_argument(
+        "--audio-feedback",
+        action="store_true",
+        help="play short semantic sounds for states and physical actions",
     )
     daemon.add_argument(
         "--identity-store",
@@ -376,7 +405,37 @@ def main(argv: list[str] | None = None) -> int:
                 startup_greeting=None if args.no_greeting else "HELLO FROM CODEX CLI",
                 scroll_delay=args.greeting_delay,
             )
-            run_demo_surface(surface)
+            audio_feedback = None
+            try:
+                audio_feedback = SystemAudioFeedback() if args.audio else None
+                if audio_feedback is not None and surface.startup_greeting:
+                    audio_feedback.speak(
+                        surface.startup_greeting,
+                        duration=surface.startup_greeting_duration,
+                    )
+            except BaseException:
+                if audio_feedback is not None:
+                    audio_feedback.close()
+                surface.close()
+                raise
+            run_demo_surface(surface, audio_feedback=audio_feedback)
+            return 0
+
+        if args.command == "show":
+            if args.tempo <= 0:
+                raise ValueError("show tempo must be positive")
+            device = resolve_device(
+                profile_id=args.profile_id,
+                profile_file=args.profile_file,
+                input_name=args.input,
+                output_name=args.output,
+            )
+            surface = open_resolved_surface(
+                device,
+                startup_greeting=None,
+                scroll_delay=0.08,
+            )
+            run_show_surface(surface, tempo=args.tempo, audio=args.audio)
             return 0
 
         if args.command == "daemon":
@@ -391,14 +450,32 @@ def main(argv: list[str] | None = None) -> int:
                 startup_greeting=None if args.no_greeting else "HELLO FROM CODEX CLI",
                 scroll_delay=args.greeting_delay,
             )
-            PadLatticeDaemon(
+            try:
+                audio_feedback = (
+                    SystemAudioFeedback() if args.audio_feedback else None
+                )
+            except BaseException:
+                surface.close()
+                raise
+            daemon = PadLatticeDaemon(
                 surface,
                 args.socket,
                 terminal_hold=args.terminal_hold,
                 session_ttl=args.session_ttl,
                 activity_motion=args.activity_motion,
                 identity_store=IdentityStore(args.identity_store),
-            ).run()
+                audio_feedback=audio_feedback,
+            )
+            try:
+                if audio_feedback is not None and surface.startup_greeting:
+                    audio_feedback.speak(
+                        surface.startup_greeting,
+                        duration=surface.startup_greeting_duration,
+                    )
+            except BaseException:
+                daemon.close()
+                raise
+            daemon.run()
             return 0
 
         if args.command == "status":
@@ -705,6 +782,11 @@ def _print_status(
     )
     print(f"Selected: {selected_label}", file=stream)
     print(f"Overflow: {payload.get('overflow_count', 0)}", file=stream)
+    print(
+        "Audio feedback: "
+        f"{'on' if payload.get('audio_feedback') else 'off'}",
+        file=stream,
+    )
     sessions = payload.get("sessions")
     if not isinstance(sessions, list) or not sessions:
         print("Sessions: none", file=stream)

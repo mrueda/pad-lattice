@@ -42,7 +42,17 @@ Run the standalone hardware demo:
 
 ```bash
 pad-lattice demo --no-greeting
+pad-lattice demo --audio
 ```
+
+`--audio` speaks **HELLO FROM CODEX CLI** while it scrolls, then plays the
+daemon's default semantic earcons in context: question, approval request,
+approve or reject, and success. `--no-greeting` suppresses both the spoken and
+visual greeting. The controller still carries MIDI control data only; sound
+comes from the computer.
+
+`--greeting-delay` controls the LED scroll and proportionally resynchronizes
+the spoken word entrances.
 
 Common device-selection options:
 
@@ -54,6 +64,23 @@ pad-lattice demo --input "MIDI input" --output "MIDI output"
 
 `--profile` and `--profile-file` are mutually exclusive. Without either,
 auto-detection considers only supported profiles.
+
+## `pad-lattice show`
+
+Play the authored full-surface performance without starting the daemon:
+
+```bash
+pad-lattice show
+pad-lattice show --audio
+pad-lattice show --tempo 0.8
+pad-lattice show --profile novation/launchpad/pro-mk3
+```
+
+The default script is approximately 43 seconds. `--tempo` is a positive speed
+multiplier, so values below `1` slow the story down. `--audio` synthesizes and
+plays the synchronized piano-and-strings score through the computer.
+Device-selection options match `demo`. Stop the daemon first because the show
+owns the MIDI ports directly.
 
 ## `pad-lattice daemon`
 
@@ -72,6 +99,7 @@ Additional lifecycle options:
 | --- | --- |
 | `--session-ttl SECONDS` | Retire inactive unleased sessions after this interval; default 86400, `0` disables. |
 | `--activity-motion` | Opt in to the slow running-state activity marker. |
+| `--audio-feedback` | Speak the visual startup greeting and play short semantic earcons for important states, actions, and Scene selection. |
 | `--identity-store PATH` | Override the persistent accent-preference file. |
 
 ## `pad-lattice status`

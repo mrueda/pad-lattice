@@ -65,7 +65,9 @@ The generic driver supports:
 - an optional overflow indicator;
 - named selected/unselected accent pairs;
 - protocol conformance declarations;
-- optional 5x7 text scrolling.
+- optional 5x7 text scrolling;
+- full 8x8 plus top/right rail frames for standalone visual performances.
+- optional addressed RGB SysEx for richer standalone show color.
 
 All state indicators are steady. Profiles cannot enable MIDI flashing or
 pulsing modes.
@@ -85,7 +87,7 @@ The top-level fields are:
 | `driver` | Trusted built-in driver ID. |
 | `ports` | Ordered regex patterns for MIDI input and output names. |
 | `grid` | Kind, channel, and eight explicit MIDI-address rows. |
-| `surface` | State region, actions, agent selectors/statuses, and indicators. |
+| `surface` | State region, actions, selectors/statuses, indicators, and showcase rails. |
 | `palette` | Static values for semantic states, actions, activity, and overflow. |
 | `accents` | Named selected/unselected identity colors. |
 | `conformance` | `core-state`, `multi-agent`, and/or `actions`. |
@@ -140,6 +142,12 @@ The central surface declaration is explicit:
 }
 ```
 
+`surface.showcase.top` and `surface.showcase.right` each contain eight MIDI
+addresses. They let standalone performances use the common Launchpad rails
+without hardcoding device addresses in show scripts. Showcase addresses may
+intentionally overlap actions and Agent Scenes; they are different operating
+modes.
+
 All states, including `cancelled`, require both a primary glyph color and a
 compact summary color. Every action requires one enabled color; unavailable
 actions use the global `off` value. Accent names must be unique, and the
@@ -152,6 +160,26 @@ Pro Mk3 profile targets its **MIDI** interface rather than the DAW or DIN
 interface. All bundled profiles keep actions on the common top rail; extra
 left and bottom controls remain reserved. Explicit port overrides must select
 the same interface named by the profile.
+
+The optional `capabilities.show_rgb` block applies only to standalone show
+frames. It declares an addressed SysEx prefix, the device's maximum channel
+value, and the maximum number of RGB groups per message:
+
+```json
+{
+  "capabilities": {
+    "text_scroll": true,
+    "show_rgb": {
+      "sysex_prefix": [0, 32, 41, 2, 16, 11],
+      "channel_max": 63,
+      "batch_size": 78
+    }
+  }
+}
+```
+
+Profiles without this block use each `ShowColor` fallback through their normal
+palette. Direct RGB never changes daemon rendering or visual-protocol meaning.
 
 ## Discovery and Selection
 

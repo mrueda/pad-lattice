@@ -22,6 +22,8 @@ actions return to the owning agent integration._
   sockets, clocks, and MIDI to that policy and is the only normal MIDI owner.
 - The visual compiler knows semantic state, identity, and actions, but not MIDI
   addresses or palette numbers.
+- Optional audio maps the same semantic states and actions to nonblocking
+  earcons without changing control-plane decisions.
 - Device profiles and trusted drivers know hardware, but not Codex events.
 
 This separation allows another agent backend and another controller to evolve
@@ -38,9 +40,11 @@ independently.
 | `pad_lattice.daemon_runtime` | Unix socket, selector loop, MIDI polling, and rendering adapter. |
 | `pad_lattice.identity_store` | Hashed session-to-accent preferences with bounded LRU persistence. |
 | `pad_lattice.visual_protocol` | Hardware-independent state glyphs and semantic light tokens. |
+| `pad_lattice.audio` | Dependency-free earcons, show scoring, WAV synthesis, and system-player output. |
+| `pad_lattice.show` | Device-independent authored full-surface story and synchronized timeline. |
 | `pad_lattice.devices.base` | Hardware-independent surface view and input events. |
 | `pad_lattice.devices.profiles` | Dependency-free profile parsing and catalog. |
-| `pad_lattice.devices.midi_grid` | Trusted static-palette MIDI grid driver. |
+| `pad_lattice.devices.midi_grid` | Trusted palette driver with optional show-only RGB SysEx. |
 | `pad_lattice.devices.factory` | Discovery, explicit selection, and port resolution. |
 | `pad_lattice.diagnostics` | Read-only installation and integration checks. |
 | `pad_lattice.codex_hooks` | Interactive Codex lifecycle adapter and installer. |
@@ -62,6 +66,11 @@ The runtime runs one synchronous `selectors` loop. Socket reads, control-plane
 transitions, rendering decisions, and MIDI input polling are serialized in
 that loop. The policy object receives the current clock value from the runtime,
 which makes routing and expiry behavior deterministic in tests.
+
+When enabled, the runtime emits an `Earcon` after a meaningful state transition,
+successful physical action, unavailable press, or Scene selection. Audio
+playback starts in a child process and never blocks the selector loop. Repeated
+state reports are deduplicated, while running and typing have no sound.
 
 ## Protocol
 
@@ -148,9 +157,9 @@ Explicit session cleanup uses:
 }
 ```
 
-A `{"protocol":1,"type":"status"}` request returns device metadata, selection, every
-registered session, visible slots, accent names, labels, lease status, and
-overflow count.
+A `{"protocol":1,"type":"status"}` request returns device metadata, selection,
+every registered session, visible slots, accent names, labels, lease status,
+overflow count, and the optional-audio setting.
 
 ## Session Registry
 

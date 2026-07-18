@@ -8,6 +8,8 @@ from pad_lattice.devices.base import (
     ActionPressed,
     SessionIndicator,
     SessionSelected,
+    ShowColor,
+    ShowFrame,
     SurfaceView,
 )
 from pad_lattice.devices.midi_grid import (
@@ -66,6 +68,13 @@ def surface_for(profile_id: str) -> tuple[MidiGridSurface, FakePort, FakePort]:
         startup_greeting=None,
     )
     return surface, output, input_port
+
+
+def show_color(
+    fallback: str,
+    rgb: tuple[int, int, int],
+) -> ShowColor:
+    return ShowColor(fallback, rgb)
 
 
 class MidiGridSurfaceTest(TestCase):
@@ -130,6 +139,85 @@ class MidiGridSurfaceTest(TestCase):
 
         self.assertGreater(len(output.messages), 0)
         self.assertLess(len(output.messages), full_frame_messages)
+
+    def test_show_frame_uses_the_full_grid_and_both_outer_rails(self) -> None:
+        surface, output, _ = surface_for("novation/launchpad/mini-mk3")
+        cyan = show_color("accent:cyan:selected", (0, 220, 255))
+        orange = show_color("accent:orange:selected", (255, 92, 18))
+        magenta = show_color("accent:magenta:selected", (255, 35, 178))
+        frame = ShowFrame(
+            grid=tuple(tuple(cyan for _ in range(8)) for _ in range(8)),
+            top=(orange,) * 8,
+            right=(magenta,) * 8,
+        )
+
+        surface.render_show_frame(frame)
+        first_message_count = len(output.messages)
+        surface.render_show_frame(frame)
+
+        latest_notes = {
+            message.note: message.velocity
+            for message in output.messages
+            if message.type == "note_on"
+        }
+        latest_ccs = {
+            message.control: message.value
+            for message in output.messages
+            if message.type == "control_change"
+        }
+        self.assertEqual(len(latest_notes), 64)
+        self.assertEqual(set(latest_ccs), {91, 92, 93, 94, 95, 96, 97, 98, 89, 79, 69, 59, 49, 39, 29, 19})
+        self.assertEqual(
+            set(latest_notes.values()),
+            {surface.profile.accent("cyan").selected},
+        )
+        self.assertEqual(latest_ccs[93], surface.profile.accent("orange").selected)
+        self.assertEqual(latest_ccs[79], surface.profile.accent("magenta").selected)
+        self.assertEqual(len(output.messages), first_message_count)
+
+    def test_mk1_show_batches_and_caches_direct_rgb_sysex(self) -> None:
+        surface, output, _ = surface_for("novation/launchpad/pro-mk1")
+        amber = show_color("accent:orange:selected", (255, 128, 0))
+        frame = ShowFrame(
+            grid=tuple(tuple(amber for _ in range(8)) for _ in range(8)),
+            top=(amber,) * 8,
+            right=(amber,) * 8,
+        )
+
+        surface.render_show_frame(frame)
+        first_message_count = len(output.messages)
+        surface.render_show_frame(frame)
+
+        self.assertEqual(first_message_count, 2)
+        self.assertEqual(len(output.messages), first_message_count)
+        self.assertEqual(output.messages[0].type, "sysex")
+        self.assertEqual(output.messages[0].data[:6], [0, 32, 41, 2, 16, 11])
+        self.assertEqual(output.messages[0].data[6:10], [81, 63, 32, 0])
+        self.assertEqual(len(output.messages[0].data), 6 + 78 * 4)
+        self.assertEqual(len(output.messages[1].data), 6 + 2 * 4)
+
+    def test_semantic_render_clears_show_only_rail_lights(self) -> None:
+        surface, output, _ = surface_for("novation/launchpad/pro-mk1")
+        off = show_color("off", (0, 0, 0))
+        lit = show_color("accent:rose:selected", (255, 66, 102))
+        surface.render_show_frame(
+            ShowFrame(
+                grid=tuple(tuple(off for _ in range(8)) for _ in range(8)),
+                top=(lit,) * 8,
+                right=(lit,) * 8,
+            )
+        )
+
+        surface.render(SurfaceView(AgentState.WAITING_FOR_REPLY))
+
+        latest_ccs = {
+            message.control: message.value
+            for message in output.messages
+            if message.type == "control_change"
+        }
+        self.assertEqual(latest_ccs[93], surface.profile.color("off"))
+        self.assertEqual(latest_ccs[94], surface.profile.color("off"))
+        self.assertEqual(latest_ccs[96], surface.profile.color("off"))
 
     def test_render_draws_session_accents_and_semantic_statuses(self) -> None:
         surface, output, _ = surface_for("novation/launchpad/pro-mk1")
@@ -274,6 +362,13 @@ class MidiGridSurfaceTest(TestCase):
         self.assertEqual(len(columns), 6)
         self.assertNotEqual(columns[0], 0)
         self.assertEqual(columns[-1], 0)
+
+    def test_greeting_duration_matches_every_rendered_scroll_frame(self) -> None:
+        surface, _, _ = surface_for("novation/launchpad/pro-mk1")
+        surface.startup_greeting = "HELLO FROM CODEX CLI"
+        surface.scroll_delay = 0.08
+
+        self.assertAlmostEqual(surface.startup_greeting_duration, 10.32)
 
     def test_failed_input_open_closes_the_already_open_output(self) -> None:
         profile = ProfileCatalog.load(include_user=False).get(

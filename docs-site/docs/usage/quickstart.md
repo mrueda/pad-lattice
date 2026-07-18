@@ -31,7 +31,23 @@ Run the hardware demo. Auto-detection considers only supported profiles:
 
 ```bash
 pad-lattice demo
+pad-lattice demo --audio
 ```
+
+`demo --audio` speaks the scrolling startup greeting, then pairs the guided
+questions and pad choices with the default semantic sounds used by the daemon.
+
+Play the standalone visual performance:
+
+```bash
+pad-lattice show
+pad-lattice show --audio
+```
+
+**A Spark Becomes a Constellation** is an authored story across the complete
+8x8 matrix and common top/right rails. It lasts about 43 seconds at the default
+tempo. `--audio` adds its synchronized piano-and-strings score. The daemon must
+be stopped because both `demo` and `show` open the MIDI ports directly.
 
 The Launchpad Mini Mk3 and Pro Mk3 profiles are experimental and must be
 selected explicitly:
@@ -39,6 +55,7 @@ selected explicitly:
 ```bash
 pad-lattice demo --profile novation/launchpad/mini-mk3
 pad-lattice demo --profile novation/launchpad/pro-mk3
+pad-lattice show --profile novation/launchpad/mini-mk3
 ```
 
 ## Start the Daemon
@@ -51,6 +68,15 @@ pad-lattice daemon --no-greeting
 
 Keep it running in a dedicated terminal or user service. Other commands talk
 to it through the local Unix socket.
+
+Enable optional state and action earcons when desired:
+
+```bash
+pad-lattice daemon --audio-feedback
+```
+
+This speaks **HELLO FROM CODEX CLI** while the controller scrolls the same
+text. Add `--no-greeting` when neither form of greeting is wanted.
 
 Inspect the live device and session registry from any terminal:
 

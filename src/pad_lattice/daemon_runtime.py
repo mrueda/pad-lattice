@@ -11,6 +11,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
+from pad_lattice.audio import AudioFeedback, Earcon
 from pad_lattice.control_plane import (
     DEFAULT_SESSION_TTL,
     AgentSession,
@@ -47,6 +48,21 @@ from pad_lattice.protocol import (
 from pad_lattice.visual_protocol import RUNNING_ACTIVITY_INTERVAL
 
 
+STATE_EARCONS = {
+    AgentState.WAITING_FOR_REPLY: Earcon.QUESTION,
+    AgentState.WAITING_FOR_APPROVAL: Earcon.APPROVAL,
+    AgentState.SUCCESS: Earcon.SUCCESS,
+    AgentState.ERROR: Earcon.ERROR,
+    AgentState.CANCELLED: Earcon.CANCELLED,
+}
+ACTION_EARCONS = {
+    ControlAction.APPROVE: Earcon.APPROVE,
+    ControlAction.REJECT: Earcon.REJECT,
+    ControlAction.RETRY: Earcon.RETRY,
+    ControlAction.STOP: Earcon.STOP,
+}
+
+
 @dataclass
 class Client:
     socket: socket.socket
@@ -73,11 +89,13 @@ class PadLatticeDaemon:
         session_ttl: float = DEFAULT_SESSION_TTL,
         activity_motion: bool = False,
         identity_store: IdentityStore | None = None,
+        audio_feedback: AudioFeedback | None = None,
     ) -> None:
         self.surface = surface
         self.socket_path = socket_path
         self.poll_interval = poll_interval
         self.activity_motion = activity_motion
+        self.audio_feedback = audio_feedback
         self.control = ControlPlane(
             surface.selector_capacity,
             surface.accent_names,
@@ -93,6 +111,7 @@ class PadLatticeDaemon:
         self._frame = 0
         self._rendered_revision = -1
         self._next_activity_render = 0.0
+        self._announced_states: dict[AgentIdentity, AgentState] = {}
         self._closed = False
 
     def run(self) -> None:
@@ -130,7 +149,11 @@ class PadLatticeDaemon:
             except FileNotFoundError:
                 pass
             self._owns_socket_path = False
-        self.surface.close()
+        try:
+            if self.audio_feedback is not None:
+                self.audio_feedback.close()
+        finally:
+            self.surface.close()
 
     def handle_message(self, client: Client, message: dict[str, Any]) -> None:
         command = parse_client_command(message)
@@ -159,6 +182,7 @@ class PadLatticeDaemon:
                     metadata=command.metadata,
                     now=now,
                 )
+                self._announce_state(session)
                 if command.reply:
                     self._send(client, self._state_ack(session))
                 return
@@ -216,6 +240,7 @@ class PadLatticeDaemon:
                 return
             if isinstance(command, SessionEndCommand):
                 self.control.end_agent(command.agent)
+                self._announced_states.pop(command.agent, None)
                 return
             if isinstance(command, StatusCommand):
                 self._send(client, self.status_snapshot())
@@ -248,6 +273,7 @@ class PadLatticeDaemon:
             ),
             overflow_count=self.control.overflow_count,
             activity_motion=self.activity_motion,
+            audio_feedback=self.audio_feedback is not None,
             preview_active=self.control.preview is not None,
             session_ttl=self.control.session_ttl,
             sessions=[
@@ -383,14 +409,25 @@ class PadLatticeDaemon:
 
     def _handle_surface_event(self, event: SurfaceEvent) -> None:
         if isinstance(event, SessionSelected):
-            self.control.select_slot(event.slot, now=time.monotonic())
+            if self.control.select_slot(event.slot, now=time.monotonic()):
+                self._play_audio(Earcon.SESSION_SELECTED, slot=event.slot)
         elif isinstance(event, ActionPressed):
             self._handle_action(event.action)
 
     def _handle_action(self, action: ControlAction) -> None:
         dispatch = self.control.dispatch_action(action, now=time.monotonic())
         if dispatch is None:
+            selected = self.control.selected_session
+            self._play_audio(
+                Earcon.UNAVAILABLE,
+                slot=selected.slot if selected is not None else None,
+            )
             return
+        selected = self.control.selected_session
+        self._play_audio(
+            ACTION_EARCONS[action],
+            slot=selected.slot if selected is not None else None,
+        )
         client = self._clients.get(dispatch.client_id)
         if client is None:
             return
@@ -419,6 +456,21 @@ class PadLatticeDaemon:
         self._frame += 1
         self._rendered_revision = self.control.revision
         self._next_activity_render = now + RUNNING_ACTIVITY_INTERVAL
+
+    def _announce_state(self, session: AgentSession) -> None:
+        previous = self._announced_states.get(session.identity)
+        self._announced_states[session.identity] = session.state
+        cue = STATE_EARCONS.get(session.state)
+        if cue is not None and previous is not session.state:
+            self._play_audio(cue, slot=session.slot)
+
+    def _play_audio(self, cue: Earcon, *, slot: int | None) -> None:
+        if self.audio_feedback is None:
+            return
+        try:
+            self.audio_feedback.play(cue, slot=slot)
+        except OSError:
+            pass
 
     def _send_to_client_id(self, client_id: int, message: dict[str, Any]) -> None:
         client = self._clients.get(client_id)
@@ -465,6 +517,10 @@ class PadLatticeDaemon:
         client_id = client.client_id
         self._clients.pop(client_id, None)
         self.control.disconnect(client_id)
+        active_identities = {session.identity for session in self.control.sessions}
+        for identity in tuple(self._announced_states):
+            if identity not in active_identities:
+                self._announced_states.pop(identity, None)
         client.output_buffer.clear()
         try:
             self._selector.unregister(client.socket)

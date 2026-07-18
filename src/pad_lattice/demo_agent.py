@@ -8,6 +8,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TextIO
 
+from pad_lattice.audio import AudioFeedback, Earcon
 from pad_lattice.devices.base import ActionPressed, ControlSurface, SurfaceView
 from pad_lattice.events import AgentState, ControlAction
 
@@ -46,6 +47,7 @@ def run_demo_surface(
     feedback_seconds: float = 0.8,
     success_seconds: float = 2.0,
     output: TextIO | None = None,
+    audio_feedback: AudioFeedback | None = None,
     sleep: Callable[[float], None] = time.sleep,
 ) -> tuple[ControlAction, ...]:
     """Ask a short conversation through any configured control surface."""
@@ -64,10 +66,23 @@ def run_demo_surface(
                     available_actions=ANSWER_ACTIONS,
                 )
             )
+            if audio_feedback is not None:
+                cue = (
+                    Earcon.APPROVAL
+                    if question.state is AgentState.WAITING_FOR_APPROVAL
+                    else Earcon.QUESTION
+                )
+                audio_feedback.play(cue)
             print(f"[{index}/{len(questions)}] {question.prompt}", file=stream, flush=True)
 
             action = _wait_for_answer(surface, poll_interval=poll_interval, sleep=sleep)
             answers.append(action)
+            if audio_feedback is not None:
+                audio_feedback.play(
+                    Earcon.APPROVE
+                    if action is ControlAction.APPROVE
+                    else Earcon.REJECT
+                )
             answer = "yes" if action is ControlAction.APPROVE else "no"
             print(f"Answer: {answer}", file=stream, flush=True)
 
@@ -81,12 +96,18 @@ def run_demo_surface(
             sleep(feedback_seconds)
 
         surface.render(SurfaceView(selected_state=AgentState.SUCCESS))
+        if audio_feedback is not None:
+            audio_feedback.play(Earcon.SUCCESS)
         print("Demo complete.", file=stream, flush=True)
         sleep(success_seconds)
     except KeyboardInterrupt:
         print("Demo cancelled.", file=stream, flush=True)
     finally:
-        surface.close()
+        try:
+            surface.close()
+        finally:
+            if audio_feedback is not None:
+                audio_feedback.close()
 
     return tuple(answers)
 

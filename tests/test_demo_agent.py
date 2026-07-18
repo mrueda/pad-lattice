@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 from unittest import TestCase
 
+from pad_lattice.audio import Earcon
 from pad_lattice.demo_agent import ANSWER_ACTIONS, DEMO_QUESTIONS, run_demo_surface
 from pad_lattice.devices.base import ActionPressed
 from pad_lattice.events import AgentState, ControlAction
@@ -42,6 +43,18 @@ class FailingSurface(FakeSurface):
         raise OSError("initialization failed")
 
 
+class FakeAudioFeedback:
+    def __init__(self) -> None:
+        self.calls = []
+        self.closed = False
+
+    def play(self, cue, *, slot=None) -> None:
+        self.calls.append((cue, slot))
+
+    def close(self) -> None:
+        self.closed = True
+
+
 class DemoAgentTest(TestCase):
     def test_guided_demo_asks_questions_and_renders_feedback(self) -> None:
         surface = FakeSurface(
@@ -53,6 +66,7 @@ class DemoAgentTest(TestCase):
             )
         )
         output = io.StringIO()
+        audio_feedback = FakeAudioFeedback()
 
         answers = run_demo_surface(
             surface,
@@ -60,6 +74,7 @@ class DemoAgentTest(TestCase):
             feedback_seconds=0,
             success_seconds=0,
             output=output,
+            audio_feedback=audio_feedback,
             sleep=lambda _: None,
         )
 
@@ -92,6 +107,19 @@ class DemoAgentTest(TestCase):
         self.assertIn("Answer: yes", output.getvalue())
         self.assertIn("Answer: no", output.getvalue())
         self.assertIn("Demo complete.", output.getvalue())
+        self.assertEqual(
+            [cue for cue, _ in audio_feedback.calls],
+            [
+                Earcon.QUESTION,
+                Earcon.APPROVE,
+                Earcon.APPROVAL,
+                Earcon.REJECT,
+                Earcon.QUESTION,
+                Earcon.APPROVE,
+                Earcon.SUCCESS,
+            ],
+        )
+        self.assertTrue(audio_feedback.closed)
 
     def test_initialization_failure_still_closes_surface(self) -> None:
         surface = FailingSurface()

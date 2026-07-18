@@ -34,6 +34,28 @@
   },
   "surface": {
     "state_region": {"x": 0, "y": 0, "width": 7, "height": 8},
+    "showcase": {
+      "top": [
+        {"kind": "cc", "number": 91},
+        {"kind": "cc", "number": 92},
+        {"kind": "cc", "number": 93},
+        {"kind": "cc", "number": 94},
+        {"kind": "cc", "number": 95},
+        {"kind": "cc", "number": 96},
+        {"kind": "cc", "number": 97},
+        {"kind": "cc", "number": 98}
+      ],
+      "right": [
+        {"kind": "cc", "number": 89},
+        {"kind": "cc", "number": 79},
+        {"kind": "cc", "number": 69},
+        {"kind": "cc", "number": 59},
+        {"kind": "cc", "number": 49},
+        {"kind": "cc", "number": 39},
+        {"kind": "cc", "number": 29},
+        {"kind": "cc", "number": 19}
+      ]
+    },
     "actions": {
       "approve": {"kind": "cc", "number": 91},
       "reject": {"kind": "cc", "number": 92},
@@ -108,6 +130,11 @@
     ]
   },
   "capabilities": {
-    "text_scroll": true
+    "text_scroll": true,
+    "show_rgb": {
+      "sysex_prefix": [0, 32, 41, 2, 16, 11],
+      "channel_max": 63,
+      "batch_size": 78
+    }
   }
 }

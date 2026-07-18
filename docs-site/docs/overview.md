@@ -45,6 +45,7 @@ probabilities, top-k candidates, or model internals. It focuses on supervision:
 | Understand the idea and supported hardware | Continue with this overview and the [Visual Language](./usage/visual-language.md). |
 | Install Pad-Lattice for Codex | [Quick Start](./usage/quickstart.md). |
 | Run several real Codex sessions | [Production Use](./usage/production.md) and [Codex Integration](./usage/codex-integration.md). |
+| Add optional state and action sounds | [Audio Feedback](./usage/audio-feedback.md). |
 | Test another Launchpad or MIDI grid | [Test a Device](./usage/device-testing.md). |
 | Understand or contribute to the code | [Developer Guide](./technical-details/developer-guide.md). |
 | Build a client integration | [Socket Protocol](./reference/socket-protocol.md). |
@@ -80,6 +81,8 @@ work.
 - A `codex-exec` adapter with a targeted Stop action.
 - Guided, privacy-preserving physical profile verification.
 - Read-only installation diagnostics with redacted local paths.
+- Optional semantic audio feedback through the computer, with no Python audio dependency.
+- A standalone, full-surface audiovisual performance with steady palette or RGB colors.
 
 ## Hardware Boundary
 

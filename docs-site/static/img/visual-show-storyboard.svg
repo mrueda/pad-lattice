@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-labelledby="title description">
+  <title id="title">A Spark Becomes a Constellation storyboard</title>
+  <desc id="description">Eight colored scenes show a lonely cyan spark becoming an idea, asking a question, finding a magenta friend, surviving a red storm, calling for help, joining a community, and becoming the Pad-Lattice constellation.</desc>
+  <defs>
+    <pattern id="pad-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <rect x="1" y="1" width="16" height="16" rx="3" fill="#111820" stroke="#26333e"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="560" fill="#ffffff"/>
+  <g font-family="Arial, sans-serif">
+    <text x="24" y="26" fill="#49616c" font-size="13" font-weight="700">A SPARK BECOMES A CONSTELLATION</text>
+
+    <g transform="translate(20 42)">
+      <rect width="275" height="232" rx="6" fill="#f5f8fa" stroke="#9db2bb"/>
+      <rect x="58" y="18" width="160" height="160" rx="6" fill="url(#pad-grid)"/>
+      <rect x="130" y="90" width="16" height="16" rx="3" fill="#00aebb"/>
+      <text x="137.5" y="202" text-anchor="middle" fill="#174e62" font-size="15" font-weight="700">ALONE</text>
+      <text x="137.5" y="220" text-anchor="middle" fill="#60747d" font-size="12">loneliness</text>
+    </g>
+
+    <g transform="translate(315 42)">
+      <rect width="275" height="232" rx="6" fill="#f5f8fa" stroke="#9db2bb"/>
+      <rect x="58" y="18" width="160" height="160" rx="6" fill="url(#pad-grid)"/>
+      <g transform="translate(138 88)" fill="none" stroke="#f0b429" stroke-width="8" stroke-linecap="round">
+        <circle cy="-17" r="30"/>
+        <path d="M-14 12V30H14V12M-13 39H13M0-58V-69M-48-17H-59M48-17H59M-35-52L-43-60M35-52L43-60"/>
+      </g>
+      <circle cx="138" cy="72" r="8" fill="#ffffff"/>
+      <text x="137.5" y="202" text-anchor="middle" fill="#174e62" font-size="15" font-weight="700">AN IDEA</text>
+      <text x="137.5" y="220" text-anchor="middle" fill="#60747d" font-size="12">wonder</text>
+    </g>
+
+    <g transform="translate(610 42)">
+      <rect width="275" height="232" rx="6" fill="#f5f8fa" stroke="#9db2bb"/>
+      <rect x="58" y="18" width="160" height="160" rx="6" fill="url(#pad-grid)"/>
+      <text x="99" y="126" fill="#00aebb" font-family="monospace" font-size="92" font-weight="700">?</text>
+      <circle cx="171" cy="80" r="27" fill="none" stroke="#54c7d2" stroke-width="8"/>
+      <path d="M190 101L211 126" stroke="#54c7d2" stroke-width="9" stroke-linecap="round"/>
+      <circle cx="171" cy="80" r="5" fill="#ffffff"/>
+      <text x="137.5" y="202" text-anchor="middle" fill="#174e62" font-size="15" font-weight="700">THE SEARCH</text>
+      <text x="137.5" y="220" text-anchor="middle" fill="#60747d" font-size="12">curiosity</text>
+    </g>
+
+    <g transform="translate(905 42)">
+      <rect width="275" height="232" rx="6" fill="#f5f8fa" stroke="#9db2bb"/>
+      <rect x="58" y="18" width="160" height="160" rx="6" fill="url(#pad-grid)"/>
+      <g fill="none" stroke-width="8" stroke-linecap="round">
+        <circle cx="103" cy="61" r="10" stroke="#00aebb"/>
+        <path d="M103 75V118M80 91H126M103 118L84 145M103 118L122 145" stroke="#00aebb"/>
+        <circle cx="173" cy="61" r="10" stroke="#c83ec9"/>
+        <path d="M173 75V118M150 91H196M173 118L154 145M173 118L192 145" stroke="#c83ec9"/>
+        <path d="M126 91H150" stroke="#ffffff"/>
+      </g>
+      <path d="M138 111C126 97 106 111 138 137C170 111 150 97 138 111Z" fill="#ef6fbf"/>
+      <text x="137.5" y="202" text-anchor="middle" fill="#174e62" font-size="15" font-weight="700">A FRIEND</text>
+      <text x="137.5" y="220" text-anchor="middle" fill="#60747d" font-size="12">hope</text>
+    </g>
+
+    <g transform="translate(20 296)">
+      <rect width="275" height="232" rx="6" fill="#f5f8fa" stroke="#9db2bb"/>
+      <rect x="58" y="18" width="160" height="160" rx="6" fill="url(#pad-grid)"/>
+      <path d="M137 62C112 32 72 58 137 126C202 58 162 32 137 62Z" fill="none" stroke="#596f7a" stroke-width="9"/>
+      <path d="M173 30L135 82H158L113 151L128 94H105L145 30Z" fill="#cf3f42" stroke="#f0b429" stroke-width="3"/>
+      <text x="137.5" y="202" text-anchor="middle" fill="#174e62" font-size="15" font-weight="700">THE STORM</text>
+      <text x="137.5" y="220" text-anchor="middle" fill="#60747d" font-size="12">fear and loss</text>
+    </g>
+
+    <g transform="translate(315 296)">
+      <rect width="275" height="232" rx="6" fill="#f5f8fa" stroke="#9db2bb"/>
+      <rect x="58" y="18" width="160" height="160" rx="6" fill="url(#pad-grid)"/>
+      <text x="83" y="132" fill="#00aebb" font-family="monospace" font-size="100" font-weight="700">!</text>
+      <g fill="none" stroke="#54c7d2" stroke-width="4">
+        <path d="M136 71C166 71 185 90 185 119"/>
+        <path d="M136 51C178 51 205 78 205 119"/>
+      </g>
+      <circle cx="185" cy="119" r="7" fill="#70b92d"/>
+      <circle cx="205" cy="119" r="7" fill="#c83ec9"/>
+      <circle cx="193" cy="53" r="7" fill="#f0b429"/>
+      <text x="137.5" y="202" text-anchor="middle" fill="#174e62" font-size="15" font-weight="700">THE CALL</text>
+      <text x="137.5" y="220" text-anchor="middle" fill="#60747d" font-size="12">courage</text>
+    </g>
+
+    <g transform="translate(610 296)">
+      <rect width="275" height="232" rx="6" fill="#f5f8fa" stroke="#9db2bb"/>
+      <rect x="58" y="18" width="160" height="160" rx="6" fill="url(#pad-grid)"/>
+      <g fill="none" stroke="#78909b" stroke-width="4">
+        <path d="M80 44L137 98L196 45M79 148L137 98L198 148M80 44L79 148M196 45L198 148"/>
+      </g>
+      <circle cx="80" cy="44" r="10" fill="#00aebb"/>
+      <circle cx="196" cy="45" r="10" fill="#c83ec9"/>
+      <circle cx="79" cy="148" r="10" fill="#70b92d"/>
+      <circle cx="198" cy="148" r="10" fill="#f0b429"/>
+      <circle cx="137" cy="98" r="15" fill="#ffffff"/>
+      <path d="M117 99L132 114L161 76" fill="none" stroke="#35a94a" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="137.5" y="202" text-anchor="middle" fill="#174e62" font-size="15" font-weight="700">TOGETHER</text>
+      <text x="137.5" y="220" text-anchor="middle" fill="#60747d" font-size="12">belonging and joy</text>
+    </g>
+
+    <g transform="translate(905 296)">
+      <rect width="275" height="232" rx="6" fill="#f5f8fa" stroke="#9db2bb"/>
+      <rect x="58" y="18" width="160" height="160" rx="6" fill="url(#pad-grid)"/>
+      <g>
+        <circle cx="75" cy="39" r="6" fill="#00aebb"/><circle cx="202" cy="38" r="6" fill="#c83ec9"/>
+        <circle cx="81" cy="151" r="6" fill="#70b92d"/><circle cx="200" cy="151" r="6" fill="#f0b429"/>
+        <circle cx="72" cy="94" r="6" fill="#7656c7"/><circle cx="207" cy="94" r="6" fill="#00a88f"/>
+        <circle cx="137" cy="32" r="6" fill="#d94c76"/><circle cx="137" cy="160" r="6" fill="#3788d8"/>
+      </g>
+      <g fill="none" stroke="#718994" stroke-width="2">
+        <path d="M75 39L137 94L202 38M81 151L137 94L200 151M72 94H207M137 32V160"/>
+      </g>
+      <text x="137" y="117" text-anchor="middle" fill="#ffffff" font-family="monospace" font-size="58" font-weight="700">PL</text>
+      <text x="137.5" y="202" text-anchor="middle" fill="#174e62" font-size="15" font-weight="700">CONSTELLATION</text>
+      <text x="137.5" y="220" text-anchor="middle" fill="#60747d" font-size="12">celebration</text>
+    </g>
+  </g>
+</svg>

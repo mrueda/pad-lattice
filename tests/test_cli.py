@@ -3,10 +3,10 @@ from __future__ import annotations
 import contextlib
 import io
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from pad_lattice import __version__
-from pad_lattice.cli import _print_status, build_parser, cycle_symbols
+from pad_lattice.cli import _print_status, build_parser, cycle_symbols, main
 from pad_lattice.events import AgentState
 
 
@@ -32,12 +32,76 @@ class CliTest(TestCase):
                 "--greeting-delay",
                 "0.12",
                 "--no-greeting",
+                "--audio",
             ]
         )
 
         self.assertEqual(args.command, "demo")
         self.assertEqual(args.greeting_delay, 0.12)
         self.assertTrue(args.no_greeting)
+        self.assertTrue(args.audio)
+        self.assertEqual(args.profile_id, "novation/launchpad/pro-mk1")
+
+    def test_demo_audio_speaks_the_visual_greeting(self) -> None:
+        surface = Mock(
+            startup_greeting="HELLO FROM CODEX CLI",
+            startup_greeting_duration=10.32,
+        )
+        feedback = Mock()
+        with (
+            patch("pad_lattice.cli.resolve_device", return_value=object()),
+            patch("pad_lattice.cli.open_resolved_surface", return_value=surface),
+            patch("pad_lattice.cli.SystemAudioFeedback", return_value=feedback),
+            patch("pad_lattice.cli.run_demo_surface") as run_demo,
+        ):
+            result = main(["demo", "--audio"])
+
+        self.assertEqual(result, 0)
+        feedback.speak.assert_called_once_with(
+            "HELLO FROM CODEX CLI",
+            duration=10.32,
+        )
+        run_demo.assert_called_once_with(surface, audio_feedback=feedback)
+
+    def test_daemon_audio_speaks_the_visual_greeting(self) -> None:
+        surface = Mock(
+            startup_greeting="HELLO FROM CODEX CLI",
+            startup_greeting_duration=10.32,
+            selector_capacity=8,
+            accent_names=("cyan",),
+        )
+        feedback = Mock()
+        daemon = Mock()
+        with (
+            patch("pad_lattice.cli.resolve_device", return_value=object()),
+            patch("pad_lattice.cli.open_resolved_surface", return_value=surface),
+            patch("pad_lattice.cli.SystemAudioFeedback", return_value=feedback),
+            patch("pad_lattice.cli.PadLatticeDaemon", return_value=daemon),
+        ):
+            result = main(["daemon", "--audio-feedback"])
+
+        self.assertEqual(result, 0)
+        feedback.speak.assert_called_once_with(
+            "HELLO FROM CODEX CLI",
+            duration=10.32,
+        )
+        daemon.run.assert_called_once_with()
+
+    def test_show_accepts_device_and_tempo_options(self) -> None:
+        args = build_parser().parse_args(
+            [
+                "show",
+                "--profile",
+                "novation/launchpad/pro-mk1",
+                "--tempo",
+                "1.25",
+                "--audio",
+            ]
+        )
+
+        self.assertEqual(args.command, "show")
+        self.assertEqual(args.tempo, 1.25)
+        self.assertTrue(args.audio)
         self.assertEqual(args.profile_id, "novation/launchpad/pro-mk1")
 
     def test_daemon_accepts_socket_and_no_greeting(self) -> None:
@@ -52,6 +116,7 @@ class CliTest(TestCase):
                 "--session-ttl",
                 "3600",
                 "--activity-motion",
+                "--audio-feedback",
             ]
         )
 
@@ -61,6 +126,7 @@ class CliTest(TestCase):
         self.assertEqual(args.terminal_hold, 1.5)
         self.assertEqual(args.session_ttl, 3600.0)
         self.assertTrue(args.activity_motion)
+        self.assertTrue(args.audio_feedback)
 
     def test_status_supports_json_output(self) -> None:
         args = build_parser().parse_args(

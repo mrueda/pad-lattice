@@ -78,6 +78,14 @@ class DeviceProfileTest(TestCase):
                     [address.number for address in profile.statuses],
                     [88, 78, 68, 58, 48, 38, 28, 18],
                 )
+                self.assertEqual(
+                    [address.number for address in profile.show_top],
+                    [91, 92, 93, 94, 95, 96, 97, 98],
+                )
+                self.assertEqual(
+                    [address.number for address in profile.show_right],
+                    [89, 79, 69, 59, 49, 39, 29, 19],
+                )
                 self.assertEqual(profile.state_region.x, 0)
                 self.assertEqual(profile.state_region.y, 0)
                 self.assertEqual(profile.state_region.width, 7)
@@ -96,6 +104,13 @@ class DeviceProfileTest(TestCase):
         self.assertEqual(profile.startup[0].data, (0, 32, 41, 2, 16, 33, 1))
         self.assertEqual(profile.startup[1].data, (0, 32, 41, 2, 16, 44, 3))
         self.assertEqual(profile.shutdown[-1].data, (0, 32, 41, 2, 16, 33, 0))
+        self.assertIsNotNone(profile.show_rgb)
+        self.assertEqual(
+            profile.show_rgb.sysex_prefix,
+            (0, 32, 41, 2, 16, 11),
+        )
+        self.assertEqual(profile.show_rgb.channel_max, 63)
+        self.assertEqual(profile.show_rgb.batch_size, 78)
         self.assertEqual(
             {
                 action: profile.controls[action].number
@@ -120,6 +135,7 @@ class DeviceProfileTest(TestCase):
 
         self.assertEqual(profile.startup[0].data, (0, 32, 41, 2, 13, 14, 1))
         self.assertEqual(profile.shutdown[0].data, (0, 32, 41, 2, 13, 14, 0))
+        self.assertIsNone(profile.show_rgb)
         self.assertEqual(
             {
                 action: profile.controls[action].number

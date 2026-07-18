@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
+from pad_lattice.audio import Earcon
 from pad_lattice.daemon_runtime import Client, PadLatticeDaemon
 from pad_lattice.devices.base import SessionSelected
 from pad_lattice.events import AgentIdentity, AgentState, ControlAction
@@ -69,6 +70,18 @@ class FakeSurface:
     def poll_events(self):
         events, self.events = self.events, []
         return events
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class FakeAudioFeedback:
+    def __init__(self) -> None:
+        self.events = []
+        self.closed = False
+
+    def play(self, cue, *, slot=None) -> None:
+        self.events.append((cue, slot))
 
     def close(self) -> None:
         self.closed = True
@@ -144,6 +157,33 @@ class DaemonTest(TestCase):
 
         self.assertEqual(daemon.control.selected_agent, AgentIdentity("codex", "session-1"))
         self.assertIs(daemon.control.state, AgentState.RUNNING)
+
+    def test_audio_announces_semantic_state_changes_but_not_running(self) -> None:
+        audio = FakeAudioFeedback()
+        daemon = self.daemon(audio_feedback=audio)
+        client = Client(FakeSocket())
+        identity = {"backend": "codex", "session_id": "session-1"}
+
+        for state in (
+            "running",
+            "waiting_for_reply",
+            "waiting_for_reply",
+            "waiting_for_approval",
+            "success",
+        ):
+            daemon.handle_message(
+                client,
+                wire({"type": "state", "state": state, "agent": identity}),
+            )
+
+        self.assertEqual(
+            audio.events,
+            [
+                (Earcon.QUESTION, 0),
+                (Earcon.APPROVAL, 0),
+                (Earcon.SUCCESS, 0),
+            ],
+        )
 
     def test_subscribe_message_records_target_and_capabilities(self) -> None:
         daemon = self.daemon()
@@ -320,6 +360,23 @@ class DaemonTest(TestCase):
         self.assertEqual(daemon.control.selected_agent, second)
         self.assertIs(daemon.control.state, AgentState.RUNNING)
 
+    def test_selector_plays_session_specific_confirmation(self) -> None:
+        audio = FakeAudioFeedback()
+        daemon = self.daemon(audio_feedback=audio)
+        first = AgentIdentity("codex", "first")
+        second = AgentIdentity("codex", "second")
+        self.update_agent(daemon, first, AgentState.RUNNING)
+        self.update_agent(daemon, second, AgentState.RUNNING)
+        second_slot = daemon.control._sessions[second].slot
+        assert second_slot is not None
+
+        daemon._handle_surface_event(SessionSelected(second_slot))
+
+        self.assertEqual(
+            audio.events,
+            [(Earcon.SESSION_SELECTED, second_slot)],
+        )
+
     def test_action_is_sent_only_to_selected_matching_subscriber(self) -> None:
         daemon = self.daemon()
         first = AgentIdentity("codex", "first")
@@ -344,6 +401,21 @@ class DaemonTest(TestCase):
         daemon._handle_action(ControlAction.APPROVE)
 
         self.assertEqual(client.socket.sent, b"")
+
+    def test_audio_confirms_dispatched_and_unavailable_actions(self) -> None:
+        audio = FakeAudioFeedback()
+        daemon = self.daemon(audio_feedback=audio, action_debounce=0)
+        identity = AgentIdentity("codex", "session")
+        self.update_agent(daemon, identity, AgentState.WAITING_FOR_APPROVAL)
+        self.add_client(daemon, identity, ControlAction.APPROVE)
+
+        daemon._handle_action(ControlAction.APPROVE)
+        daemon._handle_action(ControlAction.REJECT)
+
+        self.assertEqual(
+            audio.events,
+            [(Earcon.APPROVE, 0), (Earcon.UNAVAILABLE, 0)],
+        )
 
     def test_handle_action_debounces_repeated_actions(self) -> None:
         daemon = self.daemon(action_debounce=60.0)
@@ -594,7 +666,8 @@ class DaemonTest(TestCase):
         self.assertIsNone(daemon.control._sessions[identities[4]].slot)
 
     def test_status_snapshot_includes_accents_and_protocol(self) -> None:
-        daemon = self.daemon(activity_motion=True)
+        audio = FakeAudioFeedback()
+        daemon = self.daemon(activity_motion=True, audio_feedback=audio)
         identity = AgentIdentity("codex", "session")
         self.update_agent(daemon, identity, AgentState.RUNNING)
 
@@ -602,6 +675,7 @@ class DaemonTest(TestCase):
 
         self.assertEqual(status["visual_protocol"], 1)
         self.assertTrue(status["activity_motion"])
+        self.assertTrue(status["audio_feedback"])
         self.assertEqual(status["sessions"][0]["accent"], "cyan")
 
     def test_accents_are_unique_across_visible_sessions(self) -> None:
@@ -697,9 +771,11 @@ class DaemonTest(TestCase):
         self.assertNotIn(fileno, daemon._clients)
 
     def test_close_is_idempotent(self) -> None:
-        daemon = self.daemon()
+        audio = FakeAudioFeedback()
+        daemon = self.daemon(audio_feedback=audio)
 
         daemon.close()
         daemon.close()
 
         self.assertTrue(daemon.surface.closed)
+        self.assertTrue(audio.closed)
