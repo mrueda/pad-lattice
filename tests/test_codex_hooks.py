@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
+from pad_lattice.codex_hook_entry import main as run_codex_hook_entry
 from pad_lattice.codex_hooks import (
     HOOK_EVENTS,
     _wait_for_permission_action_client,
@@ -27,6 +28,10 @@ from pad_lattice.protocol import (
 
 
 HOOK_COMMAND = (
+    "pad-lattice-hook --socket /tmp/pad-lattice.sock "
+    "--approval-timeout 60"
+)
+LEGACY_HOOK_COMMAND = (
     "pad-lattice codex-hook --socket /tmp/pad-lattice.sock "
     "--approval-timeout 60"
 )
@@ -75,7 +80,7 @@ class CodexHookTest(TestCase):
         )
 
         self.assertEqual(result, 0)
-        self.assertEqual(output.getvalue(), "{}\n")
+        self.assertEqual(output.getvalue(), "")
         self.assertEqual(
             sent,
             [
@@ -111,7 +116,7 @@ class CodexHookTest(TestCase):
         )
 
         self.assertEqual(result, 0)
-        self.assertEqual(output.getvalue(), "{}\n")
+        self.assertEqual(output.getvalue(), "")
 
     def test_daemon_protocol_failure_does_not_fail_hook(self) -> None:
         def invalid_response(path, message):
@@ -128,7 +133,7 @@ class CodexHookTest(TestCase):
         )
 
         self.assertEqual(result, 0)
-        self.assertEqual(output.getvalue(), "{}\n")
+        self.assertEqual(output.getvalue(), "")
 
     def test_permission_request_returns_hardware_approval_to_codex(self) -> None:
         sent = []
@@ -198,7 +203,7 @@ class CodexHookTest(TestCase):
                 "message": "Rejected from Pad-Lattice.",
             },
         )
-        self.assertEqual(json.loads(timed_out.getvalue()), {})
+        self.assertEqual(timed_out.getvalue(), "")
 
     def test_launcher_environment_overrides_installed_socket_and_labels_state(self) -> None:
         sent = []
@@ -310,7 +315,75 @@ class CodexHookTest(TestCase):
         )
 
         self.assertEqual(result, 0)
-        self.assertEqual(output.getvalue(), "{}\n")
+        self.assertEqual(output.getvalue(), "")
+
+    def test_lightweight_entry_is_silent_when_daemon_is_absent(self) -> None:
+        event = io.StringIO(
+            '{"hook_event_name":"PostToolUse","session_id":"session-123"}'
+        )
+        output = io.StringIO()
+        checked = []
+
+        result = run_codex_hook_entry(
+            [
+                "--socket",
+                "/missing.sock",
+                "--approval-timeout",
+                "60",
+            ],
+            stdin=event,
+            stdout=output,
+            socket_checker=lambda path: checked.append(path) or False,
+        )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(checked, ["/missing.sock"])
+        self.assertEqual(event.read(), "")
+        self.assertEqual(output.getvalue(), "")
+
+    def test_lightweight_entry_delegates_when_daemon_is_available(self) -> None:
+        event = io.StringIO(
+            '{"hook_event_name":"SessionStart","session_id":"session-123"}'
+        )
+        output = io.StringIO()
+
+        with patch(
+            "pad_lattice.codex_hooks.run_codex_hook",
+            return_value=0,
+        ) as run_hook:
+            result = run_codex_hook_entry(
+                ["--socket", "/tmp/pad-lattice.sock"],
+                stdin=event,
+                stdout=output,
+                socket_checker=lambda path: True,
+            )
+
+        self.assertEqual(result, 0)
+        run_hook.assert_called_once_with(
+            "/tmp/pad-lattice.sock",
+            event,
+            output,
+            approval_timeout=60.0,
+        )
+
+    def test_lightweight_entry_checks_launcher_socket_override(self) -> None:
+        event = io.StringIO("{}")
+        checked = []
+
+        with patch.dict(
+            "os.environ",
+            {"PAD_LATTICE_SOCKET": "/tmp/launcher.sock"},
+            clear=False,
+        ):
+            result = run_codex_hook_entry(
+                ["--socket", "/tmp/installed.sock"],
+                stdin=event,
+                stdout=io.StringIO(),
+                socket_checker=lambda path: checked.append(path) or False,
+            )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(checked, ["/tmp/launcher.sock"])
 
 
 class CodexHookInstallerTest(TestCase):
@@ -374,16 +447,30 @@ class CodexHookInstallerTest(TestCase):
         with TemporaryDirectory(prefix="pad lattice ") as directory:
             executable = Path(directory) / "pad-lattice"
             executable.touch()
+            hook_executable = Path(directory) / "pad-lattice-hook"
+            hook_executable.touch()
             socket_path = Path(directory) / "pad-lattice.sock"
 
             self.assertEqual(
                 resolve_hook_command(str(socket_path), str(executable)),
                 (
-                    f"{shlex.quote(str(executable.resolve()))} codex-hook "
+                    f"{shlex.quote(str(hook_executable.resolve()))} "
                     f"--socket {shlex.quote(str(socket_path.resolve()))} "
                     "--approval-timeout 60"
                 ),
             )
+
+    def test_falls_back_when_lightweight_console_script_is_unavailable(self) -> None:
+        with TemporaryDirectory() as directory:
+            executable = Path(directory) / "pad-lattice"
+            executable.touch()
+
+            command = resolve_hook_command(
+                str(Path(directory) / "pad-lattice.sock"),
+                str(executable),
+            )
+
+        self.assertIn("pad-lattice codex-hook", command)
 
     def test_replaces_managed_hook_command_without_touching_other_hooks(self) -> None:
         with TemporaryDirectory() as directory:
@@ -395,7 +482,10 @@ class CodexHookInstallerTest(TestCase):
                             event_name: [
                                 {
                                     "hooks": [
-                                        {"type": "command", "command": HOOK_COMMAND},
+                                        {
+                                            "type": "command",
+                                            "command": LEGACY_HOOK_COMMAND,
+                                        },
                                         {"type": "command", "command": "existing-hook"},
                                     ]
                                 }

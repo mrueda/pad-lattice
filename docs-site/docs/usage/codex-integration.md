@@ -13,9 +13,11 @@ pad-lattice install-codex-hooks
 ```
 
 The installer merges five handlers into `~/.codex/hooks.json` and preserves
-other hooks. It records an absolute Pad-Lattice executable and resolved socket
-path. Start a new session, then run `/hooks` to review and explicitly trust the
-commands. Reinstalling a changed definition requires another review.
+other hooks. It records the absolute `pad-lattice-hook` executable and resolved
+socket path. The lightweight runner silently drains events when no daemon
+socket exists, so the hooks can remain installed without delaying unrelated
+Codex sessions. Start a new session, then run `/hooks` to review and explicitly
+trust the commands. Reinstalling a changed definition requires another review.
 
 | Codex hook | Pad-Lattice state |
 | --- | --- |

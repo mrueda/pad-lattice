@@ -6,6 +6,11 @@ versions follow [PEP 440](https://peps.python.org/pep-0440/).
 
 ## Unreleased
 
+### Fixed
+
+- Codex lifecycle hooks now use a lightweight, silent no-daemon runner instead
+  of loading the full CLI after every event.
+
 ## 0.1.0a1 - 2026-07-18
 
 ### Added

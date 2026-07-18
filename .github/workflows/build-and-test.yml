@@ -96,4 +96,4 @@ jobs:
       - name: Build and inspect wheel
         run: |
           python -m build --wheel
-          python -c "import glob, zipfile; p=glob.glob('dist/*.whl')[0]; names=set(zipfile.ZipFile(p).namelist()); assert any(n.endswith('web_dist/play/index.html') for n in names); assert any(n.endswith('schemas/web-surface-protocol-v1.json') for n in names)"
+          python -c "import glob, zipfile; p=glob.glob('dist/*.whl')[0]; z=zipfile.ZipFile(p); names=set(z.namelist()); assert any(n.endswith('web_dist/play/index.html') for n in names); assert any(n.endswith('schemas/web-surface-protocol-v1.json') for n in names); entry=next(n for n in names if n.endswith('.dist-info/entry_points.txt')); assert 'pad-lattice-hook = pad_lattice.codex_hook_entry:main' in z.read(entry).decode()"

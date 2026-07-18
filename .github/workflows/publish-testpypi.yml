@@ -42,9 +42,11 @@ jobs:
           cd /tmp
           /tmp/pad-lattice-wheel-test/bin/pad-lattice --version
           /tmp/pad-lattice-wheel-test/bin/pad-lattice --help
+          /tmp/pad-lattice-wheel-test/bin/pad-lattice-hook --help
           /tmp/pad-lattice-wheel-test/bin/pad-lattice web --help
           /tmp/pad-lattice-wheel-test/bin/pad-lattice profile list
           /tmp/pad-lattice-wheel-test/bin/pad-lattice profile show novation/launchpad/pro-mk1
+          /tmp/pad-lattice-wheel-test/bin/python -c "import subprocess; r=subprocess.run(['/tmp/pad-lattice-wheel-test/bin/pad-lattice-hook', '--socket', '/tmp/pad-lattice-missing.sock'], input='{}', text=True, capture_output=True, timeout=5); assert (r.returncode, r.stdout, r.stderr) == (0, '', '')"
           /tmp/pad-lattice-wheel-test/bin/python -c "from importlib import resources; root=resources.files('pad_lattice'); assert root.joinpath('web_dist/play/index.html').is_file(); assert root.joinpath('schemas/web-surface-protocol-v1.json').is_file()"
 
       - name: Upload distributions

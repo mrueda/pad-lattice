@@ -73,7 +73,7 @@ def run_codex_hook(
     except (json.JSONDecodeError, UnicodeError):
         event = None
 
-    response: dict[str, Any] = {}
+    response: dict[str, Any] | None = None
     if isinstance(event, dict):
         socket_path = os.environ.get("PAD_LATTICE_SOCKET", socket_path)
         state = state_for_codex_hook(event)
@@ -106,9 +106,10 @@ def run_codex_hook(
                         pass
                     response = permission_decision(action)
 
-    # Stop hooks require JSON output. An empty object is a no-op decision for
-    # other events and restores Codex's keyboard approval prompt after timeout.
-    print(json.dumps(response, separators=(",", ":")), file=stdout, flush=True)
+    # Codex treats exit 0 with no output as a successful no-op. Only a real
+    # permission decision needs a JSON response.
+    if response is not None:
+        print(json.dumps(response, separators=(",", ":")), file=stdout, flush=True)
     return 0
 
 
@@ -232,7 +233,16 @@ def resolve_hook_command(
         if located is None:
             raise FileNotFoundError(f"could not resolve Pad-Lattice executable: {invocation}")
         executable = Path(located).resolve()
+    hook_executable = executable.with_name(
+        "pad-lattice-hook.exe" if executable.suffix == ".exe" else "pad-lattice-hook"
+    )
     resolved_socket = Path(socket_path).expanduser().resolve()
+    if hook_executable.is_file():
+        return (
+            f"{shlex.quote(str(hook_executable.resolve()))} "
+            f"--socket {shlex.quote(str(resolved_socket))} "
+            f"--approval-timeout {approval_timeout:g}"
+        )
     return (
         f"{shlex.quote(str(executable))} codex-hook "
         f"--socket {shlex.quote(str(resolved_socket))} "
@@ -462,7 +472,11 @@ def _is_pad_lattice_hook_command(command: Any) -> bool:
         parts = shlex.split(command)
     except ValueError:
         return False
-    if len(parts) < 2 or parts[1] != "codex-hook":
-        return False
     executable = Path(parts[0]).name
-    return executable in {"pad-lattice", "pad-lattice.exe"}
+    if executable in {"pad-lattice-hook", "pad-lattice-hook.exe"}:
+        return True
+    return (
+        len(parts) >= 2
+        and parts[1] == "codex-hook"
+        and executable in {"pad-lattice", "pad-lattice.exe"}
+    )

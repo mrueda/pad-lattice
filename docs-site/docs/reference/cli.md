@@ -230,10 +230,12 @@ pad-lattice install-codex-hooks --approval-timeout 90
 
 After installation, start a new Codex session and use `/hooks` to review and
 trust the commands. The installer embeds an absolute executable path and the
-resolved daemon socket path.
+resolved daemon socket path. Installed definitions call the lightweight
+`pad-lattice-hook` executable, which silently no-ops when the daemon socket is
+absent.
 
-`codex-hook` is the low-level stdin handler referenced by the installed
-configuration and is not normally invoked directly:
+`codex-hook` remains available as a low-level diagnostic handler and is not
+normally invoked directly:
 
 ```bash
 pad-lattice codex-hook \

@@ -77,6 +77,10 @@ pad-lattice install-codex-hooks
 pad-lattice codex --label implementation
 ```
 
+The installed hooks use a lightweight runner and remain silent when no
+Pad-Lattice daemon is listening. They can stay installed between surface
+sessions.
+
 When Codex requests permission, select its Agent Scene and press the lit
 Approve or Reject control in the browser. The decision is routed only to that
 session and request.

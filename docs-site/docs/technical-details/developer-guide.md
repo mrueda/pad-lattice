@@ -33,7 +33,7 @@ nothing.
 | --- | --- | --- |
 | `pad-lattice web` | Owns the socket and a browser surface around one deterministic `ControlPlane`. | Long-lived; one per socket. |
 | `pad-lattice daemon` | Owns the socket, MIDI surface, and optional browser surface around one `ControlPlane`. | Long-lived; one per controller and socket. |
-| `pad-lattice codex-hook` | Converts one Codex lifecycle event into state and may await one permission decision. | One short Codex-managed process per hook event. |
+| `pad-lattice-hook` | Silently ignores events without a daemon, otherwise converts one Codex lifecycle event into state and may await one permission decision. | One lightweight Codex-managed process per hook event. |
 | `pad-lattice codex` | Launches Codex on the real terminal and holds a reconnecting session lease. | Same lifetime as the child Codex process. |
 | `pad-lattice codex-exec` | Converts a non-interactive Codex JSONL stream and subscribes to Stop. | Same lifetime as one non-interactive task. |
 | Other CLI clients | Send a state, inspect status, end a session, or subscribe diagnostically. | Usually short-lived; action subscribers remain connected. |
@@ -75,7 +75,7 @@ An interactive Codex state update follows this path:
 
 | Step | Code path | Data |
 | --- | --- | --- |
-| 1 | Codex invokes `pad-lattice codex-hook`. | One hook event as JSON on stdin. |
+| 1 | Codex invokes `pad-lattice-hook`. | One hook event as JSON on stdin. |
 | 2 | `state_for_codex_hook()` maps the event. | A stable `AgentState`. |
 | 3 | `run_codex_hook()` builds a `state` message. | Codex session identity, state, metadata, and optional lease ID. |
 | 4 | `parse_client_command()` validates and types the message. | A `StateCommand`, not raw JSON values. |

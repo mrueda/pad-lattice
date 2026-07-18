@@ -148,6 +148,20 @@ pad-lattice install-codex-hooks --socket /tmp/pad-lattice.sock
 The installed commands contain the resolved socket path. Changing the daemon
 socket therefore requires reinstalling and trusting the updated hooks.
 
+## Hooks Time Out While the Daemon Is Stopped
+
+Current installations use the dedicated `pad-lattice-hook` runner. It exits
+silently when the configured Unix socket is absent, so hooks may remain enabled
+while Pad-Lattice is stopped. If `/hooks` still shows a command containing
+`pad-lattice codex-hook`, reinstall from the current package:
+
+```bash
+pad-lattice install-codex-hooks
+```
+
+Start a new Codex session, review the changed definitions with `/hooks`, and
+confirm that the command begins with an absolute `pad-lattice-hook` path.
+
 ## A Background Session Replaced the Center
 
 Background state updates should change only their status indicator. Use the
