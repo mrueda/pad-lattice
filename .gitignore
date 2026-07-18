@@ -4,3 +4,8 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+web-app/node_modules/
+web-app/playwright-report/
+web-app/test-results/
+web-app/.vite/
+web-app/*.tsbuildinfo

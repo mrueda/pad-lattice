@@ -182,13 +182,25 @@
         "metadata": {"$ref": "#/$defs/metadata"}
       }
     },
+    "surfaceStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "profile", "visual_protocol", "input", "output"],
+      "properties": {
+        "kind": {"enum": ["midi", "web"]},
+        "profile": {"type": "string"},
+        "visual_protocol": {"const": 1},
+        "input": {"type": "string"},
+        "output": {"type": "string"}
+      }
+    },
     "statusResponse": {
       "type": "object",
       "additionalProperties": false,
       "required": [
         "protocol", "type", "profile", "visual_protocol", "input", "output",
         "selected", "overflow_count", "activity_motion", "audio_feedback",
-        "preview_active", "session_ttl", "sessions"
+        "preview_active", "session_ttl", "surfaces", "sessions"
       ],
       "properties": {
         "protocol": {"$ref": "#/$defs/protocol"},
@@ -205,6 +217,11 @@
         "audio_feedback": {"type": "boolean"},
         "preview_active": {"type": "boolean"},
         "session_ttl": {"type": "number", "minimum": 0},
+        "surfaces": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/surfaceStatus"}
+        },
         "sessions": {
           "type": "array",
           "items": {"$ref": "#/$defs/sessionStatus"}

@@ -36,8 +36,8 @@ Register the production publisher at
 Run **Publish to TestPyPI** from the GitHub Actions tab. The workflow tests the
 package, builds its wheel and source archive, validates the metadata, installs
 the wheel in a clean environment, and publishes through the `testpypi`
-environment. The workflow accepts only PEP 440 pre-release versions. The first
-planned release is `0.1.0a1`.
+environment. The workflow accepts only PEP 440 pre-release versions. The
+current planned alpha is `0.1.0a2`.
 
 Verify the uploaded package in a clean virtual environment:
 
@@ -46,7 +46,7 @@ python3 -m venv /tmp/pad-lattice-testpypi
 /tmp/pad-lattice-testpypi/bin/python -m pip install \
   --index-url https://test.pypi.org/simple/ \
   --extra-index-url https://pypi.org/simple/ \
-  pad-lattice==0.1.0a1
+  pad-lattice==0.1.0a2
 /tmp/pad-lattice-testpypi/bin/pad-lattice --version
 /tmp/pad-lattice-testpypi/bin/pad-lattice profile list
 ```

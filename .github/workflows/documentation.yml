@@ -27,6 +27,17 @@ jobs:
         with:
           node-version: 24
 
+      - name: Install and build virtual surface
+        working-directory: web-app
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          npm run build
+
+      - name: Verify committed web bundle
+        run: git diff --exit-code -- src/pad_lattice/web_dist
+
       - name: Install docs dependencies
         working-directory: docs-site
         run: npm ci
@@ -41,7 +52,9 @@ jobs:
 
       - name: Verify search index
         working-directory: docs-site
-        run: test -s build/search-index.json
+        run: |
+          test -s build/search-index.json
+          test -s build/play/index.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

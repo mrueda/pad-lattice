@@ -23,6 +23,11 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'doc',
+          id: 'usage/virtual-surface',
+          label: 'Virtual Surface',
+        },
+        {
+          type: 'doc',
           id: 'usage/codex-integration',
           label: 'Codex Integration',
         },

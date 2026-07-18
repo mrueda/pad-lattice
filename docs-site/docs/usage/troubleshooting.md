@@ -1,7 +1,7 @@
 # Troubleshooting
 
-Most problems are profile selection, MIDI ownership, controller mode, or a
-socket mismatch.
+Most problems are a socket mismatch, occupied browser port, expired pairing
+code, profile selection, or MIDI ownership.
 
 Start with one read-only report:
 
@@ -14,6 +14,51 @@ and Codex hook installation without opening the controller or changing LEDs.
 Use `pad-lattice doctor --json` when attaching diagnostics to an issue; the
 report omits session identities and agent metadata.
 It also abbreviates home and runtime-directory paths.
+
+## The Virtual Surface Does Not Open
+
+Start it explicitly and use the URL printed in the terminal:
+
+```bash
+pad-lattice web
+```
+
+Automatic browser launch is a convenience, not a runtime requirement. On a
+headless host or when the desktop opener fails, run `pad-lattice web --no-open`
+and open the printed loopback URL yourself.
+
+If port 8765 is occupied, let the operating system choose a free one:
+
+```bash
+pad-lattice web --port 0
+```
+
+Only one Pad-Lattice daemon may own a given Unix socket. Stop the existing
+daemon or select another path with `--socket`.
+
+## A Phone or Tablet Cannot Pair
+
+Confirm that the daemon was started with `--lan` and that both devices are on
+the same trusted network:
+
+```bash
+pad-lattice web --lan
+```
+
+If the printed address belongs to a VPN, container, or unreachable interface,
+advertise the host's reachable Wi-Fi address:
+
+```bash
+pad-lattice web --lan --advertise-host 192.168.1.20
+```
+
+Also check the host firewall. Pairing QR links and PINs are one-use and expire
+after five minutes; create another from the local admin page when needed.
+Pairing tokens are deliberately forgotten when the daemon restarts, so a
+previously paired browser must pair again.
+
+Do not solve reachability by forwarding the port through a router. LAN mode is
+unencrypted and intended only for a trusted local network.
 
 ## No Device Is Detected
 
@@ -105,8 +150,8 @@ socket therefore requires reinstalling and trusting the updated hooks.
 
 ## A Background Session Replaced the Center
 
-Background state updates should change only their status LED. Press the eight
-right-side Agent Scene selectors to confirm the selected session. If behavior differs,
+Background state updates should change only their status indicator. Use the
+eight right-side Agent Scene selectors to confirm the selected session. If behavior differs,
 verify that every integration sends a stable `backend` and `session_id`;
 messages without identity all share `local/default`.
 
@@ -141,7 +186,7 @@ Confirm all of the following:
 - the requesting agent's right-side Scene is selected;
 - `/hooks` shows the current Pad-Lattice `PermissionRequest` handler as trusted;
 - the daemon and installed hooks use the same socket;
-- the 60-second hardware window has not elapsed.
+- the 60-second surface-decision window has not elapsed.
 
 Reinstall changed hooks and review them again:
 
@@ -149,7 +194,7 @@ Reinstall changed hooks and review them again:
 pad-lattice install-codex-hooks
 ```
 
-If the hardware window expires, Codex presents its normal keyboard approval
+If the surface window expires, Codex presents its normal keyboard approval
 prompt. Approve applies only to the current permission request.
 
 Test routing with an explicit identity:
@@ -158,7 +203,7 @@ Test routing with an explicit identity:
 pad-lattice listen-actions --backend test --session-id agent-a
 ```
 
-Select that session's Scene, then press an action. The listener should receive a
+Select that session's Scene, then press or tap an action. The listener should receive a
 JSON message containing the same identity. Actions are intentionally ignored
 instead of broadcast when no matching subscriber exists.
 

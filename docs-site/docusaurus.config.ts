@@ -4,21 +4,22 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Pad-Lattice Docs',
-  tagline: 'MIDI pad controllers, reimagined for AI agents',
+  tagline: 'Physical and virtual pad control for AI agents',
   url: 'https://mrueda.github.io',
   baseUrl: '/pad-lattice/',
   organizationName: 'mrueda',
   projectName: 'pad-lattice',
-  onBrokenLinks: 'warn',
+  onBrokenLinks: 'throw',
   markdown: {
     hooks: {
-      onBrokenMarkdownLinks: 'warn',
+      onBrokenMarkdownLinks: 'throw',
     },
   },
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
   },
+  staticDirectories: ['static', '../src/pad_lattice/web_dist'],
   presets: [
     [
       'classic',
@@ -59,6 +60,12 @@ const config: Config = {
       },
       items: [
         {
+          href: 'pathname:///play/',
+          label: 'Try the Pad',
+          position: 'left',
+          target: '_self',
+        },
+        {
           type: 'docSidebar',
           sidebarId: 'docsSidebar',
           position: 'left',
@@ -92,6 +99,10 @@ const config: Config = {
         {
           title: 'Docs',
           items: [
+            {
+              label: 'Virtual Pad',
+              href: 'pathname:///play/',
+            },
             {
               label: 'Overview',
               to: '/docs/overview',

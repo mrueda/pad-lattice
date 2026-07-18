@@ -1,20 +1,21 @@
 # Visual Protocol
 
 Pad-Lattice Visual Protocol **1** defines how agent identity, state,
-selection, action availability, and capacity appear on a physical surface.
+selection, action availability, and capacity appear on any conforming surface.
 
 :::important A protocol, not decoration
 
-Position, hue, shape, brightness, and motion carry defined information. A
-device profile translates these semantics to hardware; it does not invent new
-meanings for them.
+Position, hue, shape, brightness, and motion carry defined information. The
+virtual surface and device profiles translate these semantics into pixels or
+hardware lights; they do not invent new meanings for them.
 
 :::
 
-## Common Launchpad Surface
+## Reference Surface
 
-The common Launchpad topology is the **8x8 matrix, eight top controls, and
-eight right-side controls**. Protocol 1 uses that shared surface:
+The reference topology is the common Launchpad arrangement: an **8x8 matrix,
+eight top controls, and eight right-side controls**. The browser uses the same
+geometry, so knowledge transfers directly between virtual and physical pads:
 
 - the top rail carries actions and system state;
 - the right rail contains eight **Agent Scenes**;
@@ -22,7 +23,8 @@ eight right-side controls**. Protocol 1 uses that shared surface:
 - the remaining 7x8 matrix renders the selected agent.
 
 The Launchpad Pro Mk1 has additional left and bottom rails. They are optional
-hardware and remain reserved by this protocol.
+hardware and remain reserved by this protocol. The virtual surface does not
+add actions to those reserved positions.
 
 :::tip Read each right-hand pair as WHAT / WHO
 
@@ -59,14 +61,16 @@ Agent Scene 1 is selected and waiting for approval. Its Scene button remains
 cyan because cyan identifies agent 1. The adjacent S1 pad and the center
 exclamation mark are amber because amber means approval is needed.
 
-| Zone | Launchpad mapping | Meaning |
+| Zone | Reference mapping | Meaning |
 | --- | --- | --- |
 | Top action/system rail | CC 91-98 | Approve, reject, overflow, retry, and stop; unassigned positions remain dark. |
 | State canvas | matrix columns 1-7 | 7x8 glyph for the selected agent. |
 | Status column | notes 88, 78, ..., 18 | WHAT: dim semantic state for each visible agent. |
 | Right Agent Scene strip | CC 89, 79, ..., 19 | WHO: stable identity; brighter means selected. |
 
-The printed musical labels are repurposed while Pad-Lattice owns the device in
+The CC values apply to the common Launchpad device profiles. Browser controls
+occupy the corresponding visual positions without pretending to emit MIDI.
+Printed musical labels are repurposed while Pad-Lattice owns hardware in
 Programmer mode.
 
 ## Ableton Influence
@@ -76,7 +80,7 @@ an agent is an audio clip:
 
 - the right-side Scene strip provides eight direct context choices;
 - selection is distinct from the state being controlled;
-- a fixed hardware window represents part of a larger session;
+- a fixed eight-Scene window represents part of a larger session;
 - unavailable controls are dark and selected controls are brighter.
 
 In Ableton Session View, Scene buttons launch horizontal rows and tracks occupy
@@ -163,7 +167,7 @@ The selected-agent canvas is 7x8. Shape and color are both normative.
 | cancelled | Gray hollow square |
 | No selection | Dim three-pad dash |
 
-Hardware flashing and pulsing are not used. Optional running motion is disabled
+Rapid flashing and pulsing are not used. Optional running motion is disabled
 unless the daemon starts with `--activity-motion`.
 
 ## Action Semantics
@@ -189,11 +193,11 @@ to overflow. Selected and approval-waiting sessions are protected. Ending the
 selected session clears selection and shows the idle dash; another agent is
 never silently targeted.
 
-The common Launchpad mapping is a reference profile, not a requirement that
-every controller look like a Launchpad. Another MIDI device may relocate these
-roles, but it must preserve separate identity and state, selected-agent
-feedback, capability-gated targeted actions, visible overflow, and
-distinguishable shapes and colors without rapid flashing.
+The common Launchpad mapping is a reference topology, not a requirement that
+every implementation look like a Launchpad. Another browser presentation or
+MIDI device may relocate these roles, but it must preserve separate identity
+and state, selected-agent feedback, capability-gated targeted actions, visible
+overflow, and distinguishable shapes and colors without rapid flashing.
 
 ## Conformance
 

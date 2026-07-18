@@ -82,6 +82,35 @@ plays the synchronized piano-and-strings score through the computer.
 Device-selection options match `demo`. Stop the daemon first because the show
 owns the MIDI ports directly.
 
+## `pad-lattice web`
+
+Start the real local daemon with a virtual surface and no MIDI device:
+
+```bash
+pad-lattice web
+pad-lattice web --port 0
+pad-lattice web --no-open
+```
+
+The default listener is `127.0.0.1:8765`. Loopback clients are local
+administrators and may inspect sanitized session labels, select Agent Scenes,
+invoke available actions, and manage remote pairing. `--port 0` asks the
+operating system for a free port.
+
+Allow explicitly paired browsers on a trusted local network:
+
+```bash
+pad-lattice web --lan
+pad-lattice web --lan --advertise-host 192.168.1.20 --port 8765
+```
+
+The command prints a one-use QR link and six-digit PIN valid for five minutes.
+`--advertise-host` changes the address encoded in pairing links and requires
+`--lan`. LAN mode is unencrypted and must not be exposed to the internet.
+
+The command also accepts `--socket`, `--terminal-hold`, `--session-ttl`,
+`--activity-motion`, `--audio-feedback`, and `--identity-store`.
+
 ## `pad-lattice daemon`
 
 Own the MIDI ports and expose the local Unix socket:
@@ -92,6 +121,17 @@ pad-lattice daemon --no-greeting --terminal-hold 1.5
 
 The daemon accepts the same `--profile`, `--profile-file`, `--input`, and
 `--output` options as the demo. `--socket` overrides the local socket path.
+
+Mirror the physical surface in browsers:
+
+```bash
+pad-lattice daemon --web
+pad-lattice daemon --web --lan
+```
+
+`--web` adds the same virtual surface served by `pad-lattice web`. It accepts
+`--port`, `--no-open`, and, with LAN mode, `--advertise-host`. `--lan` requires
+`--web`. MIDI and browser input share one selected-session action router.
 
 Additional lifecycle options:
 
@@ -115,6 +155,7 @@ pad-lattice status --watch --interval 1
 
 The live legend shows actual accent swatches, Scene, state, label, project,
 short session ID, and whether cleanup is controlled by a live lease or TTL.
+It also lists every active surface and its profile or transport details.
 `NO_COLOR` disables ANSI swatches.
 
 Cycle every state glyph quickly on the selected Scene, then restore its real

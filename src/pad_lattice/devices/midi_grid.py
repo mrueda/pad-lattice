@@ -58,6 +58,8 @@ FONT_5X7: dict[str, tuple[str, ...]] = {
 class MidiGridSurface:
     """Render semantic Pad-Lattice views through a declarative MIDI profile."""
 
+    surface_kind = "midi"
+
     def __init__(
         self,
         profile: DeviceProfile,

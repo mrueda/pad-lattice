@@ -21,14 +21,14 @@ commands. Reinstalling a changed definition requires another review.
 | --- | --- |
 | `SessionStart` | `waiting_for_reply` |
 | `UserPromptSubmit` | `running` |
-| `PermissionRequest` | `waiting_for_approval`; wait for hardware decision |
+| `PermissionRequest` | `waiting_for_approval`; wait for a surface decision |
 | `PostToolUse` | `running` |
 | `Stop` | `success`, then `waiting_for_reply` |
 
 The hook forwards `session_id` as the stable agent identity. Working directory,
 model, and label are display metadata, never identity keys. Simultaneous
 sessions occupy separate slots; an update from an unselected session changes
-only its status LED.
+only its compact status indicator.
 
 ## Integrated Launcher
 
@@ -64,13 +64,13 @@ pad-lattice status --watch
 The legend matches Scene number and accent to label, project, state, short
 session ID, and lease status.
 
-## Hardware Approval and Rejection
+## Surface Approval and Rejection
 
 For a Codex permission request:
 
 1. The requesting session changes to the amber approval state.
 2. Select its right-side Agent Scene if it is not already selected.
-3. Press the lit green Approve or red Reject control.
+3. Press or tap the lit green Approve or red Reject control.
 4. The hook returns a one-request `allow` or `deny` decision directly to Codex.
 
 Each pending request has a unique request ID. One press reaches exactly one
@@ -79,7 +79,7 @@ arrival order and actions are never broadcast. Approve does not create a
 persistent permission rule.
 
 The hook waits 60 seconds. A timeout, unavailable daemon, or disconnected
-controller returns control to Codex's normal keyboard approval prompt. Action
+surface returns control to Codex's normal keyboard approval prompt. Action
 controls are completely dark when no live request can consume them.
 
 This path uses Codex's supported `PermissionRequest` hook output. It does not
@@ -88,7 +88,7 @@ scrape terminals or inject synthetic keys.
 ## Direct Codex Fallback
 
 Plain `codex` and `codex resume` sessions still report state and accept
-hardware permission decisions after the hooks are trusted. Codex exposes no
+surface permission decisions after the hooks are trusted. Codex exposes no
 terminal-close hook, so direct sessions use the 24-hour unleased-session TTL
 or explicit cleanup:
 
@@ -130,8 +130,8 @@ The adapter maps these events:
 | `error` | `error` |
 
 Each invocation generates a unique agent identity and subscribes only to Stop.
-After selecting that task on the controller, the common top-rail Stop control
-(`CC 98`) terminates that process without affecting
+After selecting that task on a surface, the common top-rail Stop control
+(mapped to `CC 98` on Launchpads) terminates that process without affecting
 another concurrent `codex-exec` task.
 
 ## Hook Trust and Scope
@@ -148,7 +148,7 @@ hooks after changing that path. The launcher also exports its socket path to
 the child, allowing one integrated invocation to override the installed
 default.
 
-Set a different hardware wait when installing hooks:
+Set a different surface-decision wait when installing hooks:
 
 ```bash
 pad-lattice install-codex-hooks --approval-timeout 90

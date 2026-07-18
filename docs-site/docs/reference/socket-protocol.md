@@ -4,9 +4,10 @@ Pad-Lattice clients communicate with the daemon through **Wire Protocol 1**:
 newline-delimited JSON over a local Unix stream socket. It carries agent state,
 session lifecycle, status, leases, capabilities, and targeted actions.
 
-This contract is separate from [Visual Protocol 1](../usage/visual-language.md)
-and [device profile schema 1](../technical-details/device-profiles.md). The wire
-protocol moves semantics; it does not describe LEDs or MIDI addresses.
+This contract is separate from [Visual Protocol 1](../usage/visual-language.md),
+[device profile schema 1](../technical-details/device-profiles.md), and the
+browser-facing Web Surface Protocol. The wire protocol moves agent semantics;
+it does not describe LEDs, browser pixels, or MIDI addresses.
 
 :::tip Prefer the Python client
 
@@ -206,9 +207,10 @@ transfers ownership safely.
 
 ## Inspection and Previews
 
-`{"protocol":1,"type":"status"}` returns profile and port metadata,
-selection, sessions, visible slots, accents, leases, overflow, TTL, preview
-status, and whether optional audio feedback is enabled.
+`{"protocol":1,"type":"status"}` returns selection, sessions, visible slots,
+accents, leases, overflow, TTL, preview status, optional-audio status, and a
+`surfaces` array. Each surface entry identifies its kind (`web` or `midi`),
+profile, Visual Protocol version, and sanitized input/output description.
 `{"protocol":1,"type":"ping"}` returns
 `{"protocol":1,"type":"pong"}`.
 
@@ -237,6 +239,20 @@ Schema](https://github.com/mrueda/pad-lattice/blob/main/src/pad_lattice/schemas/
 supports external clients, editors, and conformance tools. The daemon performs
 small direct checks on live messages; it does not run JSON Schema validation in
 the real-time path.
+
+## Browser Protocol Boundary
+
+The browser does not connect to Wire Protocol 1 and cannot send arbitrary agent
+state. `web_surface.py` exposes a narrower Web Surface Protocol over a
+same-origin WebSocket. Authenticated clients receive compiled visual frames and
+sanitized labels; they may request only Scene selection, currently available
+actions, and local-admin pairing operations.
+
+That protocol has its own packaged [Web Surface Protocol 1 JSON
+Schema](https://github.com/mrueda/pad-lattice/blob/main/src/pad_lattice/schemas/web-surface-protocol-v1.json).
+Its runtime uses the same small typed-parser approach and message-size bounds as
+the local protocol. The two protocols share semantic domain values but are not
+interchangeable.
 
 Wire Protocol 1, Visual Protocol 1, and Device Profile Schema 1 evolve
 independently. A future incompatible socket format must use a new integer

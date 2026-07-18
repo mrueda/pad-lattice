@@ -1,134 +1,118 @@
 # Overview
 
-Pad-Lattice repurposes MIDI grid controllers as physical control surfaces for
-AI agents. It separates agent integrations from hardware details so existing
-musical controllers can supervise terminal agents without a browser or
-graphical agent UI.
+Pad-Lattice turns **browsers and MIDI grid controllers into control surfaces
+for AI agents**. A desktop browser, phone, tablet, and Launchpad can all render
+the same selected agent and issue the same currently available actions.
 
-:::important Visual protocol
+The surfaces are different; the language and routing policy are shared.
 
-Pad-Lattice defines **Visual Protocol 1** and **Wire Protocol 1**. Color,
-shape, position, brightness, and motion are semantic fields: together they
-communicate agent identity, state, selection, action availability, and
-activity. Their meanings must remain deliberate and consistent across devices.
+:::important Visual Protocol 1
 
-Changing that visual grammar is a protocol-design decision, not a cosmetic
-restyling.
+Color, shape, position, brightness, and motion communicate agent identity,
+state, selection, action availability, and capacity. Their meanings remain
+consistent across physical and virtual surfaces.
+
+Changing that grammar is a protocol decision, not cosmetic restyling.
 
 :::
 
-## Why MIDI
+## Start Without Hardware
+
+Open the [public virtual pad](pathname:///play/) to experience a simulated multi-agent
+approval and retry flow. After the guided story, its sandbox exposes every
+state, action, identity accent, and Agent Scene.
+
+The public page is a simulation and never connects to a local agent. To control
+real Codex CLI sessions, install Pad-Lattice and run:
+
+```bash
+pad-lattice web
+```
+
+Use `pad-lattice web --lan` to pair a phone or tablet on the same trusted local
+network. See [Virtual Surface](./usage/virtual-surface.md) for the exact trust
+boundary and pairing lifecycle.
+
+## Why MIDI Still Matters
 
 MIDI hardware already combines tactile input, RGB feedback, low-latency local
-communication, and mature operating-system support. Those capabilities are
-useful beyond music. Pad-Lattice turns the controller into a local agent
-surface while preserving MIDI as the hardware boundary.
+communication, and mature operating-system support. Pad-Lattice repurposes
+those strengths beyond music instead of requiring custom AI hardware.
 
-The first integration is **Codex CLI**. The first supported controller is the
-**Novation Launchpad Pro Mk1**. Experimental profiles for the **Launchpad Mini
-Mk3** and **Launchpad Pro Mk3** establish the community testing path for
-additional devices.
+The virtual surface broadens access to anyone with a browser. The physical
+surface remains the flagship tactile implementation, and both can run at once:
 
-Pad-Lattice is not a token-level sampler. It does not visualize token
-probabilities, top-k candidates, or model internals. It focuses on supervision:
+```bash
+pad-lattice daemon --web
+```
 
-- Is the selected agent running or waiting?
-- Does any visible session need approval?
-- Did the selected task succeed or fail?
-- Which agent will receive a physical action?
-- Is that action currently accepted by a live integration?
+## What It Supervises
+
+Pad-Lattice does not inspect model internals or decode tokens. It answers
+operational questions:
+
+- Which agent is selected?
+- Is it running, waiting, successful, failed, or requesting approval?
+- Do any background sessions need attention?
+- Which actions can a live integration consume now?
+- Which exact agent and request will receive a press or tap?
+
+Prompts and terminal output stay in Codex. A browser receives sanitized labels,
+semantic states, selection, and action availability only.
 
 ## Choose Your Path
 
 | I want to... | Start here |
 | --- | --- |
-| Understand the idea and supported hardware | Continue with this overview and the [Visual Language](./usage/visual-language.md). |
-| Install Pad-Lattice for Codex | [Quick Start](./usage/quickstart.md). |
+| Experience the idea immediately | [Try the virtual pad](pathname:///play/). |
+| Control Codex without MIDI hardware | [Quick Start](./usage/quickstart.md) and [Virtual Surface](./usage/virtual-surface.md). |
+| Pair a phone or tablet | [Virtual Surface: LAN pairing](./usage/virtual-surface.md#phone-and-tablet-pairing). |
+| Use a Launchpad | [Quick Start](./usage/quickstart.md#physical-launchpad). |
 | Run several real Codex sessions | [Production Use](./usage/production.md) and [Codex Integration](./usage/codex-integration.md). |
-| Add optional state and action sounds | [Audio Feedback](./usage/audio-feedback.md). |
-| Test another Launchpad or MIDI grid | [Test a Device](./usage/device-testing.md). |
-| Understand or contribute to the code | [Developer Guide](./technical-details/developer-guide.md). |
-| Build a client integration | [Socket Protocol](./reference/socket-protocol.md). |
-| Build a device profile | [Device Profiles](./technical-details/device-profiles.md). |
+| Understand the visual grammar | [Visual Language](./usage/visual-language.md). |
+| Test another MIDI controller | [Test a Device](./usage/device-testing.md). |
+| Contribute code or an integration | [Developer Guide](./technical-details/developer-guide.md). |
 
 :::note Current maturity
 
-Pad-Lattice is alpha software. The physically validated path is Codex CLI on a
-Novation Launchpad Pro Mk1 on a Unix-like system. The Launchpad Mini Mk3 and Pro
-Mk3 profiles are experimental, and interactive Codex currently supports
-hardware Approve and Reject at permission requests rather than arbitrary
-terminal input.
-
-The [Roadmap](./about/roadmap.md) separates implemented behavior from planned
-work.
+Pad-Lattice is alpha software. Real browser control and the Novation Launchpad
+Pro Mk1 implement the same protocol. Mini Mk3 and Pro Mk3 MIDI profiles remain
+experimental. Interactive Codex currently exposes request-scoped Approve and
+Reject rather than arbitrary terminal input.
 
 :::
 
 ## Current Capabilities
 
-- Steady, shape-plus-color rendering for common agent states.
-- A local Unix socket daemon that exclusively owns the MIDI ports.
-- A multi-agent registry keyed by backend and session ID.
-- Eight visible session selectors with persistent accent colors and state LEDs.
-- Safe least-recently-used overflow with a steady warning indicator.
-- Process leases, explicit cleanup, a 24-hour unleased-session TTL, and a live legend.
-- Request-scoped action subscriptions; actions are never broadcast.
-- Declarative JSON device profiles behind a trusted generic MIDI-grid driver.
-- Supported Launchpad Pro Mk1 plus experimental Mini Mk3 and Pro Mk3 profiles.
-- Lifecycle hooks for interactive `codex` and `codex resume` sessions.
-- Hardware Approve and Reject decisions for Codex permission requests.
-- Labeled, native-terminal Codex launching with immediate Scene cleanup.
-- A `codex-exec` adapter with a targeted Stop action.
-- Guided, privacy-preserving physical profile verification.
-- Read-only installation diagnostics with redacted local paths.
-- Optional semantic audio feedback through the computer, with no Python audio dependency.
-- A standalone, full-surface audiovisual performance with steady palette or RGB colors.
+- Public guided simulation and free protocol sandbox.
+- Local browser control of real Codex CLI sessions.
+- Ephemeral QR/PIN pairing for phones and tablets on a trusted LAN.
+- Simultaneous MIDI and browser surfaces on one deterministic control plane.
+- Steady shape-plus-color state glyphs and eight persistent identity accents.
+- Multi-agent selection, compact background status, protected approvals, and overflow.
+- Request-scoped actions that are capability-gated and never broadcast.
+- Interactive Codex lifecycle hooks and Approve/Reject permission decisions.
+- Native-terminal labeled launcher with leases and immediate Scene cleanup.
+- Non-interactive `codex-exec` adapter with targeted Stop.
+- Supported Launchpad Pro Mk1 and community-testable device profiles.
+- Optional semantic earcons and an authored audiovisual hardware show.
 
-## Hardware Boundary
+## System Boundaries
 
-The daemon works with semantic states and actions. A device profile owns:
+The deterministic control plane owns sessions, selection, action routing, and
+expiry. A semantic `SurfaceView` is broadcast to one or more surfaces:
 
-- MIDI port discovery;
-- programmer-mode startup and shutdown;
-- 8x8 note or control-change maps and optional outer controls;
-- static palette values;
-- action controls;
-- session selector, status, and overflow locations;
-- calibrated palette values and declared protocol conformance levels.
+- the browser surface compiles it into versioned web messages;
+- a MIDI profile translates it to device addresses and palette values;
+- a composite surface keeps both synchronized.
 
-This boundary lets controller manufacturers and community developers add
-hardware without coupling it to Codex-specific events.
-
-A profile translates the shared visual protocol to a device. It may use
-different MIDI addresses, palette values, or physical controls, but it should
-preserve the same semantic distinctions.
-
-## Multi-Agent Boundary
-
-The first observed session is selected. Later sessions occupy free slots
-without stealing the center display. Pressing one of the eight right-side
-Agent Scene buttons changes the active session, and background updates remain
-visible on that session's adjacent status LED. Accent preferences survive
-daemon restarts without storing raw session IDs.
-
-When capacity is exceeded, the least recently active unselected session that
-is not waiting for approval moves to overflow. Ending the selected session
-clears selection instead of silently retargeting physical controls.
-
-Physical actions are emitted only when the selected identity has a connected
-subscriber advertising that action. Interactive Codex permission hooks expose
-one-shot Approve and Reject; `codex-exec` advertises Stop while its process is
-live. Every unavailable action is dark.
-
-The controller's Scene and accent are mirrored in terminal titles and
-`pad-lattice status --watch`. A persistent launcher lease removes a session
-when its Codex process exits, while direct Codex sessions use TTL or explicit
-cleanup.
+Agent integrations use a local Unix socket and never know which surfaces are
+active. Browser clients never connect directly to that socket.
 
 ## Non-Goals
 
-- Direct token decoding control.
-- A WebMIDI browser application.
-- Open-weights model probability visualization.
+- Direct token decoding or probability visualization.
+- WebMIDI access from the public page.
 - Terminal scraping or synthetic keyboard input.
 - Replacing the Codex CLI terminal interface.
+- Built-in cloud relay or internet-facing remote control.

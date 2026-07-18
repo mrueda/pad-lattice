@@ -1,197 +1,135 @@
 # Architecture
 
-Pad-Lattice separates agent integration, session routing, and physical
-hardware:
+Pad-Lattice separates **agent integration**, **deterministic policy**, and
+**surface translation**. A browser and a MIDI controller are peers at the
+surface boundary; neither owns agent state or decides where an action goes.
 
 :::tip New to the codebase?
 
-Read the [Developer Guide](./developer-guide.md) first for the runtime model,
-end-to-end code paths, failure behavior, and change map.
+Read the [Developer Guide](./developer-guide.md) next for end-to-end code paths,
+failure behavior, and the change map.
 
 :::
 
-![Pad-Lattice architecture from agent adapters through the local daemon and visual protocol to a MIDI controller](/img/architecture.svg)
+![Pad-Lattice architecture from local agent adapters through one control plane to synchronized browser and MIDI surfaces](/img/architecture.svg)
 
-_State and light output flow toward the controller; selection and targeted
-actions return to the owning agent integration._
+_State flows from agent adapters to every enabled surface. Scene selections
+and actions return through one capability-gated router._
 
 ## Design Boundaries
 
-- Agent adapters know agent events and the local socket protocol, but not MIDI.
-- `ControlPlane` owns deterministic routing policy. `PadLatticeDaemon` adapts
-  sockets, clocks, and MIDI to that policy and is the only normal MIDI owner.
-- The visual compiler knows semantic state, identity, and actions, but not MIDI
-  addresses or palette numbers.
-- Optional audio maps the same semantic states and actions to nonblocking
-  earcons without changing control-plane decisions.
-- Device profiles and trusted drivers know hardware, but not Codex events.
+- Agent adapters know agent events and Wire Protocol 1, but not browser layout,
+  LED colors, or MIDI addresses.
+- `ControlPlane` is the sole authority for sessions, selection, leases,
+  overflow, action capability gates, and action targets.
+- `PadLatticeDaemon` adapts sockets, clocks, rendering, and surface input to
+  that policy.
+- `SurfaceView` is the stable semantic boundary between policy and rendering.
+- Visual Protocol 1 turns semantic state into glyphs and light tokens without
+  knowing whether the output is CSS or MIDI.
+- The browser adapter authenticates clients and exposes only sanitized surface
+  state. It does not expose Wire Protocol 1.
+- Device profiles and trusted drivers translate semantics into hardware I/O;
+  they know nothing about Codex events.
 
-This separation allows another agent backend and another controller to evolve
-independently.
+These boundaries let a new agent backend, browser client, or physical device
+evolve independently.
 
 ## Components
 
 | Module | Purpose |
 | --- | --- |
 | `pad_lattice.events` | Agent identities, semantic states, and actions. |
-| `pad_lattice.protocol` | Versioned JSON-line framing, typed commands, and direct validation. |
-| `pad_lattice.client` | Public typed API for third-party agent integrations. |
+| `pad_lattice.protocol` | Typed Wire Protocol 1 commands over bounded JSON lines. |
+| `pad_lattice.client` | Public Python API for agent integrations. |
 | `pad_lattice.control_plane` | Deterministic sessions, slots, selection, leases, previews, and action routing. |
-| `pad_lattice.daemon_runtime` | Unix socket, selector loop, MIDI polling, and rendering adapter. |
-| `pad_lattice.identity_store` | Hashed session-to-accent preferences with bounded LRU persistence. |
-| `pad_lattice.visual_protocol` | Hardware-independent state glyphs and semantic light tokens. |
-| `pad_lattice.audio` | Dependency-free earcons, show scoring, WAV synthesis, and system-player output. |
-| `pad_lattice.show` | Device-independent authored full-surface story and synchronized timeline. |
-| `pad_lattice.devices.base` | Hardware-independent surface view and input events. |
-| `pad_lattice.devices.profiles` | Dependency-free profile parsing and catalog. |
-| `pad_lattice.devices.midi_grid` | Trusted palette driver with optional show-only RGB SysEx. |
-| `pad_lattice.devices.factory` | Discovery, explicit selection, and port resolution. |
-| `pad_lattice.diagnostics` | Read-only installation and integration checks. |
-| `pad_lattice.codex_hooks` | Interactive Codex lifecycle adapter and installer. |
-| `pad_lattice.codex_session` | Native-terminal Codex launcher and reconnecting process lease. |
+| `pad_lattice.daemon_runtime` | Unix socket selector loop, surface polling, and rendering adapter. |
+| `pad_lattice.devices.base` | `SurfaceView`, semantic input events, and the `ControlSurface` contract. |
+| `pad_lattice.devices.composite` | Compatible multi-surface fan-out and event merge. |
+| `pad_lattice.visual_protocol` | Device-independent glyphs and semantic light tokens. |
+| `pad_lattice.web_protocol` | Narrow, versioned browser command and rendering contract. |
+| `pad_lattice.web_surface` | Static app server, WebSocket authentication, pairing, and browser event queue. |
+| `pad_lattice.devices.profiles` | Dependency-free device-profile parsing and catalog. |
+| `pad_lattice.devices.midi_grid` | Trusted palette-grid driver with optional show-only RGB SysEx. |
+| `pad_lattice.identity_store` | Bounded LRU of hashed identity-to-accent preferences. |
+| `pad_lattice.audio` | Optional semantic earcons, WAV synthesis, and system-player output. |
+| `pad_lattice.codex_hooks` | Interactive Codex lifecycle adapter and hook installer. |
+| `pad_lattice.codex_session` | Native-terminal Codex launcher and reconnecting lease. |
 | `pad_lattice.codex_exec` | Non-interactive Codex JSONL adapter and Stop sink. |
-| `pad_lattice.cli` | User-facing orchestration and profile tools. |
 
-## Daemon Ownership
+## One Control Plane, Many Surfaces
 
-Only one process should own a controller's MIDI ports. The daemon keeps that
-ownership and exposes a local Unix socket. Agent integrations never need to
-know the attached device model or emit MIDI directly.
+`ControlPlane.surface_view()` produces one immutable semantic snapshot. A
+single surface renders it directly. `CompositeSurface` sends the same snapshot
+to each compatible child and merges their `ActionPressed` and
+`SessionSelected` events.
 
-The control plane converts its selected session into a `SurfaceView`. Drivers
-receive semantic state, visible session indicators, and currently available
-actions. Drivers return semantic `ActionPressed` or `SessionSelected` events.
+Compatibility is explicit: children must have equal selector capacity, accent
+order, and Visual Protocol version. Initialization rolls back already-opened
+children if a later child fails, and shutdown closes children in reverse order.
 
-The runtime runs one synchronous `selectors` loop. Socket reads, control-plane
-transitions, rendering decisions, and MIDI input polling are serialized in
-that loop. The policy object receives the current clock value from the runtime,
-which makes routing and expiry behavior deterministic in tests.
+Both browser taps and MIDI presses therefore enter the same control-plane
+method. They do not choose a socket client themselves. Selection, current
+state, live capability, request ordering, and debounce checks still determine
+whether one subscriber receives an action.
 
-When enabled, the runtime emits an `Earcon` after a meaningful state transition,
-successful physical action, unavailable press, or Scene selection. Audio
-playback starts in a child process and never blocks the selector loop. Repeated
-state reports are deduplicated, while running and typing have no sound.
+## Execution Model
 
-## Protocol
+The daemon uses one synchronous `selectors` loop for authoritative state. On
+each iteration it expires sessions, renders dirty state, handles Unix-socket
+clients, and polls surface event queues. The control plane receives an explicit
+clock value, keeping policy deterministic in tests.
 
-Wire Protocol 1 messages are newline-delimited JSON over a local Unix stream
-socket. There are four client interaction patterns:
+The browser HTTP/WebSocket server runs in an adapter thread because client
+connections wait independently. It compiles no policy. Browser commands become
+semantic events in a thread-safe queue, which the daemon consumes on its next
+poll. Rendering travels in the opposite direction as a compiled, sanitized
+surface message.
 
-| Pattern | Messages | Lifetime |
+MIDI polling remains in the daemon loop. Optional audio starts nonblocking
+system-player processes and cannot change routing decisions.
+
+## Protocols and Schemas
+
+Pad-Lattice has three versioned contracts with different audiences:
+
+| Contract | Audience | Carries |
 | --- | --- | --- |
-| State reporting | `state`, `session_end` | Usually one short connection. |
-| Inspection | `status`, `ping` | Request and response. |
-| Action routing | `subscribe_actions` to `action` | Connected while capabilities are live. |
-| Process ownership | `session_lease` | Connected for the owning process lifetime. |
+| Wire Protocol 1 | Trusted local agent integrations | State, identity, leases, inspection, subscriptions, targeted actions. |
+| Web Surface Protocol 1 | Authenticated browser clients | Compiled visual frames, sanitized labels, Scene selection, actions, pairing administration. |
+| Visual Protocol 1 | Any conforming surface | Glyph shapes, semantic colors, identity accents, actions, and overflow. |
 
-See the [Socket Protocol](../reference/socket-protocol.md) for complete message
-schemas, replies, connection semantics, routing gates, and errors.
+Device Profile Schema 1 translates the visual contract to trusted MIDI-driver
+data. Packaged JSON Schemas document Wire Protocol 1, Web Surface Protocol 1,
+and device profiles for tooling. Runtime code uses small typed parsers instead
+of general schema validation in live paths.
 
-State update:
+See [Socket Protocol](../reference/socket-protocol.md), [Virtual
+Surface](../usage/virtual-surface.md), [Visual
+Language](../usage/visual-language.md), and [Device
+Profiles](./device-profiles.md).
 
-```json
-{
-  "protocol": 1,
-  "type": "state",
-  "state": "running",
-  "agent": {
-    "backend": "codex",
-    "session_id": "019f...",
-    "model": "gpt-5"
-  }
-}
-```
+## Browser Security Boundary
 
-Only `backend` and `session_id` form the identity key. Other string fields are
-optional metadata. A manual state message without `agent` uses
-`local/default`.
+Loopback browser clients are local administrators. LAN clients receive no
+state before presenting a valid one-use pairing secret, PIN, or in-memory
+session token. The server also checks Host and same-origin WebSocket headers,
+disables CORS, caps frames, bounds clients and pending events, rate-limits
+failed PINs and authenticated commands, and serves a restrictive Content
+Security Policy.
 
-Action subscription:
+Only labels, states, slots, accents, available actions, overflow, and compiled
+light tokens reach the browser. Prompts, responses, terminal output, full
+working directories, raw Codex events, and arbitrary Wire Protocol commands do
+not.
 
-```json
-{
-  "protocol": 1,
-  "type": "subscribe_actions",
-  "agent": {
-    "backend": "codex",
-    "session_id": "019f..."
-  },
-  "actions": ["approve", "reject"],
-  "request_id": "c42a...",
-  "one_shot": true
-}
-```
-
-Targeted action response:
-
-```json
-{
-  "protocol": 1,
-  "type": "action",
-  "action": "approve",
-  "agent": {
-    "backend": "codex",
-    "session_id": "019f..."
-  },
-  "request_id": "c42a..."
-}
-```
-
-An action is sent only when the subscription identity equals the selected
-session, its capability list contains that action, and the current state permits
-it. Request-scoped subscriptions are delivered one at a time. With no matching
-live subscriber, the action is ignored and rendered dark.
-
-An interactive launcher opens a persistent `session_lease` connection. Hook
-state messages bind its random lease ID to the real Codex session identity.
-Disconnecting the owning socket removes that session; reconnect messages may
-carry the previously bound identity to restore it after a daemon restart.
-
-Explicit session cleanup uses:
-
-```json
-{
-  "protocol": 1,
-  "type": "session_end",
-  "agent": {"backend": "codex", "session_id": "019f..."}
-}
-```
-
-A `{"protocol":1,"type":"status"}` request returns device metadata, selection,
-every registered session, visible slots, accent names, labels, lease status,
-overflow count, and the optional-audio setting.
-
-## Session Registry
-
-Control-plane records hold identity, current semantic state, metadata, visible
-slot, persistent accent, recency, and terminal-state expiry. The first session
-is selected; background updates never steal selection. Eight selector slots
-are available in the bundled profiles.
-
-Success, error, and cancellation are tracked per session. After
-`--terminal-hold`, that session returns to `waiting_for_reply` without changing
-another session's state. Live leased sessions do not expire. A 24-hour TTL
-retires any inactive unleased session, including a stale selected or approval
-session left by a directly launched Codex process.
-
-## Profile Resolution
-
-Supported profiles may be auto-detected by ordered input and output regexes.
-Experimental profiles require explicit selection. Ambiguous ports fail with a
-diagnostic. User profile IDs cannot override a built-in or another user
-profile.
-
-Profiles are data only. Schema version 1 can select the trusted
-`midi.palette-grid` driver but cannot import arbitrary Python.
-
-Published JSON Schemas describe the external device-profile and socket
-contracts for tooling. Live code uses small typed parsers; general schema
-validation is an explicit profile-authoring dry run, not a daemon dependency.
+Pairing authenticates control but does not encrypt LAN traffic. The supported
+network scope is a trusted local network, never an internet-facing port.
 
 ## Platform Scope
 
-The current transport uses Unix-domain sockets, so the supported runtime scope
-is Linux and other Unix-like systems with compatible MIDI backends. The
-protocol and surface interfaces do not require this transport forever, but a
-cross-platform transport is not currently implemented and is independent of
-device profile schema 1.
+Agent integrations currently use Unix-domain sockets, so real Codex control is
+supported on Linux and compatible Unix-like systems. The public browser demo
+runs anywhere with a modern browser because it is a deterministic simulation.
+The virtual live surface broadens the client device to desktop, phone, and
+tablet, but it does not move the agent daemon away from the local Unix host.

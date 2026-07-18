@@ -19,7 +19,7 @@ class AgentState(str, Enum):
 
 
 class ControlAction(str, Enum):
-    """Agent actions emitted by compatible physical surfaces."""
+    """Agent actions emitted by compatible control surfaces."""
 
     APPROVE = "approve"
     REJECT = "reject"

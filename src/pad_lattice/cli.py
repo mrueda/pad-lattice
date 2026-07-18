@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import os
+import socket
 import sys
 import time
 import uuid
+import webbrowser
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 from pathlib import Path
@@ -35,6 +38,7 @@ from pad_lattice.devices.factory import (
     open_resolved_surface,
     resolve_device,
 )
+from pad_lattice.devices.composite import CompositeSurface
 from pad_lattice.devices.midi_grid import (
     MidiDeviceError,
     list_midi_ports,
@@ -65,12 +69,13 @@ from pad_lattice.protocol import (
 )
 from pad_lattice.show import run_show_surface
 from pad_lattice.visual_protocol import ACCENT_RGB
+from pad_lattice.web_surface import WebSurface
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="pad-lattice",
-        description="Use a MIDI grid controller as a coding-agent control surface.",
+        description="Use physical and virtual pads as coding-agent control surfaces.",
     )
     parser.add_argument(
         "--version",
@@ -163,7 +168,7 @@ def build_parser() -> argparse.ArgumentParser:
     daemon.add_argument(
         "--audio-feedback",
         action="store_true",
-        help="play short semantic sounds for states and physical actions",
+        help="play short semantic sounds for states and surface actions",
     )
     daemon.add_argument(
         "--identity-store",
@@ -171,6 +176,47 @@ def build_parser() -> argparse.ArgumentParser:
         default=default_identity_store_path(),
         help="path for persistent session accent preferences",
     )
+    daemon.add_argument(
+        "--web",
+        action="store_true",
+        help="mirror the physical surface in a local browser",
+    )
+    _add_web_arguments(daemon)
+
+    web = subparsers.add_parser(
+        "web",
+        help="run a virtual browser surface without MIDI hardware",
+    )
+    web.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
+    web.add_argument(
+        "--terminal-hold",
+        type=float,
+        default=2.0,
+        help="seconds to show success/error before returning to waiting",
+    )
+    web.add_argument(
+        "--session-ttl",
+        type=float,
+        default=24 * 60 * 60.0,
+        help="seconds before quiet background sessions expire; 0 disables expiry",
+    )
+    web.add_argument(
+        "--activity-motion",
+        action="store_true",
+        help="enable the optional slow running-state activity marker",
+    )
+    web.add_argument(
+        "--audio-feedback",
+        action="store_true",
+        help="play short semantic sounds for states and browser actions",
+    )
+    web.add_argument(
+        "--identity-store",
+        type=Path,
+        default=default_identity_store_path(),
+        help="path for persistent session accent preferences",
+    )
+    _add_web_arguments(web)
 
     status = subparsers.add_parser("status", help="show daemon and session status")
     status.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
@@ -439,17 +485,28 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command == "daemon":
+            if (args.lan or args.advertise_host) and not args.web:
+                raise ValueError("--lan and --advertise-host require --web")
             device = resolve_device(
                 profile_id=args.profile_id,
                 profile_file=args.profile_file,
                 input_name=args.input,
                 output_name=args.output,
             )
-            surface = open_resolved_surface(
+            midi_surface = open_resolved_surface(
                 device,
                 startup_greeting=None if args.no_greeting else "HELLO FROM CODEX CLI",
                 scroll_delay=args.greeting_delay,
             )
+            web_surface = None
+            surface = midi_surface
+            if args.web:
+                try:
+                    web_surface = _open_web_surface(args)
+                    surface = CompositeSurface((web_surface, midi_surface))
+                except BaseException:
+                    midi_surface.close()
+                    raise
             try:
                 audio_feedback = (
                     SystemAudioFeedback() if args.audio_feedback else None
@@ -467,14 +524,35 @@ def main(argv: list[str] | None = None) -> int:
                 audio_feedback=audio_feedback,
             )
             try:
-                if audio_feedback is not None and surface.startup_greeting:
+                if audio_feedback is not None and midi_surface.startup_greeting:
                     audio_feedback.speak(
-                        surface.startup_greeting,
-                        duration=surface.startup_greeting_duration,
+                        midi_surface.startup_greeting,
+                        duration=midi_surface.startup_greeting_duration,
                     )
             except BaseException:
                 daemon.close()
                 raise
+            daemon.run()
+            return 0
+
+        if args.command == "web":
+            surface = _open_web_surface(args)
+            try:
+                audio_feedback = (
+                    SystemAudioFeedback() if args.audio_feedback else None
+                )
+            except BaseException:
+                surface.close()
+                raise
+            daemon = PadLatticeDaemon(
+                surface,
+                args.socket,
+                terminal_hold=args.terminal_hold,
+                session_ttl=args.session_ttl,
+                activity_motion=args.activity_motion,
+                identity_store=IdentityStore(args.identity_store),
+                audio_feedback=audio_feedback,
+            )
             daemon.run()
             return 0
 
@@ -661,6 +739,92 @@ def _add_device_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--output", help="MIDI output port name")
 
 
+def _add_web_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--lan",
+        action="store_true",
+        help="allow explicitly paired browsers on the trusted local network",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8765,
+        help="browser surface TCP port; default 8765",
+    )
+    parser.add_argument(
+        "--advertise-host",
+        help="LAN hostname or address encoded in pairing links",
+    )
+    parser.add_argument(
+        "--no-open",
+        action="store_true",
+        help="do not open the local browser automatically",
+    )
+
+
+def _open_web_surface(args: argparse.Namespace) -> WebSurface:
+    if not 0 <= args.port <= 65535:
+        raise ValueError("web port must be from 0 to 65535")
+    if args.advertise_host and not args.lan:
+        raise ValueError("--advertise-host requires --lan")
+    surface = WebSurface(
+        host="0.0.0.0" if args.lan else "127.0.0.1",
+        port=args.port,
+    )
+    try:
+        surface.initialize()
+        if args.lan:
+            advertised_host = args.advertise_host or _discover_lan_host()
+            base_url = f"http://{advertised_host}:{surface.server.actual_port}"
+            surface.configure_lan(base_url)
+            pairing = surface.create_pairing()
+            print(f"Virtual surface: {surface.local_url}")
+            print(f"Phone/tablet:   {base_url}")
+            print(f"Pairing PIN:   {pairing['pin']} (expires in 5 minutes)")
+            print("Trusted LAN only. Do not expose or port-forward this server.")
+        else:
+            print(f"Virtual surface: {surface.local_url}")
+        if not args.no_open:
+            try:
+                webbrowser.open(surface.local_url)
+            except webbrowser.Error:
+                pass
+        return surface
+    except BaseException:
+        surface.close()
+        raise
+
+
+def _discover_lan_host() -> str:
+    candidates: list[str] = []
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.connect(("192.0.2.1", 9))
+            candidates.append(str(probe.getsockname()[0]))
+    except OSError:
+        pass
+    try:
+        candidates.extend(
+            str(item[4][0])
+            for item in socket.getaddrinfo(
+                socket.gethostname(),
+                None,
+                family=socket.AF_INET,
+                type=socket.SOCK_STREAM,
+            )
+        )
+    except OSError:
+        pass
+    for candidate in dict.fromkeys(candidates):
+        try:
+            address = ipaddress.ip_address(candidate)
+        except ValueError:
+            continue
+        if address.is_private and not address.is_loopback and not address.is_link_local:
+            return candidate
+    raise ValueError("could not discover a private LAN address; pass --advertise-host")
+
+
 def _add_agent_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--backend", default="local", help="agent backend identity")
     parser.add_argument("--session-id", default="default", help="agent session identity")
@@ -776,10 +940,19 @@ def _print_status(
     if isinstance(selected, dict):
         selected_label = f"{selected.get('backend')}/{selected.get('session_id')}"
     print(
-        f"Device: {payload.get('profile')} "
+        f"Surface profile: {payload.get('profile')} "
         f"(Visual Protocol {payload.get('visual_protocol')})",
         file=stream,
     )
+    surfaces = payload.get("surfaces")
+    if isinstance(surfaces, list) and surfaces:
+        labels = [
+            f"{item.get('kind')}:{item.get('profile')}"
+            for item in surfaces
+            if isinstance(item, dict)
+        ]
+        if labels:
+            print(f"Surfaces: {', '.join(labels)}", file=stream)
     print(f"Selected: {selected_label}", file=stream)
     print(f"Overflow: {payload.get('overflow_count', 0)}", file=stream)
     print(

@@ -8,6 +8,7 @@ from pad_lattice.devices.base import (
     SurfaceEvent,
     SurfaceView,
 )
+from pad_lattice.devices.composite import CompositeSurface
 from pad_lattice.devices.profiles import (
     DeviceCandidate,
     DeviceProfile,
@@ -18,6 +19,7 @@ from pad_lattice.devices.profiles import (
 __all__ = [
     "ActionPressed",
     "ControlSurface",
+    "CompositeSurface",
     "DeviceCandidate",
     "DeviceProfile",
     "ProfileCatalog",

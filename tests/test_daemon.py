@@ -48,6 +48,7 @@ class FakeSocket:
 
 
 class FakeSurface:
+    surface_kind = "midi"
     profile_id = "test/grid/device"
     input_name = "Test input"
     output_name = "Test output"
@@ -141,6 +142,19 @@ class DaemonTest(TestCase):
             metadata=metadata,
             now=time.monotonic(),
         )
+
+    def test_run_closes_surface_when_socket_startup_fails(self) -> None:
+        surface = FakeSurface()
+        daemon = PadLatticeDaemon(surface, "/tmp/pad-lattice-unit-test.sock")
+        self.daemons.append(daemon)
+
+        with (
+            patch.object(daemon, "_open_server", side_effect=OSError("in use")),
+            self.assertRaisesRegex(OSError, "in use"),
+        ):
+            daemon.run()
+
+        self.assertTrue(surface.closed)
 
     def test_state_message_registers_agent_identity(self) -> None:
         daemon = self.daemon()
@@ -674,6 +688,7 @@ class DaemonTest(TestCase):
         status = daemon.status_snapshot()
 
         self.assertEqual(status["visual_protocol"], 1)
+        self.assertEqual(status["surfaces"][0]["kind"], "midi")
         self.assertTrue(status["activity_motion"])
         self.assertTrue(status["audio_feedback"])
         self.assertEqual(status["sessions"][0]["accent"], "cyan")

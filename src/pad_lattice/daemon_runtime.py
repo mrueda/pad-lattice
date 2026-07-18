@@ -1,4 +1,4 @@
-"""Unix-socket and MIDI runtime for the Pad-Lattice control plane."""
+"""Unix-socket and surface runtime for the Pad-Lattice control plane."""
 
 from __future__ import annotations
 
@@ -25,6 +25,7 @@ from pad_lattice.devices.base import (
     SurfaceEvent,
     SurfaceView,
 )
+from pad_lattice.devices.composite import surface_descriptors
 from pad_lattice.events import AgentIdentity, AgentState, ControlAction
 from pad_lattice.identity_store import IdentityStore
 from pad_lattice.protocol import (
@@ -76,7 +77,7 @@ class Client:
 
 
 class PadLatticeDaemon:
-    """Adapt Unix-socket commands and MIDI events to the control plane."""
+    """Adapt Unix-socket commands and surface events to the control plane."""
 
     def __init__(
         self,
@@ -115,9 +116,13 @@ class PadLatticeDaemon:
         self._closed = False
 
     def run(self) -> None:
-        self._server = self._open_server()
-        self._selector.register(self._server, selectors.EVENT_READ, self._accept_client)
         try:
+            self._server = self._open_server()
+            self._selector.register(
+                self._server,
+                selectors.EVENT_READ,
+                self._accept_client,
+            )
             self.surface.initialize()
             while True:
                 self._render_if_needed()
@@ -266,6 +271,7 @@ class PadLatticeDaemon:
             visual_protocol=self.surface.visual_protocol,
             input=self.surface.input_name,
             output=self.surface.output_name,
+            surfaces=list(surface_descriptors(self.surface)),
             selected=(
                 _identity_payload(self.control.selected_agent)
                 if self.control.selected_agent is not None

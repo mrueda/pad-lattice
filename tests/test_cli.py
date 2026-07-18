@@ -128,6 +128,43 @@ class CliTest(TestCase):
         self.assertTrue(args.activity_motion)
         self.assertTrue(args.audio_feedback)
 
+    def test_web_accepts_local_and_lan_options(self) -> None:
+        args = build_parser().parse_args(
+            [
+                "web",
+                "--socket",
+                "/tmp/pad-lattice.sock",
+                "--lan",
+                "--port",
+                "9000",
+                "--advertise-host",
+                "192.168.1.10",
+                "--no-open",
+            ]
+        )
+
+        self.assertEqual(args.command, "web")
+        self.assertTrue(args.lan)
+        self.assertEqual(args.port, 9000)
+        self.assertEqual(args.advertise_host, "192.168.1.10")
+        self.assertTrue(args.no_open)
+
+    def test_web_command_runs_daemon_without_resolving_midi(self) -> None:
+        surface = Mock(local_url="http://127.0.0.1:8765")
+        surface.server.actual_port = 8765
+        daemon = Mock()
+        with (
+            patch("pad_lattice.cli.WebSurface", return_value=surface),
+            patch("pad_lattice.cli.PadLatticeDaemon", return_value=daemon),
+            patch("pad_lattice.cli.resolve_device") as resolve_device,
+        ):
+            result = main(["web", "--no-open"])
+
+        self.assertEqual(result, 0)
+        surface.initialize.assert_called_once_with()
+        resolve_device.assert_not_called()
+        daemon.run.assert_called_once_with()
+
     def test_status_supports_json_output(self) -> None:
         args = build_parser().parse_args(
             ["status", "--socket", "/tmp/pad-lattice.sock", "--json"]
@@ -318,6 +355,16 @@ class CliTest(TestCase):
                 "visual_protocol": 1,
                 "selected": {"backend": "codex", "session_id": "session-123"},
                 "overflow_count": 0,
+                "surfaces": [
+                    {
+                        "kind": "midi",
+                        "profile": "test/grid",
+                    },
+                    {
+                        "kind": "web",
+                        "profile": "virtual/browser",
+                    },
+                ],
                 "sessions": [
                     {
                         "backend": "codex",
@@ -342,6 +389,7 @@ class CliTest(TestCase):
         self.assertIn("docs", legend)
         self.assertIn("pad-lattice", legend)
         self.assertIn("live", legend)
+        self.assertIn("web:virtual/browser", legend)
 
     def test_symbol_cycle_uses_a_temporary_display_preview(self) -> None:
         sent = []

@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mrueda.github.io/pad-lattice/schemas/web-surface-protocol-v1.json",
+  "title": "Pad-Lattice Web Surface Protocol v1",
+  "oneOf": [
+    {"$ref": "#/$defs/authenticate"},
+    {"$ref": "#/$defs/action"},
+    {"$ref": "#/$defs/selectSession"},
+    {"$ref": "#/$defs/createPairing"},
+    {"$ref": "#/$defs/revokeRemote"},
+    {"$ref": "#/$defs/authenticated"},
+    {"$ref": "#/$defs/pairing"},
+    {"$ref": "#/$defs/surface"},
+    {"$ref": "#/$defs/remoteRevoked"},
+    {"$ref": "#/$defs/error"}
+  ],
+  "$defs": {
+    "protocol": {"const": 1},
+    "actionName": {"enum": ["approve", "reject", "stop", "retry"]},
+    "stateName": {
+      "enum": [
+        "running", "waiting_for_reply", "user_typing",
+        "waiting_for_approval", "success", "error", "cancelled"
+      ]
+    },
+    "authenticate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "authenticate"},
+        "credential": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "action"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "action"},
+        "action": {"$ref": "#/$defs/actionName"}
+      }
+    },
+    "selectSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "slot"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "select_session"},
+        "slot": {"type": "integer", "minimum": 0, "maximum": 7}
+      }
+    },
+    "createPairing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "create_pairing"}
+      }
+    },
+    "revokeRemote": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "revoke_remote"}
+      }
+    },
+    "authenticated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "admin", "session_token", "lan_enabled"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "authenticated"},
+        "admin": {"type": "boolean"},
+        "session_token": {"type": ["string", "null"]},
+        "lan_enabled": {"type": "boolean"}
+      }
+    },
+    "pairing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "pin", "pairing_url", "qr_data_uri", "expires_in"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "pairing"},
+        "pin": {"type": "string", "pattern": "^[0-9]{6}$"},
+        "pairing_url": {"type": "string"},
+        "qr_data_uri": {"type": "string", "pattern": "^data:image/svg\\+xml"},
+        "expires_in": {"type": "integer", "minimum": 1, "maximum": 300}
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slot", "state", "selected", "accent", "label"],
+      "properties": {
+        "slot": {"type": "integer", "minimum": 0, "maximum": 7},
+        "state": {"$ref": "#/$defs/stateName"},
+        "selected": {"type": "boolean"},
+        "accent": {"enum": ["cyan", "magenta", "lime", "orange", "violet", "teal", "rose", "sky"]},
+        "label": {"type": "string", "minLength": 1, "maxLength": 80}
+      }
+    },
+    "surface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "visual_protocol", "view", "visual_frame"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "surface"},
+        "visual_protocol": {"const": 1},
+        "view": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["selected_state", "frame", "sessions", "available_actions", "overflow_count", "activity_motion"],
+          "properties": {
+            "selected_state": {"oneOf": [{"$ref": "#/$defs/stateName"}, {"type": "null"}]},
+            "frame": {"type": "integer", "minimum": 0},
+            "sessions": {"type": "array", "maxItems": 8, "items": {"$ref": "#/$defs/session"}},
+            "available_actions": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/actionName"}},
+            "overflow_count": {"type": "integer", "minimum": 0},
+            "activity_motion": {"type": "boolean"}
+          }
+        },
+        "visual_frame": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "selectors", "statuses", "actions", "overflow"],
+          "properties": {
+            "state": {
+              "type": "array",
+              "minItems": 8,
+              "maxItems": 8,
+              "items": {
+                "type": "array",
+                "minItems": 7,
+                "maxItems": 7,
+                "items": {"type": "string"}
+              }
+            },
+            "selectors": {"type": "array", "minItems": 8, "maxItems": 8, "items": {"type": "string"}},
+            "statuses": {"type": "array", "minItems": 8, "maxItems": 8, "items": {"type": "string"}},
+            "actions": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["approve", "reject", "stop", "retry"],
+              "properties": {
+                "approve": {"type": "string"},
+                "reject": {"type": "string"},
+                "stop": {"type": "string"},
+                "retry": {"type": "string"}
+              }
+            },
+            "overflow": {"type": "string"}
+          }
+        }
+      }
+    },
+    "remoteRevoked": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "remote_revoked"}
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "code", "error"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "error"},
+        "code": {"type": "string"},
+        "error": {"type": "string"}
+      }
+    }
+  }
+}

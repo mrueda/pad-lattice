@@ -1,5 +1,15 @@
 # Quick Start
 
+## Try It Now
+
+Open the [virtual pad](pathname:///play/) on any modern desktop, phone, or tablet. The
+guided simulation demonstrates three agents, explicit selection, a real-looking
+approval gate, retry, and shared success. Its sandbox then exposes the complete
+Visual Protocol 1 vocabulary.
+
+No account, MIDI hardware, API key, or installation is required. This public
+mode is deliberately simulated.
+
 ## Install
 
 Install the current GitHub version as an isolated command:
@@ -15,79 +25,21 @@ pad-lattice --version
 pad-lattice doctor
 ```
 
-`doctor` inspects profiles, MIDI ports, the daemon socket, and installed Codex
-hooks without opening the controller or changing LEDs.
+The normal package includes physical MIDI support, the local browser bridge,
+and QR pairing.
 
-## Find the Controller
+## Control Real Codex in a Browser
 
-List raw MIDI ports and matched profiles:
-
-```bash
-pad-lattice ports
-pad-lattice devices
-```
-
-Run the hardware demo. Auto-detection considers only supported profiles:
+Start the virtual surface:
 
 ```bash
-pad-lattice demo
-pad-lattice demo --audio
+pad-lattice web
 ```
 
-`demo --audio` speaks the scrolling startup greeting, then pairs the guided
-questions and pad choices with the default semantic sounds used by the daemon.
+Pad-Lattice prints and opens a loopback URL. Leave this process running; it is
+both the agent daemon and local browser bridge.
 
-Play the standalone visual performance:
-
-```bash
-pad-lattice show
-pad-lattice show --audio
-```
-
-**A Spark Becomes a Constellation** is an authored story across the complete
-8x8 matrix and common top/right rails. It lasts about 43 seconds at the default
-tempo. `--audio` adds its synchronized piano-and-strings score. The daemon must
-be stopped because both `demo` and `show` open the MIDI ports directly.
-
-The Launchpad Mini Mk3 and Pro Mk3 profiles are experimental and must be
-selected explicitly:
-
-```bash
-pad-lattice demo --profile novation/launchpad/mini-mk3
-pad-lattice demo --profile novation/launchpad/pro-mk3
-pad-lattice show --profile novation/launchpad/mini-mk3
-```
-
-## Start the Daemon
-
-Only the daemon should own the MIDI ports during normal operation:
-
-```bash
-pad-lattice daemon --no-greeting
-```
-
-Keep it running in a dedicated terminal or user service. Other commands talk
-to it through the local Unix socket.
-
-Enable optional state and action earcons when desired:
-
-```bash
-pad-lattice daemon --audio-feedback
-```
-
-This speaks **HELLO FROM CODEX CLI** while the controller scrolls the same
-text. Add `--no-greeting` when neither form of greeting is wanted.
-
-Inspect the live device and session registry from any terminal:
-
-```bash
-pad-lattice status
-pad-lattice status --watch
-```
-
-## Connect Codex
-
-Install the interactive lifecycle hooks once:
+Install the Codex hooks once:
 
 ```bash
 pad-lattice install-codex-hooks
@@ -96,76 +48,97 @@ pad-lattice install-codex-hooks
 Launch an integrated session:
 
 ```bash
-pad-lattice codex --label pad-lattice
+pad-lattice codex --label implementation
 ```
 
-Run `/hooks` once to review and trust the Pad-Lattice commands. Prompt,
-running, approval, and completion states now update automatically. The
-terminal title shows the assigned Scene and accent, for example
-`[S1 CYAN] pad-lattice`.
+Run `/hooks` once in Codex to review and trust the installed commands. Prompt,
+running, approval, and completion states now update automatically.
 
-When Codex requests permission, select its right-side Agent Scene and press
-the green Approve or red Reject control. A hardware decision applies only to
-that request. If no pad is pressed within 60 seconds, Codex displays its normal
-keyboard approval prompt.
+When Codex requests permission, select its Agent Scene and tap the lit Approve
+or Reject control. A decision applies only to the selected session and current
+request. After 60 seconds without a surface decision, Codex restores its normal
+keyboard prompt.
 
-Start or resume another labeled session from another terminal:
+## Phone and Tablet
+
+Expose the virtual surface to the trusted local network:
+
+```bash
+pad-lattice web --lan
+```
+
+The local admin page shows a one-use QR code and six-digit PIN that expire in
+five minutes. Scan the QR or open the printed LAN URL and enter the PIN. The
+paired device can reconnect until the daemon stops.
+
+Use `--advertise-host` when automatic address selection chooses the wrong
+network interface:
+
+```bash
+pad-lattice web --lan --advertise-host 192.168.1.20
+```
+
+LAN mode is for a network you trust. Do not port-forward it or use it on public
+Wi-Fi. See [Virtual Surface](./virtual-surface.md) for pairing and security.
+
+## Multiple Sessions
+
+Start or resume labeled sessions from other terminals:
 
 ```bash
 pad-lattice codex --label docs -- resume <SESSION_ID>
+pad-lattice codex --label review
+pad-lattice status --watch
 ```
 
-Closing a session launched this way releases its daemon lease and removes its
-Scene immediately. Plain `codex` remains compatible with the hooks, but it
-cannot provide an immediate terminal-close signal.
+Each session receives a stable accent and one of eight visible Agent Scenes.
+Background updates change their compact status pads without stealing selection.
+Closing a leased launcher removes its Scene immediately.
 
-Run a non-interactive task with a targeted hardware Stop action:
+## Physical Launchpad
+
+Discover attached hardware and run the supported-device demo:
 
 ```bash
-pad-lattice codex-exec "summarize this repository"
+pad-lattice ports
+pad-lattice devices
+pad-lattice demo
 ```
 
-## Exercise Multiple Sessions
-
-Manual state messages can use explicit identities:
+Run normal physical control by itself:
 
 ```bash
-pad-lattice send-state running --backend test --session-id agent-a
-pad-lattice send-state waiting_for_approval --backend test --session-id agent-b
+pad-lattice daemon --no-greeting
 ```
 
-The eight right-side round buttons select visible Agent Scenes. The rightmost
-grid column retains their compact semantic states. Background updates do not
-change the selected agent.
-
-Use an action listener to advertise controls for one test identity:
+Mirror the same state and actions in browsers at the same time:
 
 ```bash
-pad-lattice listen-actions --backend test --session-id agent-a
+pad-lattice daemon --web --no-greeting
+pad-lattice daemon --web --lan --audio-feedback
 ```
 
-Action pads light only when the selected session has a live listener
-**and** its state permits the action:
+Only the daemon owns MIDI ports. Every surface feeds the same selected-session
+action router, so a tap and a physical press have identical semantics.
 
-| Common top control | Action |
-| --- | --- |
-| `CC 91` | `approve` |
-| `CC 92` | `reject` |
-| `CC 97` | `retry` |
-| `CC 98` | `stop` |
-
-For example, set `agent-a` to `waiting_for_approval` to enable Approve and
-Reject, or to `running` to enable Stop.
-
-Remove a finished manual session explicitly:
+Experimental profiles must be selected explicitly:
 
 ```bash
-pad-lattice end-session --backend test --session-id agent-a
+pad-lattice demo --profile novation/launchpad/mini-mk3
+pad-lattice demo --profile novation/launchpad/pro-mk3
 ```
 
-Interactive Codex uses Approve and Reject directly. Interactive Stop, Retry,
-and ordinary chat replies require a broader Codex control channel and remain
-unavailable. See [Codex Integration](./codex-integration.md).
+## Audiovisual Hardware Show
+
+Stop the daemon, then run:
+
+```bash
+pad-lattice show
+pad-lattice show --audio
+```
+
+**A Spark Becomes a Constellation** is an authored 43-second performance across
+the full physical surface. `--audio` adds its synchronized score.
 
 ## Development Checkout
 

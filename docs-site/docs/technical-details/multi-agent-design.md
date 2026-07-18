@@ -1,8 +1,8 @@
 # Multi-Agent Design
 
 Multi-agent selection and targeted routing are implemented in the deterministic
-`ControlPlane`. The daemon runtime supplies socket, clock, and MIDI events. One
-controller can represent several agent sessions without letting a background
+`ControlPlane`. The daemon runtime supplies socket, clock, and surface events.
+One or more synchronized surfaces can represent several agent sessions without letting a background
 update change the intended action target.
 
 ## Invariants
@@ -12,17 +12,18 @@ update change the intended action target.
 - The surface has one explicitly selected session.
 - The center shape and semantic color describe only that session.
 - Every visible slot has a distinct steady accent and a separate state LED.
-- A physical action is routed only to the selected identity.
+- A surface action is routed only to the selected identity.
 - The selected identity must have a live subscriber for that exact action.
 - Actions are never broadcast.
 - Session awareness does not require flashing or pulsing LEDs.
-- Slot management remains independent of the device's MIDI map.
+- Slot management remains independent of browser layout and device MIDI maps.
 
 ## Surface Layout
 
-All bundled profiles expose the common Launchpad topology: eight top
-controls, an 8x8 matrix, and eight right-side Agent Scene controls. The right
-rail selects agents; the rightmost matrix column retains their compact states.
+The reference topology has eight top controls, an 8x8 matrix, and eight
+right-side Agent Scene controls. The right rail selects agents; the rightmost
+matrix column retains their compact states. The virtual surface implements it
+directly, while bundled device profiles map it to Launchpad MIDI addresses.
 
 ![Three agent sessions mapped through the daemon registry to one explicitly selected Launchpad view](/img/multi-agent-selection.svg)
 
@@ -45,7 +46,7 @@ while the daemon guarantees that currently visible accents are unique.
 
 ## Terminal Identity
 
-The controller communicates identity by Scene and accent, not by rendering
+The surface communicates identity by Scene and accent, not by rendering
 arbitrary names. The leased launcher completes that visual protocol on screen:
 
 ```text
@@ -88,9 +89,9 @@ drives the 7x8 center glyph and available action rail.
 
 ## Action Flow
 
-![One physical Approve press passing daemon routing gates and reaching only the oldest matching request for the selected agent](/img/multi-agent-action-routing.svg)
+![One Approve action passing daemon routing gates and reaching only the oldest matching request for the selected agent](/img/multi-agent-action-routing.svg)
 
-_The hardware emits a semantic action without choosing an agent. The daemon
+_The browser or hardware emits a semantic action without choosing an agent. The daemon
 adds the explicit selected identity, validates state and live capability, and
 delivers to one matching subscriber._
 
@@ -104,7 +105,7 @@ error or cancellation.
 
 Request-scoped subscribers take priority over diagnostic session listeners.
 Only the oldest matching request receives a press, and one-shot subscriptions
-remove both approval capabilities before delivery. One physical press can
+remove both approval capabilities before delivery. One press or tap can
 therefore never approve two pending operations.
 
 ## Current Codex Coverage
@@ -120,7 +121,7 @@ nested pseudo-terminals. Interactive Stop, Retry, and ordinary chat replies
 remain outside the permission-hook boundary and require a broader Codex
 integration point.
 
-Inspect the live registry without touching MIDI ownership:
+Inspect the live registry without touching surface ownership:
 
 ```bash
 pad-lattice status

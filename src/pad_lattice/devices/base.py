@@ -1,4 +1,4 @@
-"""Semantic interface between the daemon and a physical control surface."""
+"""Semantic interface between the daemon and a control surface."""
 
 from __future__ import annotations
 
@@ -12,12 +12,13 @@ RgbColor: TypeAlias = tuple[int, int, int]
 
 @dataclass(frozen=True)
 class SessionIndicator:
-    """One agent session represented by a device selector slot."""
+    """One agent session represented by a surface selector slot."""
 
     slot: int
     state: AgentState
     selected: bool = False
     accent: str = "cyan"
+    label: str = ""
 
 
 @dataclass(frozen=True)
@@ -77,6 +78,7 @@ class ControlSurface(Protocol):
     """Operations required by the Pad-Lattice daemon and demo."""
 
     profile_id: str
+    surface_kind: str
     input_name: str
     output_name: str
     selector_capacity: int

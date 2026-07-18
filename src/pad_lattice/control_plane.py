@@ -430,6 +430,7 @@ class ControlPlane:
                 state=session.state,
                 selected=session.identity == self._selected_agent,
                 accent=session.accent or self.accent_names[session.slot],
+                label=self.session_label(session),
             )
             for session in sorted(
                 (

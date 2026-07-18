@@ -37,7 +37,7 @@ jobs:
       - name: Install release dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install ".[release]"
+          python -m pip install ".[release,schema]"
 
       - name: Check release version
         env:
@@ -63,8 +63,10 @@ jobs:
           cd /tmp
           /tmp/pad-lattice-wheel-test/bin/pad-lattice --version
           /tmp/pad-lattice-wheel-test/bin/pad-lattice --help
+          /tmp/pad-lattice-wheel-test/bin/pad-lattice web --help
           /tmp/pad-lattice-wheel-test/bin/pad-lattice profile list
           /tmp/pad-lattice-wheel-test/bin/pad-lattice profile show novation/launchpad/pro-mk1
+          /tmp/pad-lattice-wheel-test/bin/python -c "from importlib import resources; root=resources.files('pad_lattice'); assert root.joinpath('web_dist/play/index.html').is_file(); assert root.joinpath('schemas/web-surface-protocol-v1.json').is_file()"
 
       - name: Upload distributions
         uses: actions/upload-artifact@v4
