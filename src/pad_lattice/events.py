@@ -36,12 +36,3 @@ class AgentIdentity:
 
 
 DEFAULT_AGENT = AgentIdentity("local", "default")
-
-
-@dataclass(frozen=True)
-class AgentEvent:
-    """A state update from any supported coding agent backend."""
-
-    state: AgentState
-    agent: AgentIdentity = DEFAULT_AGENT
-    detail: str = ""

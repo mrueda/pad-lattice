@@ -7,7 +7,7 @@ graphical agent UI.
 
 :::important Visual protocol
 
-Pad-Lattice defines **Visual Protocol 0.1** as well as a socket protocol. Color,
+Pad-Lattice defines **Visual Protocol 1** and **Wire Protocol 1**. Color,
 shape, position, brightness, and motion are semantic fields: together they
 communicate agent identity, state, selection, action availability, and
 activity. Their meanings must remain deliberate and consistent across devices.
@@ -25,8 +25,9 @@ useful beyond music. Pad-Lattice turns the controller into a local agent
 surface while preserving MIDI as the hardware boundary.
 
 The first integration is **Codex CLI**. The first supported controller is the
-**Novation Launchpad Pro Mk1**. An experimental profile for the **Launchpad Mini
-Mk3** establishes the community testing path for additional devices.
+**Novation Launchpad Pro Mk1**. Experimental profiles for the **Launchpad Mini
+Mk3** and **Launchpad Pro Mk3** establish the community testing path for
+additional devices.
 
 Pad-Lattice is not a token-level sampler. It does not visualize token
 probabilities, top-k candidates, or model internals. It focuses on supervision:
@@ -36,6 +37,31 @@ probabilities, top-k candidates, or model internals. It focuses on supervision:
 - Did the selected task succeed or fail?
 - Which agent will receive a physical action?
 - Is that action currently accepted by a live integration?
+
+## Choose Your Path
+
+| I want to... | Start here |
+| --- | --- |
+| Understand the idea and supported hardware | Continue with this overview and the [Visual Language](./usage/visual-language.md). |
+| Install Pad-Lattice for Codex | [Quick Start](./usage/quickstart.md). |
+| Run several real Codex sessions | [Production Use](./usage/production.md) and [Codex Integration](./usage/codex-integration.md). |
+| Test another Launchpad or MIDI grid | [Test a Device](./usage/device-testing.md). |
+| Understand or contribute to the code | [Developer Guide](./technical-details/developer-guide.md). |
+| Build a client integration | [Socket Protocol](./reference/socket-protocol.md). |
+| Build a device profile | [Device Profiles](./technical-details/device-profiles.md). |
+
+:::note Current maturity
+
+Pad-Lattice is alpha software. The physically validated path is Codex CLI on a
+Novation Launchpad Pro Mk1 on a Unix-like system. The Launchpad Mini Mk3 and Pro
+Mk3 profiles are experimental, and interactive Codex currently supports
+hardware Approve and Reject at permission requests rather than arbitrary
+terminal input.
+
+The [Roadmap](./about/roadmap.md) separates implemented behavior from planned
+work.
+
+:::
 
 ## Current Capabilities
 
@@ -47,12 +73,13 @@ probabilities, top-k candidates, or model internals. It focuses on supervision:
 - Process leases, explicit cleanup, a 24-hour unleased-session TTL, and a live legend.
 - Request-scoped action subscriptions; actions are never broadcast.
 - Declarative JSON device profiles behind a trusted generic MIDI-grid driver.
-- Supported Launchpad Pro Mk1 and experimental Launchpad Mini Mk3 profiles.
+- Supported Launchpad Pro Mk1 plus experimental Mini Mk3 and Pro Mk3 profiles.
 - Lifecycle hooks for interactive `codex` and `codex resume` sessions.
 - Hardware Approve and Reject decisions for Codex permission requests.
 - Labeled, native-terminal Codex launching with immediate Scene cleanup.
 - A `codex-exec` adapter with a targeted Stop action.
 - Guided, privacy-preserving physical profile verification.
+- Read-only installation diagnostics with redacted local paths.
 
 ## Hardware Boundary
 

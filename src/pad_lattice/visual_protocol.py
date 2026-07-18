@@ -1,4 +1,4 @@
-"""Pad-Lattice Visual Protocol 0.1 logical frame compiler."""
+"""Pad-Lattice Visual Protocol 1 logical frame compiler."""
 
 from __future__ import annotations
 
@@ -10,10 +10,31 @@ from pad_lattice.events import AgentState, ControlAction
 if TYPE_CHECKING:
     from pad_lattice.devices.base import SurfaceView
 
-VISUAL_PROTOCOL_VERSION = "0.1"
+VISUAL_PROTOCOL_VERSION = 1
 STATE_WIDTH = 7
 STATE_HEIGHT = 8
 RUNNING_ACTIVITY_INTERVAL = 1.5
+
+IDENTITY_ACCENTS = (
+    "cyan",
+    "magenta",
+    "lime",
+    "orange",
+    "violet",
+    "teal",
+    "rose",
+    "sky",
+)
+ACCENT_RGB: dict[str, tuple[int, int, int]] = {
+    "cyan": (0, 174, 187),
+    "magenta": (200, 62, 201),
+    "lime": (112, 185, 45),
+    "orange": (230, 126, 34),
+    "violet": (118, 86, 199),
+    "teal": (0, 155, 131),
+    "rose": (217, 76, 118),
+    "sky": (55, 136, 216),
+}
 
 OFF = "off"
 IDLE = "idle"

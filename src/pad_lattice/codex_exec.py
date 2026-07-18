@@ -13,10 +13,9 @@ from typing import Any, TextIO
 
 from pad_lattice.events import AgentIdentity, AgentState, ControlAction
 from pad_lattice.protocol import (
-    decode_message,
-    encode_message,
-    parse_action,
-    parse_agent,
+    JsonLineConnection,
+    ProtocolError,
+    parse_action_event,
     send_message,
     state_message,
     subscribe_actions_message,
@@ -112,34 +111,24 @@ def _stop_process_on_pad_action(
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
             client.connect(socket_path)
-            client.sendall(
-                encode_message(
-                    subscribe_actions_message(identity, (ControlAction.STOP,))
-                )
+            connection = JsonLineConnection(client)
+            connection.send(
+                subscribe_actions_message(identity, (ControlAction.STOP,))
             )
-            buffer = b""
             while process.poll() is None:
-                data = client.recv(4096)
-                if not data:
+                try:
+                    event = parse_action_event(connection.receive())
+                except ProtocolError:
+                    continue
+                except ConnectionError:
                     return
-                buffer += data
-                while b"\n" in buffer:
-                    line, buffer = buffer.split(b"\n", 1)
-                    if not line.strip():
-                        continue
-                    try:
-                        message = decode_message(line)
-                        action = parse_action(message.get("action"))
-                        target = parse_agent(message.get("agent"), default=None)
-                    except ValueError:
-                        continue
-                    if (
-                        target == identity
-                        and action is ControlAction.STOP
-                        and process.poll() is None
-                    ):
-                        print("pad-lattice: stop requested from Launchpad", file=stderr)
-                        process.terminate()
-                        return
+                if (
+                    event.agent == identity
+                    and event.action is ControlAction.STOP
+                    and process.poll() is None
+                ):
+                    print("pad-lattice: stop requested from Launchpad", file=stderr)
+                    process.terminate()
+                    return
     except OSError:
         return

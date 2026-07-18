@@ -3,9 +3,11 @@ from __future__ import annotations
 import contextlib
 import io
 from unittest import TestCase
+from unittest.mock import patch
 
 from pad_lattice import __version__
-from pad_lattice.cli import _print_status, build_parser
+from pad_lattice.cli import _print_status, build_parser, cycle_symbols
+from pad_lattice.events import AgentState
 
 
 class CliTest(TestCase):
@@ -68,6 +70,23 @@ class CliTest(TestCase):
         self.assertEqual(args.command, "status")
         self.assertTrue(args.json)
 
+    def test_doctor_supports_machine_readable_output(self) -> None:
+        args = build_parser().parse_args(
+            [
+                "doctor",
+                "--socket",
+                "/tmp/pad-lattice.sock",
+                "--hooks-path",
+                "/tmp/hooks.json",
+                "--json",
+            ]
+        )
+
+        self.assertEqual(args.command, "doctor")
+        self.assertEqual(args.socket, "/tmp/pad-lattice.sock")
+        self.assertEqual(str(args.hooks_path), "/tmp/hooks.json")
+        self.assertTrue(args.json)
+
     def test_status_supports_a_live_legend(self) -> None:
         args = build_parser().parse_args(
             ["status", "--watch", "--interval", "0.25"]
@@ -75,6 +94,12 @@ class CliTest(TestCase):
 
         self.assertTrue(args.watch)
         self.assertEqual(args.interval, 0.25)
+
+    def test_symbols_supports_a_custom_hold(self) -> None:
+        args = build_parser().parse_args(["symbols", "--hold", "0.5"])
+
+        self.assertEqual(args.command, "symbols")
+        self.assertEqual(args.hold, 0.5)
 
     def test_end_session_accepts_agent_identity(self) -> None:
         args = build_parser().parse_args(
@@ -205,10 +230,18 @@ class CliTest(TestCase):
         self.assertEqual(str(args.report), "/tmp/mini-report.json")
 
     def test_profile_validate_accepts_json_path(self) -> None:
-        args = build_parser().parse_args(["profile", "validate", "profile.json"])
+        args = build_parser().parse_args(
+            [
+                "profile",
+                "validate",
+                "profile.json",
+                "--validate-schema",
+            ]
+        )
 
         self.assertEqual(args.profile_command, "validate")
         self.assertEqual(str(args.path), "profile.json")
+        self.assertTrue(args.validate_schema)
 
     def test_status_legend_includes_scene_label_and_lease(self) -> None:
         output = io.StringIO()
@@ -216,7 +249,7 @@ class CliTest(TestCase):
         _print_status(
             {
                 "profile": "test/grid",
-                "visual_protocol": "0.1",
+                "visual_protocol": 1,
                 "selected": {"backend": "codex", "session_id": "session-123"},
                 "overflow_count": 0,
                 "sessions": [
@@ -243,3 +276,46 @@ class CliTest(TestCase):
         self.assertIn("docs", legend)
         self.assertIn("pad-lattice", legend)
         self.assertIn("live", legend)
+
+    def test_symbol_cycle_uses_a_temporary_display_preview(self) -> None:
+        sent = []
+        output = io.StringIO()
+
+        class FakeConnection:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                return False
+
+            def request(self, message):
+                sent.append(message)
+                if message["type"] == "preview":
+                    return {
+                        "type": "preview_ack",
+                        "preview_id": message["preview_id"],
+                    }
+                return {
+                    "type": "preview_end_ack",
+                    "preview_id": message["preview_id"],
+                }
+
+        result = cycle_symbols(
+            "/tmp/pad-lattice.sock",
+            hold=0.5,
+            sleep=lambda delay: None,
+            stream=output,
+            connector=lambda path: FakeConnection(),
+        )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(
+            [message["state"] for message in sent[:-1]],
+            [state.value for state in AgentState],
+        )
+        self.assertTrue(all(message["type"] == "preview" for message in sent[:-1]))
+        self.assertEqual(sent[-1]["type"], "preview_end")
+        self.assertEqual(
+            {message["preview_id"] for message in sent},
+            {sent[0]["preview_id"]},
+        )

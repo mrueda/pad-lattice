@@ -84,6 +84,7 @@ class MidiGridSurface:
         self.scroll_delay = scroll_delay
         self._sleep = sleeper
         self._closed = False
+        self._address_values: dict[MidiAddress, int] = {}
         self._actions_by_address = {
             address: action for action, address in profile.controls.items()
         }
@@ -94,14 +95,15 @@ class MidiGridSurface:
     def initialize(self) -> None:
         for command in self.profile.startup:
             self._send_command(command)
-        self.clear()
+        self._address_values.clear()
+        self.clear(force=True)
         if self.startup_greeting and self.profile.text_scroll:
             self.scroll_text(
                 self.startup_greeting,
                 self.profile.color("state:success:primary"),
                 self.scroll_delay,
             )
-            self.clear()
+            self.clear(force=True)
 
     def render(self, view: SurfaceView) -> None:
         self._render_frame(compile_visual_frame(view, self.selector_capacity))
@@ -121,10 +123,11 @@ class MidiGridSurface:
                 events.append(SessionSelected(slot))
         return events
 
-    def clear(self) -> None:
+    def clear(self, *, force: bool = False) -> None:
         if self.profile.clear:
             for command in self.profile.clear:
                 self._send_command(command)
+            self._address_values.clear()
             return
 
         addresses = {
@@ -138,14 +141,18 @@ class MidiGridSurface:
         if self.profile.overflow_indicator is not None:
             addresses.add(self.profile.overflow_indicator)
         for address in addresses:
-            self._set_address(address, self.profile.color("off"))
+            self._set_address(
+                address,
+                self.profile.color("off"),
+                force=force,
+            )
 
     def close(self) -> None:
         if self._closed:
             return
         self._closed = True
         try:
-            self.clear()
+            self.clear(force=True)
         finally:
             try:
                 for command in self.profile.shutdown:
@@ -202,7 +209,15 @@ class MidiGridSurface:
     def _set_grid_pad(self, x: int, y: int, color: int) -> None:
         self._set_address(self.profile.grid_address(x, y), color)
 
-    def _set_address(self, address: MidiAddress, value: int) -> None:
+    def _set_address(
+        self,
+        address: MidiAddress,
+        value: int,
+        *,
+        force: bool = False,
+    ) -> None:
+        if not force and self._address_values.get(address) == value:
+            return
         if address.kind == "note":
             self.output_port.send(
                 self._message_factory(
@@ -212,15 +227,16 @@ class MidiGridSurface:
                     velocity=value,
                 )
             )
-            return
-        self.output_port.send(
-            self._message_factory(
-                "control_change",
-                channel=address.channel,
-                control=address.number,
-                value=value,
+        else:
+            self.output_port.send(
+                self._message_factory(
+                    "control_change",
+                    channel=address.channel,
+                    control=address.number,
+                    value=value,
+                )
             )
-        )
+        self._address_values[address] = value
 
     def _send_command(self, command: MidiCommand) -> None:
         if command.kind == "sysex":

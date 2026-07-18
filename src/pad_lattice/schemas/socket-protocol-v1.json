@@ -1,0 +1,289 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mrueda.github.io/pad-lattice/schemas/socket-protocol-v1.json",
+  "title": "Pad-Lattice Socket Protocol v1",
+  "oneOf": [
+    {"$ref": "#/$defs/stateCommand"},
+    {"$ref": "#/$defs/sessionEndCommand"},
+    {"$ref": "#/$defs/statusCommand"},
+    {"$ref": "#/$defs/pingCommand"},
+    {"$ref": "#/$defs/sessionLeaseCommand"},
+    {"$ref": "#/$defs/subscribeActionsCommand"},
+    {"$ref": "#/$defs/previewCommand"},
+    {"$ref": "#/$defs/previewEndCommand"},
+    {"$ref": "#/$defs/stateAck"},
+    {"$ref": "#/$defs/statusResponse"},
+    {"$ref": "#/$defs/pongResponse"},
+    {"$ref": "#/$defs/sessionLeaseAck"},
+    {"$ref": "#/$defs/sessionLeaseBound"},
+    {"$ref": "#/$defs/actionEvent"},
+    {"$ref": "#/$defs/previewAck"},
+    {"$ref": "#/$defs/previewEndAck"},
+    {"$ref": "#/$defs/errorResponse"}
+  ],
+  "$defs": {
+    "protocol": {"const": 1},
+    "identifier": {"type": "string", "minLength": 1},
+    "state": {
+      "enum": [
+        "running",
+        "waiting_for_reply",
+        "user_typing",
+        "waiting_for_approval",
+        "success",
+        "error",
+        "cancelled"
+      ]
+    },
+    "action": {"enum": ["approve", "reject", "stop", "retry"]},
+    "agent": {
+      "type": "object",
+      "required": ["backend", "session_id"],
+      "properties": {
+        "backend": {"$ref": "#/$defs/identifier"},
+        "session_id": {"$ref": "#/$defs/identifier"}
+      },
+      "additionalProperties": {"type": "string", "minLength": 1}
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {"type": "string", "minLength": 1}
+    },
+    "stateCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "state"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "state"},
+        "state": {"$ref": "#/$defs/state"},
+        "agent": {"$ref": "#/$defs/agent"},
+        "lease_id": {"$ref": "#/$defs/identifier"},
+        "reply": {"type": "boolean"}
+      }
+    },
+    "sessionEndCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "agent"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "session_end"},
+        "agent": {"$ref": "#/$defs/agent"}
+      }
+    },
+    "statusCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "status"}
+      }
+    },
+    "pingCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "ping"}
+      }
+    },
+    "sessionLeaseCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "lease_id"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "session_lease"},
+        "lease_id": {"$ref": "#/$defs/identifier"},
+        "agent": {"$ref": "#/$defs/agent"},
+        "metadata": {"$ref": "#/$defs/metadata"}
+      }
+    },
+    "subscribeActionsCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "agent", "actions"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "subscribe_actions"},
+        "agent": {"$ref": "#/$defs/agent"},
+        "actions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/action"}
+        },
+        "request_id": {"$ref": "#/$defs/identifier"},
+        "one_shot": {"type": "boolean"}
+      }
+    },
+    "previewCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "preview_id", "state", "ttl"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "preview"},
+        "preview_id": {"$ref": "#/$defs/identifier"},
+        "state": {"$ref": "#/$defs/state"},
+        "ttl": {"type": "number", "exclusiveMinimum": 0, "maximum": 30}
+      }
+    },
+    "previewEndCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "preview_id"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "preview_end"},
+        "preview_id": {"$ref": "#/$defs/identifier"}
+      }
+    },
+    "stateAck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol", "type", "backend", "session_id", "state", "slot",
+        "scene", "accent", "selected", "leased", "label"
+      ],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "state_ack"},
+        "backend": {"$ref": "#/$defs/identifier"},
+        "session_id": {"$ref": "#/$defs/identifier"},
+        "state": {"$ref": "#/$defs/state"},
+        "slot": {"type": ["integer", "null"], "minimum": 0, "maximum": 7},
+        "scene": {"type": ["integer", "null"], "minimum": 1, "maximum": 8},
+        "accent": {"type": ["string", "null"]},
+        "selected": {"type": "boolean"},
+        "leased": {"type": "boolean"},
+        "label": {"type": "string"}
+      }
+    },
+    "sessionStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "backend", "session_id", "state", "slot", "accent", "selected",
+        "leased", "label", "metadata"
+      ],
+      "properties": {
+        "backend": {"$ref": "#/$defs/identifier"},
+        "session_id": {"$ref": "#/$defs/identifier"},
+        "state": {"$ref": "#/$defs/state"},
+        "slot": {"type": ["integer", "null"], "minimum": 0, "maximum": 7},
+        "accent": {"type": ["string", "null"]},
+        "selected": {"type": "boolean"},
+        "leased": {"type": "boolean"},
+        "label": {"type": "string"},
+        "metadata": {"$ref": "#/$defs/metadata"}
+      }
+    },
+    "statusResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol", "type", "profile", "visual_protocol", "input", "output",
+        "selected", "overflow_count", "activity_motion", "preview_active",
+        "session_ttl", "sessions"
+      ],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "status"},
+        "profile": {"type": "string"},
+        "visual_protocol": {"const": 1},
+        "input": {"type": "string"},
+        "output": {"type": "string"},
+        "selected": {
+          "oneOf": [{"$ref": "#/$defs/agent"}, {"type": "null"}]
+        },
+        "overflow_count": {"type": "integer", "minimum": 0},
+        "activity_motion": {"type": "boolean"},
+        "preview_active": {"type": "boolean"},
+        "session_ttl": {"type": "number", "minimum": 0},
+        "sessions": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/sessionStatus"}
+        }
+      }
+    },
+    "pongResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "pong"}
+      }
+    },
+    "sessionLeaseAck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "lease_id"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "session_lease_ack"},
+        "lease_id": {"$ref": "#/$defs/identifier"},
+        "session": {"$ref": "#/$defs/stateAck"}
+      }
+    },
+    "sessionLeaseBound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "lease_id", "session"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "session_lease_bound"},
+        "lease_id": {"$ref": "#/$defs/identifier"},
+        "session": {"$ref": "#/$defs/stateAck"}
+      }
+    },
+    "actionEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "agent", "action"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "action"},
+        "agent": {"$ref": "#/$defs/agent"},
+        "action": {"$ref": "#/$defs/action"},
+        "request_id": {"$ref": "#/$defs/identifier"}
+      }
+    },
+    "previewAck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "preview_id", "state"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "preview_ack"},
+        "preview_id": {"$ref": "#/$defs/identifier"},
+        "state": {"$ref": "#/$defs/state"}
+      }
+    },
+    "previewEndAck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "preview_id"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "preview_end_ack"},
+        "preview_id": {"$ref": "#/$defs/identifier"}
+      }
+    },
+    "errorResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "code", "error"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "error"},
+        "code": {"$ref": "#/$defs/identifier"},
+        "error": {"$ref": "#/$defs/identifier"}
+      }
+    }
+  }
+}

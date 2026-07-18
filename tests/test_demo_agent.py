@@ -14,7 +14,7 @@ class FakeSurface:
     output_name = "output"
     selector_capacity = 4
     accent_names = ("cyan",)
-    visual_protocol = "0.1"
+    visual_protocol = 1
 
     def __init__(self, polls=()) -> None:
         self.polls = list(polls)

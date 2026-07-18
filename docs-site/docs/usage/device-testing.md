@@ -19,15 +19,17 @@ It does **not** contain prompts, Codex session IDs, working directories,
 filesystem paths, model output, or free-form terminal content. Read the JSON
 before attaching it, as you should with any diagnostic artifact.
 
-## Launchpad Mini Mk3
+## Launchpad Mk3 Profiles
 
-The bundled Mini Mk3 profile is experimental. Connect the device directly over
-USB, stop software that may own its MIDI ports, and inspect detection:
+The bundled Mini Mk3 and Pro Mk3 profiles are experimental. Connect the device
+directly over USB, stop software that may own its MIDI ports, and inspect
+detection:
 
 ```bash
 pad-lattice ports
 pad-lattice devices
 pad-lattice profile show novation/launchpad/mini-mk3
+pad-lattice profile show novation/launchpad/pro-mk3
 ```
 
 Run the test:
@@ -39,8 +41,14 @@ pad-lattice profile test novation/launchpad/mini-mk3 \
 
 The test enters Programmer mode, asks you to confirm the idle mark, seven
 steady state glyphs, and overflow warning, then requests each action and all
-eight agent selectors in turn. It clears the surface and returns the Mini Mk3
-to Live mode on exit, including most failure paths.
+eight agent selectors in turn. It clears the surface and returns the device to
+Live mode on exit, including most failure paths.
+
+The Pro Mk3 mapping follows Novation's official [Programmer's Reference
+Guide](https://downloads.novationmusic.com/novation/launchpad-mk3/launchpad-pro-mk3-0).
+It selects the device's MIDI interface, not its DAW or DIN interface. Run the
+same test with `novation/launchpad/pro-mk3` and a `pro-mk3-report.json` output
+to validate the mapping on real hardware.
 
 Use explicit ports if several names match:
 

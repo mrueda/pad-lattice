@@ -17,11 +17,9 @@ from typing import Any, TextIO
 
 from pad_lattice.events import AgentIdentity, AgentState, ControlAction
 from pad_lattice.protocol import (
+    JsonLineConnection,
     ProtocolError,
-    decode_message,
-    encode_message,
-    parse_action,
-    parse_agent,
+    parse_action_event,
     request_message,
     send_message,
     state_message,
@@ -137,42 +135,30 @@ def _wait_for_permission_action_client(
 ) -> ControlAction | None:
     request_id = uuid.uuid4().hex
     deadline = time.monotonic() + timeout
-    client.sendall(
-        encode_message(
-            subscribe_actions_message(
-                identity,
-                (ControlAction.APPROVE, ControlAction.REJECT),
-                request_id=request_id,
-                one_shot=True,
-            )
+    connection = JsonLineConnection(client)
+    connection.send(
+        subscribe_actions_message(
+            identity,
+            (ControlAction.APPROVE, ControlAction.REJECT),
+            request_id=request_id,
+            one_shot=True,
         )
     )
-    buffer = b""
     while True:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             return None
         client.settimeout(remaining)
-        data = client.recv(4096)
-        if not data:
-            return None
-        buffer += data
-        while b"\n" in buffer:
-            line, buffer = buffer.split(b"\n", 1)
-            if not line.strip():
-                continue
-            try:
-                message = decode_message(line)
-                action = parse_action(message.get("action"))
-                target = parse_agent(message.get("agent"), default=None)
-            except (ProtocolError, ValueError):
-                continue
-            if (
-                target == identity
-                and message.get("request_id") == request_id
-                and action in {ControlAction.APPROVE, ControlAction.REJECT}
-            ):
-                return action
+        try:
+            event = parse_action_event(connection.receive())
+        except ProtocolError:
+            continue
+        if (
+            event.agent == identity
+            and event.request_id == request_id
+            and event.action in {ControlAction.APPROVE, ControlAction.REJECT}
+        ):
+            return event.action
 
 
 def permission_decision(action: ControlAction) -> dict[str, Any]:
@@ -198,6 +184,32 @@ def default_codex_hooks_path() -> Path:
     if codex_home:
         return Path(codex_home).expanduser() / "hooks.json"
     return Path.home() / ".codex" / "hooks.json"
+
+
+def installed_codex_hook_events(path: Path) -> tuple[str, ...]:
+    """Return lifecycle events containing a Pad-Lattice hook command."""
+
+    config = _read_hooks_config(path)
+    hooks = config.get("hooks")
+    if not isinstance(hooks, dict):
+        return ()
+    installed: list[str] = []
+    for event_name in HOOK_EVENTS:
+        groups = hooks.get(event_name)
+        if not isinstance(groups, list):
+            continue
+        if any(
+            isinstance(group, dict)
+            and isinstance(group.get("hooks"), list)
+            and any(
+                isinstance(handler, dict)
+                and _is_pad_lattice_hook_command(handler.get("command"))
+                for handler in group["hooks"]
+            )
+            for group in groups
+        ):
+            installed.append(event_name)
+    return tuple(installed)
 
 
 def resolve_hook_command(
@@ -333,7 +345,7 @@ def _report_state(
         if wants_assignment:
             return requester(socket_path, message)
         sender(socket_path, message)
-    except (ConnectionError, FileNotFoundError, OSError):
+    except (ConnectionError, FileNotFoundError, OSError, ProtocolError):
         pass
     return None
 

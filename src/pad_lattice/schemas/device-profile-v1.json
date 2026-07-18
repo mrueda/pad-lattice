@@ -1,0 +1,281 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mrueda.github.io/pad-lattice/schemas/device-profile-v1.json",
+  "title": "Pad-Lattice Device Profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "visual_protocol",
+    "id",
+    "name",
+    "manufacturer",
+    "family",
+    "model",
+    "status",
+    "driver",
+    "ports",
+    "grid",
+    "surface",
+    "palette",
+    "accents",
+    "conformance",
+    "messages",
+    "capabilities"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "visual_protocol": {"const": 1},
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*(/[a-z0-9][a-z0-9-]*){2}$"
+    },
+    "name": {"$ref": "#/$defs/nonEmptyString"},
+    "manufacturer": {"$ref": "#/$defs/nonEmptyString"},
+    "family": {"$ref": "#/$defs/nonEmptyString"},
+    "model": {"$ref": "#/$defs/nonEmptyString"},
+    "status": {"enum": ["supported", "experimental"]},
+    "driver": {"const": "midi.palette-grid"},
+    "ports": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input", "output"],
+      "properties": {
+        "input": {"$ref": "#/$defs/nonEmptyStringArray"},
+        "output": {"$ref": "#/$defs/nonEmptyStringArray"}
+      }
+    },
+    "grid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "channel", "rows"],
+      "properties": {
+        "kind": {"enum": ["note", "cc"]},
+        "channel": {"$ref": "#/$defs/midiChannel"},
+        "rows": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "items": {
+            "type": "array",
+            "minItems": 8,
+            "maxItems": 8,
+            "items": {"$ref": "#/$defs/midiValue"}
+          }
+        }
+      }
+    },
+    "surface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state_region",
+        "actions",
+        "agent_selectors",
+        "agent_statuses",
+        "indicators"
+      ],
+      "properties": {
+        "state_region": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "width", "height"],
+          "properties": {
+            "x": {"type": "integer", "minimum": 0, "maximum": 7},
+            "y": {"type": "integer", "minimum": 0, "maximum": 7},
+            "width": {"const": 7},
+            "height": {"const": 8}
+          }
+        },
+        "actions": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "approve": {"$ref": "#/$defs/address"},
+            "reject": {"$ref": "#/$defs/address"},
+            "retry": {"$ref": "#/$defs/address"},
+            "stop": {"$ref": "#/$defs/address"}
+          }
+        },
+        "agent_selectors": {"$ref": "#/$defs/addressArray"},
+        "agent_statuses": {"$ref": "#/$defs/addressArray"},
+        "indicators": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "overflow": {"$ref": "#/$defs/address"}
+          }
+        }
+      }
+    },
+    "palette": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["off", "idle", "activity", "states", "actions", "system"],
+      "properties": {
+        "off": {"$ref": "#/$defs/midiValue"},
+        "idle": {"$ref": "#/$defs/midiValue"},
+        "activity": {"$ref": "#/$defs/midiValue"},
+        "states": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "running",
+            "waiting_for_reply",
+            "user_typing",
+            "waiting_for_approval",
+            "success",
+            "error",
+            "cancelled"
+          ],
+          "properties": {
+            "running": {"$ref": "#/$defs/stateColors"},
+            "waiting_for_reply": {"$ref": "#/$defs/stateColors"},
+            "user_typing": {"$ref": "#/$defs/stateColors"},
+            "waiting_for_approval": {"$ref": "#/$defs/stateColors"},
+            "success": {"$ref": "#/$defs/stateColors"},
+            "error": {"$ref": "#/$defs/stateColors"},
+            "cancelled": {"$ref": "#/$defs/stateColors"}
+          }
+        },
+        "actions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["approve", "reject", "retry", "stop"],
+          "properties": {
+            "approve": {"$ref": "#/$defs/actionColor"},
+            "reject": {"$ref": "#/$defs/actionColor"},
+            "retry": {"$ref": "#/$defs/actionColor"},
+            "stop": {"$ref": "#/$defs/actionColor"}
+          }
+        },
+        "system": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["overflow"],
+          "properties": {
+            "overflow": {"$ref": "#/$defs/midiValue"}
+          }
+        }
+      }
+    },
+    "accents": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {"$ref": "#/$defs/accent"}
+    },
+    "conformance": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "contains": {"const": "core-state"},
+      "items": {"enum": ["core-state", "multi-agent", "actions"]}
+    },
+    "messages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["startup", "clear", "shutdown"],
+      "properties": {
+        "startup": {"$ref": "#/$defs/commands"},
+        "clear": {"$ref": "#/$defs/commands"},
+        "shutdown": {"$ref": "#/$defs/commands"}
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text_scroll"],
+      "properties": {
+        "text_scroll": {"type": "boolean"}
+      }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {"type": "string", "minLength": 1},
+    "nonEmptyStringArray": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/nonEmptyString"}
+    },
+    "midiValue": {"type": "integer", "minimum": 0, "maximum": 127},
+    "midiChannel": {"type": "integer", "minimum": 0, "maximum": 15},
+    "address": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "number"],
+      "properties": {
+        "kind": {"enum": ["note", "cc"]},
+        "number": {"$ref": "#/$defs/midiValue"},
+        "channel": {"$ref": "#/$defs/midiChannel"}
+      }
+    },
+    "addressArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {"$ref": "#/$defs/address"}
+    },
+    "stateColors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primary", "summary"],
+      "properties": {
+        "primary": {"$ref": "#/$defs/midiValue"},
+        "summary": {"$ref": "#/$defs/midiValue"}
+      }
+    },
+    "actionColor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {"$ref": "#/$defs/midiValue"}
+      }
+    },
+    "accent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "selected", "unselected"],
+      "properties": {
+        "name": {
+          "enum": ["cyan", "magenta", "lime", "orange", "violet", "teal", "rose", "sky"]
+        },
+        "selected": {"$ref": "#/$defs/midiValue"},
+        "unselected": {"$ref": "#/$defs/midiValue"}
+      }
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {"$ref": "#/$defs/sysexCommand"},
+          {"$ref": "#/$defs/midiCommand"}
+        ]
+      }
+    },
+    "sysexCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "data"],
+      "properties": {
+        "type": {"const": "sysex"},
+        "data": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/midiValue"}
+        }
+      }
+    },
+    "midiCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "number", "value"],
+      "properties": {
+        "type": {"enum": ["note", "cc"]},
+        "channel": {"$ref": "#/$defs/midiChannel"},
+        "number": {"$ref": "#/$defs/midiValue"},
+        "value": {"$ref": "#/$defs/midiValue"}
+      }
+    }
+  }
+}

@@ -1,14 +1,27 @@
 from __future__ import annotations
 
+import errno
+import stat
+import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import patch
 
-from pad_lattice.daemon import Client, PadLatticeDaemon
+from pad_lattice.daemon_runtime import Client, PadLatticeDaemon
 from pad_lattice.devices.base import SessionSelected
 from pad_lattice.events import AgentIdentity, AgentState, ControlAction
 from pad_lattice.identity_store import IdentityStore
+from pad_lattice.protocol import (
+    MAX_MESSAGE_BYTES,
+    WIRE_PROTOCOL_VERSION,
+    decode_message,
+    wire_message,
+)
+
+
+def wire(message):
+    return {"protocol": WIRE_PROTOCOL_VERSION, **message}
 
 
 class FakeSocket:
@@ -21,6 +34,10 @@ class FakeSocket:
 
     def sendall(self, data: bytes) -> None:
         self.sent += data
+
+    def send(self, data: bytes) -> int:
+        self.sent += bytes(data)
+        return len(data)
 
     def fileno(self) -> int:
         return self._fileno
@@ -35,7 +52,7 @@ class FakeSurface:
     output_name = "Test output"
     selector_capacity = 4
     accent_names = ("cyan", "magenta", "lime", "orange")
-    visual_protocol = "0.1"
+    visual_protocol = 1
 
     def __init__(self) -> None:
         self.views = []
@@ -80,9 +97,37 @@ class DaemonTest(TestCase):
         identity: AgentIdentity,
         *actions: ControlAction,
     ) -> Client:
-        client = Client(FakeSocket(), agent=identity, actions=frozenset(actions))
+        client = Client(FakeSocket())
         daemon._clients[client.socket.fileno()] = client
+        daemon.handle_message(
+            client,
+            wire(
+                {
+                    "type": "subscribe_actions",
+                    "agent": {
+                        "backend": identity.backend,
+                        "session_id": identity.session_id,
+                    },
+                    "actions": [action.value for action in actions],
+                }
+            ),
+        )
         return client
+
+    def update_agent(
+        self,
+        daemon: PadLatticeDaemon,
+        identity: AgentIdentity,
+        state: AgentState,
+        *,
+        metadata: dict[str, str] | None = None,
+    ) -> None:
+        daemon.control.update_agent(
+            identity,
+            state,
+            metadata=metadata,
+            now=time.monotonic(),
+        )
 
     def test_state_message_registers_agent_identity(self) -> None:
         daemon = self.daemon()
@@ -90,15 +135,15 @@ class DaemonTest(TestCase):
 
         daemon.handle_message(
             client,
-            {
+            wire({
                 "type": "state",
                 "state": "running",
                 "agent": {"backend": "codex", "session_id": "session-1"},
-            },
+            }),
         )
 
-        self.assertEqual(daemon.selected_agent, AgentIdentity("codex", "session-1"))
-        self.assertIs(daemon.state, AgentState.RUNNING)
+        self.assertEqual(daemon.control.selected_agent, AgentIdentity("codex", "session-1"))
+        self.assertIs(daemon.control.state, AgentState.RUNNING)
 
     def test_subscribe_message_records_target_and_capabilities(self) -> None:
         daemon = self.daemon()
@@ -106,43 +151,49 @@ class DaemonTest(TestCase):
 
         daemon.handle_message(
             client,
-            {
+            wire({
                 "type": "subscribe_actions",
                 "agent": {"backend": "codex", "session_id": "session-1"},
                 "actions": ["approve", "reject"],
-            },
+            }),
         )
 
-        self.assertEqual(client.agent, AgentIdentity("codex", "session-1"))
+        subscription = daemon.control._subscriptions[client.client_id]
         self.assertEqual(
-            client.actions,
+            subscription.agent,
+            AgentIdentity("codex", "session-1"),
+        )
+        self.assertEqual(
+            subscription.actions,
             frozenset({ControlAction.APPROVE, ControlAction.REJECT}),
         )
 
     def test_request_scoped_action_is_delivered_once_to_oldest_waiter(self) -> None:
         daemon = self.daemon()
         identity = AgentIdentity("codex", "session-1")
-        daemon.update_agent(identity, AgentState.WAITING_FOR_APPROVAL)
+        self.update_agent(daemon, identity, AgentState.WAITING_FOR_APPROVAL)
         first = Client(FakeSocket())
         second = Client(FakeSocket())
         for client, request_id in ((first, "first"), (second, "second")):
             daemon._clients[client.socket.fileno()] = client
             daemon.handle_message(
                 client,
-                {
+                wire({
                     "type": "subscribe_actions",
                     "agent": {"backend": "codex", "session_id": "session-1"},
                     "actions": ["approve", "reject"],
                     "request_id": request_id,
                     "one_shot": True,
-                },
+                }),
             )
 
         daemon._handle_action(ControlAction.APPROVE)
 
         self.assertIn(b'"request_id":"first"', first.socket.sent)
         self.assertEqual(second.socket.sent, b"")
-        self.assertFalse(first.actions)
+        self.assertFalse(
+            daemon.control._subscriptions[first.client_id].actions
+        )
         self.assertEqual(
             daemon._available_actions(),
             frozenset({ControlAction.APPROVE, ControlAction.REJECT}),
@@ -151,34 +202,34 @@ class DaemonTest(TestCase):
     def test_overlapping_approvals_remain_available_until_each_is_decided(self) -> None:
         daemon = self.daemon(action_debounce=0)
         identity = AgentIdentity("codex", "session-1")
-        daemon.update_agent(identity, AgentState.WAITING_FOR_APPROVAL)
+        self.update_agent(daemon, identity, AgentState.WAITING_FOR_APPROVAL)
         clients = [Client(FakeSocket()), Client(FakeSocket())]
         for index, client in enumerate(clients):
             daemon._clients[client.socket.fileno()] = client
             daemon.handle_message(
                 client,
-                {
+                wire({
                     "type": "subscribe_actions",
                     "agent": {"backend": "codex", "session_id": "session-1"},
                     "actions": ["approve", "reject"],
                     "request_id": f"request-{index}",
                     "one_shot": True,
-                },
+                }),
             )
 
         daemon._handle_action(ControlAction.APPROVE)
-        daemon.update_agent(identity, AgentState.RUNNING)
+        self.update_agent(daemon, identity, AgentState.RUNNING)
 
-        self.assertIs(daemon.state, AgentState.WAITING_FOR_APPROVAL)
+        self.assertIs(daemon.control.state, AgentState.WAITING_FOR_APPROVAL)
         self.assertEqual(
             daemon._available_actions(),
             frozenset({ControlAction.APPROVE, ControlAction.REJECT}),
         )
 
         daemon._handle_action(ControlAction.REJECT)
-        daemon.update_agent(identity, AgentState.RUNNING)
+        self.update_agent(daemon, identity, AgentState.RUNNING)
 
-        self.assertIs(daemon.state, AgentState.RUNNING)
+        self.assertIs(daemon.control.state, AgentState.RUNNING)
         self.assertIn(b'"request_id":"request-0"', clients[0].socket.sent)
         self.assertIn(b'"request_id":"request-1"', clients[1].socket.sent)
 
@@ -188,16 +239,16 @@ class DaemonTest(TestCase):
         daemon._clients[lease_client.socket.fileno()] = lease_client
         daemon.handle_message(
             lease_client,
-            {
+            wire({
                 "type": "session_lease",
                 "lease_id": "lease-1",
                 "metadata": {"label": "docs"},
-            },
+            }),
         )
         state_client = Client(FakeSocket())
         daemon.handle_message(
             state_client,
-            {
+            wire({
                 "type": "state",
                 "state": "running",
                 "lease_id": "lease-1",
@@ -207,7 +258,7 @@ class DaemonTest(TestCase):
                     "session_id": "session-1",
                     "cwd": "/work/project",
                 },
-            },
+            }),
         )
 
         status = daemon.status_snapshot()["sessions"][0]
@@ -217,8 +268,8 @@ class DaemonTest(TestCase):
 
         daemon._close_client(lease_client)
 
-        self.assertEqual(daemon.sessions, ())
-        self.assertIsNone(daemon.selected_agent)
+        self.assertEqual(daemon.control.sessions, ())
+        self.assertIsNone(daemon.control.selected_agent)
 
     def test_replacing_a_lease_connection_ignores_the_old_disconnect(self) -> None:
         daemon = self.daemon()
@@ -229,52 +280,52 @@ class DaemonTest(TestCase):
             daemon._clients[client.socket.fileno()] = client
             daemon.handle_message(
                 client,
-                {
+                wire({
                     "type": "session_lease",
                     "lease_id": "lease-1",
                     "agent": {"backend": "codex", "session_id": "session-1"},
-                },
+                }),
             )
 
         daemon._close_client(first)
 
-        self.assertIn(identity, daemon._sessions)
-        self.assertTrue(daemon._has_live_lease(identity))
+        self.assertIn(identity, daemon.control._sessions)
+        self.assertTrue(daemon.control.is_leased(identity))
 
         daemon._close_client(second)
-        self.assertNotIn(identity, daemon._sessions)
+        self.assertNotIn(identity, daemon.control._sessions)
 
     def test_background_update_does_not_steal_selection(self) -> None:
         daemon = self.daemon()
         first = AgentIdentity("codex", "first")
         second = AgentIdentity("codex", "second")
 
-        daemon.update_agent(first, AgentState.WAITING_FOR_REPLY)
-        daemon.update_agent(second, AgentState.RUNNING)
+        self.update_agent(daemon, first, AgentState.WAITING_FOR_REPLY)
+        self.update_agent(daemon, second, AgentState.RUNNING)
 
-        self.assertEqual(daemon.selected_agent, first)
-        self.assertIs(daemon.state, AgentState.WAITING_FOR_REPLY)
+        self.assertEqual(daemon.control.selected_agent, first)
+        self.assertIs(daemon.control.state, AgentState.WAITING_FOR_REPLY)
 
     def test_selector_changes_the_active_session(self) -> None:
         daemon = self.daemon()
         first = AgentIdentity("codex", "first")
         second = AgentIdentity("codex", "second")
-        daemon.update_agent(first, AgentState.WAITING_FOR_REPLY)
-        daemon.update_agent(second, AgentState.RUNNING)
-        second_slot = daemon._sessions[second].slot
+        self.update_agent(daemon, first, AgentState.WAITING_FOR_REPLY)
+        self.update_agent(daemon, second, AgentState.RUNNING)
+        second_slot = daemon.control._sessions[second].slot
         assert second_slot is not None
 
         daemon._handle_surface_event(SessionSelected(second_slot))
 
-        self.assertEqual(daemon.selected_agent, second)
-        self.assertIs(daemon.state, AgentState.RUNNING)
+        self.assertEqual(daemon.control.selected_agent, second)
+        self.assertIs(daemon.control.state, AgentState.RUNNING)
 
     def test_action_is_sent_only_to_selected_matching_subscriber(self) -> None:
         daemon = self.daemon()
         first = AgentIdentity("codex", "first")
         second = AgentIdentity("codex", "second")
-        daemon.update_agent(first, AgentState.WAITING_FOR_APPROVAL)
-        daemon.update_agent(second, AgentState.WAITING_FOR_APPROVAL)
+        self.update_agent(daemon, first, AgentState.WAITING_FOR_APPROVAL)
+        self.update_agent(daemon, second, AgentState.WAITING_FOR_APPROVAL)
         first_client = self.add_client(daemon, first, ControlAction.APPROVE)
         second_client = self.add_client(daemon, second, ControlAction.APPROVE)
 
@@ -287,7 +338,7 @@ class DaemonTest(TestCase):
     def test_unavailable_action_is_not_emitted(self) -> None:
         daemon = self.daemon()
         identity = AgentIdentity("codex", "session")
-        daemon.update_agent(identity, AgentState.WAITING_FOR_APPROVAL)
+        self.update_agent(daemon, identity, AgentState.WAITING_FOR_APPROVAL)
         client = self.add_client(daemon, identity, ControlAction.REJECT)
 
         daemon._handle_action(ControlAction.APPROVE)
@@ -297,7 +348,7 @@ class DaemonTest(TestCase):
     def test_handle_action_debounces_repeated_actions(self) -> None:
         daemon = self.daemon(action_debounce=60.0)
         identity = AgentIdentity("codex", "session")
-        daemon.update_agent(identity, AgentState.RUNNING)
+        self.update_agent(daemon, identity, AgentState.RUNNING)
         client = self.add_client(daemon, identity, ControlAction.STOP)
 
         daemon._handle_action(ControlAction.STOP)
@@ -308,10 +359,10 @@ class DaemonTest(TestCase):
     def test_first_action_is_allowed_when_monotonic_is_low(self) -> None:
         daemon = self.daemon(action_debounce=60.0)
         identity = AgentIdentity("codex", "session")
-        daemon.update_agent(identity, AgentState.RUNNING)
+        self.update_agent(daemon, identity, AgentState.RUNNING)
         client = self.add_client(daemon, identity, ControlAction.STOP)
 
-        with patch("pad_lattice.daemon.time.monotonic", return_value=1.0):
+        with patch("pad_lattice.daemon_runtime.time.monotonic", return_value=1.0):
             daemon._handle_action(ControlAction.STOP)
 
         self.assertEqual(client.socket.sent.count(b'"action":"stop"'), 1)
@@ -320,15 +371,15 @@ class DaemonTest(TestCase):
         daemon = self.daemon(action_debounce=60.0)
         first = AgentIdentity("codex", "first")
         second = AgentIdentity("codex", "second")
-        daemon.update_agent(first, AgentState.RUNNING)
-        daemon.update_agent(second, AgentState.RUNNING)
+        self.update_agent(daemon, first, AgentState.RUNNING)
+        self.update_agent(daemon, second, AgentState.RUNNING)
         first_client = self.add_client(daemon, first, ControlAction.STOP)
         second_client = self.add_client(daemon, second, ControlAction.STOP)
 
         daemon._handle_action(ControlAction.STOP)
-        second_slot = daemon._sessions[second].slot
+        second_slot = daemon.control._sessions[second].slot
         assert second_slot is not None
-        daemon.select_slot(second_slot)
+        daemon.control.select_slot(second_slot, now=time.monotonic())
         daemon._handle_action(ControlAction.STOP)
 
         self.assertEqual(first_client.socket.sent.count(b'"action":"stop"'), 1)
@@ -338,25 +389,25 @@ class DaemonTest(TestCase):
         daemon = self.daemon()
         identities = [AgentIdentity("codex", str(index)) for index in range(5)]
         for identity in identities[:4]:
-            daemon.update_agent(identity, AgentState.RUNNING)
-        daemon.update_agent(identities[1], AgentState.WAITING_FOR_APPROVAL)
+            self.update_agent(daemon, identity, AgentState.RUNNING)
+        self.update_agent(daemon, identities[1], AgentState.WAITING_FOR_APPROVAL)
 
-        daemon.update_agent(identities[4], AgentState.RUNNING)
+        self.update_agent(daemon, identities[4], AgentState.RUNNING)
 
-        self.assertIsNotNone(daemon._sessions[identities[0]].slot)
-        self.assertIsNotNone(daemon._sessions[identities[1]].slot)
-        self.assertIsNone(daemon._sessions[identities[2]].slot)
-        self.assertIsNotNone(daemon._sessions[identities[4]].slot)
+        self.assertIsNotNone(daemon.control._sessions[identities[0]].slot)
+        self.assertIsNotNone(daemon.control._sessions[identities[1]].slot)
+        self.assertIsNone(daemon.control._sessions[identities[2]].slot)
+        self.assertIsNotNone(daemon.control._sessions[identities[4]].slot)
 
     def test_terminal_state_expires_per_session(self) -> None:
         daemon = self.daemon()
         identity = AgentIdentity("codex", "session")
-        daemon.update_agent(identity, AgentState.SUCCESS)
-        daemon._sessions[identity].terminal_state_until = 0.0
+        self.update_agent(daemon, identity, AgentState.SUCCESS)
+        daemon.control._sessions[identity].terminal_state_until = 0.0
 
         daemon._render_if_needed()
 
-        self.assertIs(daemon.state, AgentState.WAITING_FOR_REPLY)
+        self.assertIs(daemon.control.state, AgentState.WAITING_FOR_REPLY)
         self.assertIs(
             daemon.surface.views[-1].selected_state,
             AgentState.WAITING_FOR_REPLY,
@@ -366,8 +417,8 @@ class DaemonTest(TestCase):
         daemon = self.daemon()
         first = AgentIdentity("codex", "first")
         second = AgentIdentity("codex", "second")
-        daemon.update_agent(first, AgentState.RUNNING)
-        daemon.update_agent(second, AgentState.RUNNING)
+        self.update_agent(daemon, first, AgentState.RUNNING)
+        self.update_agent(daemon, second, AgentState.RUNNING)
         self.add_client(daemon, first, ControlAction.STOP)
         self.add_client(daemon, second, ControlAction.RETRY)
 
@@ -377,10 +428,90 @@ class DaemonTest(TestCase):
         self.assertEqual(len(view.sessions), 2)
         self.assertTrue(view.sessions[0].selected)
 
+    def test_preview_does_not_change_agent_state_or_expose_actions(self) -> None:
+        daemon = self.daemon()
+        identity = AgentIdentity("codex", "session")
+        self.update_agent(daemon, identity, AgentState.RUNNING)
+        self.add_client(daemon, identity, ControlAction.STOP)
+        preview_client = Client(FakeSocket())
+        daemon._clients[preview_client.socket.fileno()] = preview_client
+
+        daemon.handle_message(
+            preview_client,
+            wire({
+                "type": "preview",
+                "preview_id": "preview-1",
+                "state": "waiting_for_approval",
+                "ttl": 5.0,
+            }),
+        )
+
+        self.assertIs(daemon.control.state, AgentState.RUNNING)
+        self.assertIs(
+            daemon._surface_view().selected_state,
+            AgentState.WAITING_FOR_APPROVAL,
+        )
+        self.assertEqual(daemon._available_actions(), frozenset())
+        self.assertTrue(daemon.status_snapshot()["preview_active"])
+
+        daemon.handle_message(
+            preview_client,
+            wire({"type": "preview_end", "preview_id": "preview-1"}),
+        )
+
+        self.assertIs(daemon._surface_view().selected_state, AgentState.RUNNING)
+        self.assertEqual(
+            daemon._available_actions(),
+            frozenset({ControlAction.STOP}),
+        )
+
+    def test_preview_expires_and_disconnect_restores_authoritative_view(self) -> None:
+        daemon = self.daemon()
+        identity = AgentIdentity("codex", "session")
+        self.update_agent(daemon, identity, AgentState.WAITING_FOR_REPLY)
+        preview_client = Client(FakeSocket())
+        daemon._clients[preview_client.socket.fileno()] = preview_client
+        with patch("pad_lattice.daemon_runtime.time.monotonic", return_value=1.0):
+            daemon.handle_message(
+                preview_client,
+                wire({
+                    "type": "preview",
+                    "preview_id": "preview-1",
+                    "state": "success",
+                    "ttl": 1.0,
+                }),
+            )
+
+        with patch("pad_lattice.daemon_runtime.time.monotonic", return_value=2.1):
+            daemon._render_if_needed()
+
+        self.assertFalse(daemon.status_snapshot()["preview_active"])
+        self.assertIs(
+            daemon._surface_view().selected_state,
+            AgentState.WAITING_FOR_REPLY,
+        )
+
+        daemon.handle_message(
+            preview_client,
+            wire({
+                "type": "preview",
+                "preview_id": "preview-2",
+                "state": "error",
+                "ttl": 5.0,
+            }),
+        )
+        daemon._close_client(preview_client)
+
+        self.assertFalse(daemon.status_snapshot()["preview_active"])
+        self.assertIs(
+            daemon._surface_view().selected_state,
+            AgentState.WAITING_FOR_REPLY,
+        )
+
     def test_actions_are_gated_by_selected_state(self) -> None:
         daemon = self.daemon()
         identity = AgentIdentity("codex", "session")
-        daemon.update_agent(identity, AgentState.RUNNING)
+        self.update_agent(daemon, identity, AgentState.RUNNING)
         self.add_client(
             daemon,
             identity,
@@ -397,92 +528,91 @@ class DaemonTest(TestCase):
         daemon = self.daemon()
         first = AgentIdentity("codex", "first")
         second = AgentIdentity("codex", "second")
-        daemon.update_agent(first, AgentState.RUNNING)
-        daemon.update_agent(second, AgentState.WAITING_FOR_REPLY)
+        self.update_agent(daemon, first, AgentState.RUNNING)
+        self.update_agent(daemon, second, AgentState.WAITING_FOR_REPLY)
 
         subscriber = self.add_client(daemon, first, ControlAction.STOP)
         daemon.handle_message(
             Client(FakeSocket()),
-            {
+            wire({
                 "type": "session_end",
                 "agent": {"backend": "codex", "session_id": "first"},
-            },
+            }),
         )
 
-        self.assertIsNone(daemon.selected_agent)
-        self.assertIsNone(daemon.state)
-        self.assertIn(second, {session.identity for session in daemon.sessions})
+        self.assertIsNone(daemon.control.selected_agent)
+        self.assertIsNone(daemon.control.state)
+        self.assertIn(second, {session.identity for session in daemon.control.sessions})
         self.assertIsNone(daemon._surface_view().selected_state)
-        self.assertIsNone(subscriber.agent)
-        self.assertFalse(subscriber.actions)
+        self.assertNotIn(subscriber.client_id, daemon.control._subscriptions)
 
     def test_quiet_unleased_sessions_expire_even_when_selected(self) -> None:
         daemon = self.daemon(session_ttl=10.0)
         first = AgentIdentity("codex", "first")
         second = AgentIdentity("codex", "second")
-        with patch("pad_lattice.daemon.time.monotonic", return_value=1.0):
-            daemon.update_agent(first, AgentState.RUNNING)
-            daemon.update_agent(second, AgentState.WAITING_FOR_REPLY)
+        with patch("pad_lattice.daemon_runtime.time.monotonic", return_value=1.0):
+            self.update_agent(daemon, first, AgentState.RUNNING)
+            self.update_agent(daemon, second, AgentState.WAITING_FOR_REPLY)
 
-        with patch("pad_lattice.daemon.time.monotonic", return_value=12.0):
+        with patch("pad_lattice.daemon_runtime.time.monotonic", return_value=12.0):
             daemon._render_if_needed()
 
-        self.assertNotIn(first, daemon._sessions)
-        self.assertNotIn(second, daemon._sessions)
+        self.assertNotIn(first, daemon.control._sessions)
+        self.assertNotIn(second, daemon.control._sessions)
 
     def test_live_leased_session_does_not_expire(self) -> None:
         daemon = self.daemon(session_ttl=10.0)
         identity = AgentIdentity("codex", "leased")
         lease_client = Client(FakeSocket())
         daemon._clients[lease_client.socket.fileno()] = lease_client
-        with patch("pad_lattice.daemon.time.monotonic", return_value=1.0):
+        with patch("pad_lattice.daemon_runtime.time.monotonic", return_value=1.0):
             daemon.handle_message(
                 lease_client,
-                {
+                wire({
                     "type": "session_lease",
                     "lease_id": "lease-1",
                     "agent": {"backend": "codex", "session_id": "leased"},
-                },
+                }),
             )
-            daemon.update_agent(identity, AgentState.WAITING_FOR_APPROVAL)
+            self.update_agent(daemon, identity, AgentState.WAITING_FOR_APPROVAL)
 
-        with patch("pad_lattice.daemon.time.monotonic", return_value=12.0):
+        with patch("pad_lattice.daemon_runtime.time.monotonic", return_value=12.0):
             daemon._render_if_needed()
 
-        self.assertIn(identity, daemon._sessions)
+        self.assertIn(identity, daemon.control._sessions)
 
     def test_overflow_is_reported_when_all_slots_are_protected(self) -> None:
         daemon = self.daemon()
         identities = [AgentIdentity("codex", str(index)) for index in range(5)]
         for identity in identities[:4]:
-            daemon.update_agent(identity, AgentState.WAITING_FOR_APPROVAL)
-        daemon.update_agent(identities[4], AgentState.RUNNING)
+            self.update_agent(daemon, identity, AgentState.WAITING_FOR_APPROVAL)
+        self.update_agent(daemon, identities[4], AgentState.RUNNING)
 
         view = daemon._surface_view()
 
         self.assertEqual(view.overflow_count, 1)
-        self.assertIsNone(daemon._sessions[identities[4]].slot)
+        self.assertIsNone(daemon.control._sessions[identities[4]].slot)
 
     def test_status_snapshot_includes_accents_and_protocol(self) -> None:
         daemon = self.daemon(activity_motion=True)
         identity = AgentIdentity("codex", "session")
-        daemon.update_agent(identity, AgentState.RUNNING)
+        self.update_agent(daemon, identity, AgentState.RUNNING)
 
         status = daemon.status_snapshot()
 
-        self.assertEqual(status["visual_protocol"], "0.1")
+        self.assertEqual(status["visual_protocol"], 1)
         self.assertTrue(status["activity_motion"])
         self.assertEqual(status["sessions"][0]["accent"], "cyan")
 
     def test_accents_are_unique_across_visible_sessions(self) -> None:
         daemon = self.daemon()
         for index in range(4):
-            daemon.update_agent(
+            self.update_agent(daemon,
                 AgentIdentity("codex", str(index)),
                 AgentState.RUNNING,
             )
 
-        accents = [session.accent for session in daemon.sessions]
+        accents = [session.accent for session in daemon.control.sessions]
 
         self.assertEqual(len(set(accents)), 4)
 
@@ -498,9 +628,9 @@ class DaemonTest(TestCase):
             )
             self.daemons.append(daemon)
 
-            daemon.update_agent(identity, AgentState.RUNNING)
+            self.update_agent(daemon, identity, AgentState.RUNNING)
 
-            self.assertEqual(daemon._sessions[identity].accent, "magenta")
+            self.assertEqual(daemon.control._sessions[identity].accent, "magenta")
 
     def test_existing_non_socket_path_is_not_unlinked(self) -> None:
         with TemporaryDirectory() as directory:
@@ -513,6 +643,58 @@ class DaemonTest(TestCase):
                 daemon._open_server()
 
             self.assertTrue(Path(socket_path).exists())
+
+    def test_server_socket_is_owner_only(self) -> None:
+        with TemporaryDirectory() as directory:
+            socket_path = str(Path(directory) / "daemon.sock")
+            daemon = PadLatticeDaemon(FakeSurface(), socket_path)
+            self.daemons.append(daemon)
+
+            try:
+                daemon._server = daemon._open_server()
+            except PermissionError as exc:
+                if exc.errno == errno.EPERM:
+                    self.skipTest("sandbox does not permit Unix socket binding")
+                raise
+
+            mode = stat.S_IMODE(Path(socket_path).stat().st_mode)
+            self.assertEqual(mode, 0o600)
+
+    def test_partial_nonblocking_write_is_queued_until_complete(self) -> None:
+        class PartialSocket(FakeSocket):
+            def send(self, data: bytes) -> int:
+                chunk = bytes(data[:7])
+                self.sent += chunk
+                return len(chunk)
+
+        daemon = self.daemon()
+        client = Client(PartialSocket())
+        daemon._clients[client.socket.fileno()] = client
+        message = wire_message("pong", value="x" * 40)
+
+        daemon._send(client, message)
+        self.assertTrue(client.output_buffer)
+        while client.output_buffer:
+            daemon._flush_client(client)
+
+        self.assertEqual(decode_message(client.socket.sent.strip()), message)
+
+    def test_oversized_unterminated_frame_returns_error_and_closes(self) -> None:
+        class OversizedSocket(FakeSocket):
+            def recv(self, size: int) -> bytes:
+                return b"x" * (MAX_MESSAGE_BYTES + 1)
+
+        daemon = self.daemon()
+        client = Client(OversizedSocket())
+        fileno = client.socket.fileno()
+        daemon._clients[fileno] = client
+
+        daemon._read_client(client.socket)
+
+        response = decode_message(client.socket.sent.strip())
+        self.assertEqual(response["type"], "error")
+        self.assertEqual(response["code"], "frame_too_large")
+        self.assertNotIn(fileno, daemon._clients)
 
     def test_close_is_idempotent(self) -> None:
         daemon = self.daemon()

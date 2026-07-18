@@ -109,6 +109,28 @@ class MidiGridSurfaceTest(TestCase):
         self.assertTrue(lit)
         self.assertEqual({message.channel for message in lit}, {0})
 
+    def test_identical_frames_do_not_resend_midi_values(self) -> None:
+        surface, output, _ = surface_for("novation/launchpad/pro-mk1")
+        view = SurfaceView(AgentState.WAITING_FOR_REPLY)
+
+        surface.render(view)
+        first_frame_messages = len(output.messages)
+        surface.render(view)
+
+        self.assertGreater(first_frame_messages, 0)
+        self.assertEqual(len(output.messages), first_frame_messages)
+
+    def test_changed_frame_sends_only_address_differences(self) -> None:
+        surface, output, _ = surface_for("novation/launchpad/pro-mk1")
+
+        surface.render(SurfaceView(AgentState.WAITING_FOR_REPLY))
+        full_frame_messages = len(output.messages)
+        output.messages.clear()
+        surface.render(SurfaceView(AgentState.SUCCESS))
+
+        self.assertGreater(len(output.messages), 0)
+        self.assertLess(len(output.messages), full_frame_messages)
+
     def test_render_draws_session_accents_and_semantic_statuses(self) -> None:
         surface, output, _ = surface_for("novation/launchpad/pro-mk1")
         view = SurfaceView(

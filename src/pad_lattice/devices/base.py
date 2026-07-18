@@ -51,7 +51,7 @@ class ControlSurface(Protocol):
     output_name: str
     selector_capacity: int
     accent_names: tuple[str, ...]
-    visual_protocol: str
+    visual_protocol: int
 
     def initialize(self) -> None: ...
 

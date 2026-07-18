@@ -1,13 +1,17 @@
-"""Pad-Lattice hardware control surface primitives."""
+"""Public Pad-Lattice agent integration API."""
 
-from pad_lattice.events import AgentEvent, AgentIdentity, AgentState, ControlAction
+from pad_lattice.client import ActionSubscription, PadLatticeClient
+from pad_lattice.events import AgentIdentity, AgentState, ControlAction
+from pad_lattice.protocol import ActionEvent
 
 __version__ = "0.1.0a1"
 
 __all__ = [
-    "AgentEvent",
+    "ActionEvent",
+    "ActionSubscription",
     "AgentIdentity",
     "AgentState",
     "ControlAction",
+    "PadLatticeClient",
     "__version__",
 ]

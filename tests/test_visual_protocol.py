@@ -1,10 +1,18 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from unittest import TestCase
 
+from pad_lattice.control_plane import ACTION_STATES
 from pad_lattice.devices.base import SessionIndicator, SurfaceView
 from pad_lattice.events import AgentState, ControlAction
 from pad_lattice.visual_protocol import (
+    IDENTITY_ACCENTS,
+    STATE_GLYPHS,
+    STATE_HEIGHT,
+    STATE_WIDTH,
+    VISUAL_PROTOCOL_VERSION,
     ACTIVITY,
     IDLE,
     OFF,
@@ -16,6 +24,36 @@ from pad_lattice.visual_protocol import (
 
 
 class VisualProtocolTest(TestCase):
+    def test_conformance_fixture_matches_protocol_constants(self) -> None:
+        fixture = json.loads(
+            (
+                Path(__file__).parent
+                / "fixtures"
+                / "visual-protocol-v1.json"
+            ).read_text(encoding="utf-8")
+        )
+
+        self.assertEqual(fixture["visual_protocol"], VISUAL_PROTOCOL_VERSION)
+        self.assertEqual(
+            fixture["state_region"],
+            {"width": STATE_WIDTH, "height": STATE_HEIGHT},
+        )
+        self.assertEqual(fixture["identity_accents"], list(IDENTITY_ACCENTS))
+        self.assertEqual(
+            fixture["glyphs"],
+            {
+                state.value: [list(point) for point in points]
+                for state, points in STATE_GLYPHS.items()
+            },
+        )
+        self.assertEqual(
+            fixture["action_states"],
+            {
+                action.value: sorted(state.value for state in states)
+                for action, states in ACTION_STATES.items()
+            },
+        )
+
     def test_every_state_glyph_fits_the_seven_by_eight_canvas(self) -> None:
         self.assertEqual(set(STATE_GLYPHS), set(AgentState))
         for state, points in STATE_GLYPHS.items():

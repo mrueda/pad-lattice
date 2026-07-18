@@ -12,7 +12,11 @@ Confirm the installation:
 
 ```bash
 pad-lattice --version
+pad-lattice doctor
 ```
+
+`doctor` inspects profiles, MIDI ports, the daemon socket, and installed Codex
+hooks without opening the controller or changing LEDs.
 
 ## Find the Controller
 
@@ -29,10 +33,12 @@ Run the hardware demo. Auto-detection considers only supported profiles:
 pad-lattice demo
 ```
 
-The Launchpad Mini Mk3 profile is experimental and must be selected explicitly:
+The Launchpad Mini Mk3 and Pro Mk3 profiles are experimental and must be
+selected explicitly:
 
 ```bash
 pad-lattice demo --profile novation/launchpad/mini-mk3
+pad-lattice demo --profile novation/launchpad/pro-mk3
 ```
 
 ## Start the Daemon

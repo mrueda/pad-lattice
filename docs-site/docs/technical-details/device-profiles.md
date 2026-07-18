@@ -33,6 +33,7 @@ Current built-ins:
 | --- | --- |
 | `novation/launchpad/pro-mk1` | Supported, physically tested |
 | `novation/launchpad/mini-mk3` | Experimental, tester validation requested |
+| `novation/launchpad/pro-mk3` | Experimental, tester validation requested |
 
 User profiles are loaded recursively from:
 
@@ -69,14 +70,14 @@ The generic driver supports:
 All state indicators are steady. Profiles cannot enable MIDI flashing or
 pulsing modes.
 
-## Schema
+## Profile Contract
 
 The top-level fields are:
 
 | Field | Purpose |
 | --- | --- |
 | `schema_version` | Profile contract version; currently `1`. |
-| `visual_protocol` | Visual contract implemented by the profile; currently `0.1`. |
+| `visual_protocol` | Visual contract implemented by the profile; currently `1`. |
 | `id` | `manufacturer/family/model` identifier. |
 | `name` | Human-readable device name. |
 | `manufacturer`, `family`, `model` | Catalog metadata. |
@@ -106,9 +107,13 @@ SysEx data excludes the framing bytes `F0` and `F7`, matching `mido.Message`:
 }
 ```
 
-The profile schema and visual protocol are versioned independently. This is
-the first public profile schema, so it is `schema_version: 1`; there is no
-legacy schema to preserve.
+The device profile, visual, and wire contracts are versioned independently.
+Each current contract starts at version `1`.
+
+Pad-Lattice always applies its dependency-free parser and semantic checks.
+The packaged JSON Schema is an additional contract for editors, generators,
+and profile authors; the daemon does not run a general schema engine in its
+real-time path.
 
 The central surface declaration is explicit:
 
@@ -142,9 +147,11 @@ profile must define exactly one accent pair per selector/status slot.
 
 The Launchpad Pro Mk1 profile opens the **Standalone Port**, switches to
 Standalone Programmer layout, and restores Live Session mode during clean
-shutdown. Both bundled profiles keep actions on the common top rail; the Pro's
-extra left and bottom controls remain reserved. Explicit Pro Mk1 port
-overrides should therefore also select the Standalone Port.
+shutdown. Mk3 profiles use Novation's documented Live/Programmer toggle. The
+Pro Mk3 profile targets its **MIDI** interface rather than the DAW or DIN
+interface. All bundled profiles keep actions on the common top rail; extra
+left and bottom controls remain reserved. Explicit port overrides must select
+the same interface named by the profile.
 
 ## Discovery and Selection
 
@@ -163,6 +170,7 @@ arbitrary port. Experimental hardware must be explicit:
 
 ```bash
 pad-lattice daemon --profile novation/launchpad/mini-mk3
+pad-lattice daemon --profile novation/launchpad/pro-mk3
 ```
 
 Use a local profile under development without installing it:
@@ -183,6 +191,15 @@ pad-lattice demo --profile-file ./my-controller.json
 ```bash
 pad-lattice profile validate ./my-controller.json
 ```
+
+To also check the published JSON Schema, install `pad-lattice[schema]` and run:
+
+```bash
+pad-lattice profile validate ./my-controller.json --validate-schema
+```
+
+Both validation commands are dry runs. They read the file and exit without
+opening MIDI ports or changing the surface.
 
 6. Run the guided physical test and attach its report to a device-validation
    issue.

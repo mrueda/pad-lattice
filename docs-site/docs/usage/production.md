@@ -19,6 +19,8 @@ pad-lattice daemon \
   --no-greeting
 ```
 
+Substitute `novation/launchpad/pro-mk3` for the experimental Pro Mk3 profile.
+
 Use `--input` and `--output` only when several ports match. The daemon fails on
 ambiguous detection instead of guessing.
 
@@ -116,5 +118,5 @@ reinstall and review the hooks after changing it.
 ## Shutdown
 
 Stop the daemon with `Ctrl-C`. The surface clears its LEDs, sends any profile
-shutdown command, and closes both MIDI ports. Both bundled profiles return the
+shutdown command, and closes both MIDI ports. All bundled profiles return the
 controller to their normal Live mode.

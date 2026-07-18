@@ -27,7 +27,7 @@ class FakeSurface:
         "rose",
         "sky",
     )
-    visual_protocol = "0.1"
+    visual_protocol = 1
 
     def __init__(self, *, fail_initialize: bool = False) -> None:
         self.fail_initialize = fail_initialize

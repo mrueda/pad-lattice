@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-labelledby="title description">
+  <title id="title">Multi-agent selection and state rendering</title>
+  <desc id="description">Three agent sessions update separate daemon registry rows. Session two is explicitly selected, so its approval state appears as an amber exclamation mark in the center of the controller. Every visible session retains its own compact status and identity-colored Scene control. A Scene press changes selection without broadcasting an action.</desc>
+  <defs>
+    <marker id="state-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#78909b"/>
+    </marker>
+    <marker id="select-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#b64141"/>
+    </marker>
+    <rect id="matrix-pad" width="24" height="24" rx="4" fill="#111827" stroke="#303943"/>
+  </defs>
+
+  <rect width="1200" height="560" fill="#ffffff"/>
+  <g font-family="Arial">
+    <text x="24" y="25" fill="#49616c" font-size="13" font-weight="700">CONCURRENT AGENT SESSIONS</text>
+    <text x="280" y="25" fill="#49616c" font-size="13" font-weight="700">DAEMON REGISTRY</text>
+    <text x="760" y="25" fill="#49616c" font-size="13" font-weight="700">COMMON MIDI GRID SURFACE</text>
+
+    <g>
+      <rect x="24" y="54" width="210" height="84" rx="6" fill="#f2fbfc" stroke="#4aa4ad" stroke-width="2"/>
+      <rect x="24" y="54" width="7" height="84" rx="3" fill="#00aebb"/>
+      <text x="44" y="79" fill="#176a72" font-size="13" font-weight="700">S1 / CYAN</text>
+      <text x="44" y="103" fill="#314c57" font-size="16" font-weight="700">implementation</text>
+      <circle cx="49" cy="121" r="5" fill="#3674e8"/>
+      <text x="61" y="125" fill="#60747d" font-size="12">running</text>
+
+      <rect x="24" y="164" width="210" height="84" rx="6" fill="#fcf5fc" stroke="#ba61bb" stroke-width="2"/>
+      <rect x="24" y="164" width="7" height="84" rx="3" fill="#c83ec9"/>
+      <text x="44" y="189" fill="#803681" font-size="13" font-weight="700">S2 / MAGENTA</text>
+      <text x="44" y="213" fill="#314c57" font-size="16" font-weight="700">docs</text>
+      <circle cx="49" cy="231" r="5" fill="#d39a18"/>
+      <text x="61" y="235" fill="#60747d" font-size="12">waiting for approval</text>
+
+      <rect x="24" y="274" width="210" height="84" rx="6" fill="#f6faef" stroke="#82a951" stroke-width="2"/>
+      <rect x="24" y="274" width="7" height="84" rx="3" fill="#70b92d"/>
+      <text x="44" y="299" fill="#527727" font-size="13" font-weight="700">S3 / LIME</text>
+      <text x="44" y="323" fill="#314c57" font-size="16" font-weight="700">tests</text>
+      <circle cx="49" cy="341" r="5" fill="#ffffff" stroke="#7f929b"/>
+      <text x="61" y="345" fill="#60747d" font-size="12">waiting for reply</text>
+
+      <rect x="24" y="390" width="210" height="50" rx="6" fill="#f7f8f9" stroke="#9aa9b0" stroke-width="1.5" stroke-dasharray="6 5"/>
+      <text x="44" y="411" fill="#536871" font-size="13" font-weight="700">OTHER SESSIONS</text>
+      <text x="44" y="429" fill="#71858e" font-size="12">overflow when slots are full</text>
+    </g>
+
+    <path d="M234 96H272" fill="none" stroke="#78909b" stroke-width="2" marker-end="url(#state-arrow)"/>
+    <path d="M234 206H272" fill="none" stroke="#78909b" stroke-width="2" marker-end="url(#state-arrow)"/>
+    <path d="M234 316H272" fill="none" stroke="#78909b" stroke-width="2" marker-end="url(#state-arrow)"/>
+    <path d="M234 415H272" fill="none" stroke="#78909b" stroke-width="2" marker-end="url(#state-arrow)"/>
+
+    <g>
+      <rect x="280" y="45" width="400" height="395" rx="6" fill="#f4f8fa" stroke="#2e7289" stroke-width="2"/>
+      <text x="302" y="73" fill="#174e62" font-family="monospace" font-size="16" font-weight="700">sessions[(backend, session_id)]</text>
+
+      <rect x="302" y="91" width="356" height="82" rx="6" fill="#ffffff" stroke="#91aab5" stroke-width="1.5"/>
+      <rect x="302" y="91" width="7" height="82" rx="3" fill="#00aebb"/>
+      <text x="324" y="116" fill="#176a72" font-size="13" font-weight="700">S1  CYAN</text>
+      <text x="324" y="139" fill="#314c57" font-family="monospace" font-size="13">codex / session-a</text>
+      <rect x="519" y="108" width="119" height="28" rx="6" fill="#edf4ff" stroke="#6791d5"/>
+      <circle cx="533" cy="122" r="5" fill="#3674e8"/>
+      <text x="544" y="126" fill="#315f82" font-size="12" font-weight="700">RUNNING</text>
+      <text x="519" y="157" fill="#71858e" font-size="11">background session</text>
+
+      <rect x="302" y="188" width="356" height="82" rx="6" fill="#fffafe" stroke="#c83ec9" stroke-width="3"/>
+      <rect x="302" y="188" width="7" height="82" rx="3" fill="#c83ec9"/>
+      <text x="324" y="213" fill="#803681" font-size="13" font-weight="700">S2  MAGENTA</text>
+      <text x="324" y="236" fill="#314c57" font-family="monospace" font-size="13">codex / session-b</text>
+      <rect x="495" y="205" width="143" height="28" rx="6" fill="#fff8e7" stroke="#d39a18"/>
+      <circle cx="509" cy="219" r="5" fill="#d39a18"/>
+      <text x="520" y="223" fill="#895f08" font-size="12" font-weight="700">APPROVAL</text>
+      <rect x="557" y="241" width="81" height="20" rx="5" fill="#c83ec9"/>
+      <text x="598" y="255" fill="#ffffff" font-size="10" font-weight="700" text-anchor="middle">SELECTED</text>
+
+      <rect x="302" y="285" width="356" height="82" rx="6" fill="#ffffff" stroke="#91aab5" stroke-width="1.5"/>
+      <rect x="302" y="285" width="7" height="82" rx="3" fill="#70b92d"/>
+      <text x="324" y="310" fill="#527727" font-size="13" font-weight="700">S3  LIME</text>
+      <text x="324" y="333" fill="#314c57" font-family="monospace" font-size="13">codex / session-c</text>
+      <rect x="506" y="302" width="132" height="28" rx="6" fill="#ffffff" stroke="#9aa9b0"/>
+      <circle cx="520" cy="316" r="5" fill="#ffffff" stroke="#7f929b"/>
+      <text x="531" y="320" fill="#536871" font-size="12" font-weight="700">WAITING</text>
+      <text x="519" y="351" fill="#71858e" font-size="11">background session</text>
+
+      <rect x="302" y="384" width="356" height="37" rx="6" fill="#fff8e7" stroke="#d39a18" stroke-dasharray="5 4"/>
+      <circle cx="321" cy="402" r="6" fill="#d39a18"/>
+      <text x="336" y="406" fill="#895f08" font-size="12" font-weight="700">OVERFLOW 1</text>
+      <text x="516" y="406" fill="#71858e" font-size="11">not silently selected</text>
+    </g>
+
+    <path d="M680 211H752" fill="none" stroke="#78909b" stroke-width="2" marker-end="url(#state-arrow)"/>
+    <text x="716" y="201" fill="#60747d" font-size="10" font-weight="700" text-anchor="middle">VIEW</text>
+    <path d="M752 257H688" fill="none" stroke="#b64141" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#select-arrow)"/>
+    <text x="720" y="277" fill="#9b3030" font-size="10" font-weight="700" text-anchor="middle">SELECT</text>
+
+    <g>
+      <rect x="760" y="45" width="416" height="395" rx="6" fill="#f4f8fa" stroke="#2e7289" stroke-width="2"/>
+      <text x="782" y="69" fill="#174e62" font-size="14" font-weight="700">TOP ACTION / SYSTEM RAIL</text>
+
+      <g font-size="9" font-weight="700" text-anchor="middle">
+        <rect x="782" y="80" width="34" height="34" rx="6" fill="#35a94a"/><text x="799" y="101" fill="#ffffff">AP</text>
+        <rect x="828" y="80" width="34" height="34" rx="6" fill="#cf3f42"/><text x="845" y="101" fill="#ffffff">NO</text>
+        <rect x="874" y="80" width="34" height="34" rx="6" fill="#111827" stroke="#303943"/>
+        <rect x="920" y="80" width="34" height="34" rx="6" fill="#111827" stroke="#303943"/>
+        <rect x="966" y="80" width="34" height="34" rx="6" fill="#d39a18"/><text x="983" y="101" fill="#ffffff">OV</text>
+        <rect x="1012" y="80" width="34" height="34" rx="6" fill="#111827" stroke="#303943"/>
+        <rect x="1058" y="80" width="34" height="34" rx="6" fill="#111827" stroke="#303943"/><text x="1075" y="101" fill="#718096">RE</text>
+        <rect x="1104" y="80" width="34" height="34" rx="6" fill="#111827" stroke="#303943"/><text x="1121" y="101" fill="#718096">ST</text>
+      </g>
+
+      <rect x="782" y="128" width="370" height="272" rx="6" fill="#111827" stroke="#374151" stroke-width="2"/>
+      <text x="792" y="421" fill="#60747d" font-size="11">7x8 selected state</text>
+      <text x="1010" y="421" fill="#60747d" font-size="11">state</text>
+      <text x="1082" y="421" fill="#60747d" font-size="11">Agent Scene</text>
+
+      <g>
+        <use href="#matrix-pad" x="792" y="142"/><use href="#matrix-pad" x="822" y="142"/><use href="#matrix-pad" x="852" y="142"/><rect x="882" y="142" width="24" height="24" rx="4" fill="#d39a18"/><use href="#matrix-pad" x="912" y="142"/><use href="#matrix-pad" x="942" y="142"/><use href="#matrix-pad" x="972" y="142"/>
+        <use href="#matrix-pad" x="792" y="172"/><use href="#matrix-pad" x="822" y="172"/><use href="#matrix-pad" x="852" y="172"/><rect x="882" y="172" width="24" height="24" rx="4" fill="#d39a18"/><use href="#matrix-pad" x="912" y="172"/><use href="#matrix-pad" x="942" y="172"/><use href="#matrix-pad" x="972" y="172"/>
+        <use href="#matrix-pad" x="792" y="202"/><use href="#matrix-pad" x="822" y="202"/><use href="#matrix-pad" x="852" y="202"/><rect x="882" y="202" width="24" height="24" rx="4" fill="#d39a18"/><use href="#matrix-pad" x="912" y="202"/><use href="#matrix-pad" x="942" y="202"/><use href="#matrix-pad" x="972" y="202"/>
+        <use href="#matrix-pad" x="792" y="232"/><use href="#matrix-pad" x="822" y="232"/><use href="#matrix-pad" x="852" y="232"/><rect x="882" y="232" width="24" height="24" rx="4" fill="#d39a18"/><use href="#matrix-pad" x="912" y="232"/><use href="#matrix-pad" x="942" y="232"/><use href="#matrix-pad" x="972" y="232"/>
+        <use href="#matrix-pad" x="792" y="262"/><use href="#matrix-pad" x="822" y="262"/><use href="#matrix-pad" x="852" y="262"/><rect x="882" y="262" width="24" height="24" rx="4" fill="#d39a18"/><use href="#matrix-pad" x="912" y="262"/><use href="#matrix-pad" x="942" y="262"/><use href="#matrix-pad" x="972" y="262"/>
+        <use href="#matrix-pad" x="792" y="292"/><use href="#matrix-pad" x="822" y="292"/><use href="#matrix-pad" x="852" y="292"/><use href="#matrix-pad" x="882" y="292"/><use href="#matrix-pad" x="912" y="292"/><use href="#matrix-pad" x="942" y="292"/><use href="#matrix-pad" x="972" y="292"/>
+        <use href="#matrix-pad" x="792" y="322"/><use href="#matrix-pad" x="822" y="322"/><use href="#matrix-pad" x="852" y="322"/><use href="#matrix-pad" x="882" y="322"/><use href="#matrix-pad" x="912" y="322"/><use href="#matrix-pad" x="942" y="322"/><use href="#matrix-pad" x="972" y="322"/>
+        <use href="#matrix-pad" x="792" y="352"/><use href="#matrix-pad" x="822" y="352"/><use href="#matrix-pad" x="852" y="352"/><rect x="882" y="352" width="24" height="24" rx="4" fill="#d39a18"/><use href="#matrix-pad" x="912" y="352"/><use href="#matrix-pad" x="942" y="352"/><use href="#matrix-pad" x="972" y="352"/>
+      </g>
+
+      <g font-size="10" font-weight="700">
+        <rect x="1018" y="142" width="24" height="24" rx="4" fill="#3674e8"/><circle cx="1070" cy="154" r="12" fill="#157b82"/><text x="1091" y="158" fill="#d4edf0">S1 / A1</text>
+        <rect x="1018" y="172" width="24" height="24" rx="4" fill="#d39a18"/><circle cx="1070" cy="184" r="14" fill="none" stroke="#ffffff" stroke-width="2"/><circle cx="1070" cy="184" r="11" fill="#c83ec9"/><text x="1091" y="188" fill="#ffffff">S2 / A2</text>
+        <rect x="1018" y="202" width="24" height="24" rx="4" fill="#ffffff"/><circle cx="1070" cy="214" r="12" fill="#4f791f"/><text x="1091" y="218" fill="#dce9ca">S3 / A3</text>
+        <use href="#matrix-pad" x="1018" y="232"/><circle cx="1070" cy="244" r="12" fill="#111827" stroke="#303943"/>
+        <use href="#matrix-pad" x="1018" y="262"/><circle cx="1070" cy="274" r="12" fill="#111827" stroke="#303943"/>
+        <use href="#matrix-pad" x="1018" y="292"/><circle cx="1070" cy="304" r="12" fill="#111827" stroke="#303943"/>
+        <use href="#matrix-pad" x="1018" y="322"/><circle cx="1070" cy="334" r="12" fill="#111827" stroke="#303943"/>
+        <use href="#matrix-pad" x="1018" y="352"/><circle cx="1070" cy="364" r="12" fill="#111827" stroke="#303943"/>
+      </g>
+    </g>
+
+    <rect x="24" y="478" width="1152" height="56" rx="6" fill="#f4f8fa" stroke="#b8cbd2"/>
+    <circle cx="48" cy="499" r="7" fill="#c83ec9"/>
+    <text x="63" y="503" fill="#314c57" font-size="12" font-weight="700">Identity accent</text>
+    <text x="151" y="503" fill="#314c57" font-size="12">stays with the session.</text>
+    <circle cx="334" cy="499" r="7" fill="#d39a18"/>
+    <text x="349" y="503" fill="#314c57" font-size="12" font-weight="700">Semantic state</text>
+    <text x="446" y="503" fill="#314c57" font-size="12">appears in each status pad.</text>
+    <rect x="671" y="491" width="16" height="16" rx="3" fill="none" stroke="#c83ec9" stroke-width="2"/>
+    <text x="697" y="503" fill="#314c57" font-size="12" font-weight="700">Selection</text>
+    <text x="758" y="503" fill="#314c57" font-size="12">alone controls the center and action target.</text>
+    <text x="48" y="523" fill="#60747d" font-size="11">Background updates change their own registry row and compact status; they never steal selection.</text>
+  </g>
+</svg>

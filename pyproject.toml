@@ -38,6 +38,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+schema = [
+  "jsonschema>=4.23,<5",
+]
 release = [
   "build>=1.2",
   "twine>=5.1",
@@ -58,6 +61,7 @@ where = ["src"]
 [tool.setuptools.package-data]
 pad_lattice = [
   "device_profiles/*/*/*.json",
+  "schemas/*.json",
 ]
 
 [tool.setuptools.dynamic]

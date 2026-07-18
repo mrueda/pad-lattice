@@ -7,6 +7,21 @@ pad-lattice --version
 pad-lattice --help
 ```
 
+## `pad-lattice doctor`
+
+Inspect the installation without claiming a MIDI port or changing controller
+state:
+
+```bash
+pad-lattice doctor
+pad-lattice doctor --json
+```
+
+The report covers the Python runtime, profile catalog, MIDI discovery, profile
+matches, daemon reachability and socket permissions, and installed Codex hook
+events. Warnings such as a stopped daemon are informational; malformed setup
+data returns a nonzero exit status.
+
 ## Hardware Discovery
 
 List raw MIDI ports:
@@ -73,6 +88,14 @@ pad-lattice status --watch --interval 1
 The live legend shows actual accent swatches, Scene, state, label, project,
 short session ID, and whether cleanup is controlled by a live lease or TTL.
 `NO_COLOR` disables ANSI swatches.
+
+Cycle every state glyph quickly on the selected Scene, then restore its real
+state:
+
+```bash
+pad-lattice symbols
+pad-lattice symbols --hold 1
+```
 
 ## State Commands
 
@@ -207,6 +230,19 @@ Validate a JSON file without opening MIDI ports:
 ```bash
 pad-lattice profile validate ./controller.json
 ```
+
+The normal command runs Pad-Lattice's dependency-free parser and semantic
+checks. Profile authors can also run the published JSON Schema as an optional,
+side-effect-free format check:
+
+```bash
+pipx inject pad-lattice 'jsonschema>=4.23,<5'
+pad-lattice profile validate ./controller.json --validate-schema
+```
+
+For a virtual-environment installation, install `pad-lattice[schema]` instead.
+The flag only reads and validates the file; it does not open MIDI ports, start
+the daemon, or modify controller state.
 
 Run guided physical verification for an installed profile:
 

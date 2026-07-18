@@ -14,9 +14,8 @@ from typing import TextIO
 
 from pad_lattice.events import AgentIdentity
 from pad_lattice.protocol import (
+    JsonLineConnection,
     ProtocolError,
-    decode_message,
-    encode_message,
     parse_agent,
     session_lease_message,
 )
@@ -108,35 +107,27 @@ class SessionLease:
             with self._lock:
                 self._socket = client
                 known_agent = self._known_agent
-            client.sendall(
-                encode_message(
-                    session_lease_message(
-                        self.lease_id,
-                        agent=known_agent,
-                        metadata=self.metadata,
-                    )
+            connection = JsonLineConnection(client)
+            connection.send(
+                session_lease_message(
+                    self.lease_id,
+                    agent=known_agent,
+                    metadata=self.metadata,
                 )
             )
             self._connected.set()
             self._attempted.set()
-            buffer = b""
             try:
                 while not self._stop.is_set():
                     try:
-                        data = client.recv(4096)
+                        message = connection.receive()
                     except socket.timeout:
                         continue
-                    if not data:
+                    except ProtocolError:
+                        continue
+                    except ConnectionError:
                         return
-                    buffer += data
-                    while b"\n" in buffer:
-                        line, buffer = buffer.split(b"\n", 1)
-                        if line.strip():
-                            try:
-                                message = decode_message(line)
-                            except ProtocolError:
-                                continue
-                            self._remember_binding(message)
+                    self._remember_binding(message)
             finally:
                 self._connected.clear()
                 with self._lock:

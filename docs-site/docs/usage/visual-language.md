@@ -1,6 +1,6 @@
 # Visual Protocol
 
-Pad-Lattice Visual Protocol **0.1** defines how agent identity, state,
+Pad-Lattice Visual Protocol **1** defines how agent identity, state,
 selection, action availability, and capacity appear on a physical surface.
 
 :::important A protocol, not decoration
@@ -14,7 +14,7 @@ meanings for them.
 ## Common Launchpad Surface
 
 The common Launchpad topology is the **8x8 matrix, eight top controls, and
-eight right-side controls**. Protocol 0.1 uses that shared surface:
+eight right-side controls**. Protocol 1 uses that shared surface:
 
 - the top rail carries actions and system state;
 - the right rail contains eight **Agent Scenes**;
@@ -164,7 +164,7 @@ The selected-agent canvas is 7x8. Shape and color are both normative.
 | No selection | Dim three-pad dash |
 
 Hardware flashing and pulsing are not used. Optional running motion is disabled
-unless the daemon starts with --activity-motion.
+unless the daemon starts with `--activity-motion`.
 
 ## Action Semantics
 

@@ -8,7 +8,7 @@
 - Native-terminal Codex launcher with labels, titles, leases, and immediate cleanup.
 - Non-interactive `codex-exec` adapter with targeted Stop.
 - Multi-agent registry keyed by backend and session ID.
-- Visual Protocol 0.1 with steady, shape-plus-color state glyphs.
+- Visual Protocol 1 with steady, shape-plus-color state glyphs.
 - Eight persistent-color session selectors and semantic status LEDs.
 - Safe LRU overflow, protected approvals, explicit session cleanup, and TTL.
 - Selected-session action routing with state and live-capability checks.
@@ -17,18 +17,21 @@
 - Declarative, hierarchical JSON device profiles with conformance levels.
 - Supported Novation Launchpad Pro Mk1 profile.
 - Experimental Novation Launchpad Mini Mk3 profile.
+- Experimental Novation Launchpad Pro Mk3 profile mapped from Novation's
+  Programmer's Reference Guide.
 - Guided physical profile testing with sanitized reports.
+- Read-only `pad-lattice doctor` diagnostics for profiles, MIDI, daemon, and hooks.
 - On-demand GitHub workflows for tests, documentation, TestPyPI, and PyPI.
 
 ## Next
 
-- Recruit Mini Mk3 testers and promote the profile after a complete passing
-  physical report.
+- Recruit Mini Mk3 and Pro Mk3 testers and promote each profile after a
+  complete passing physical report.
 - Add a supported broader Codex control channel for interactive Stop, Retry,
   and ordinary chat replies.
 - Publish signed releases to TestPyPI and PyPI.
 - Add more community-authored controller profiles.
-- Validate Visual Protocol 0.1 on devices with different layouts and palettes.
+- Validate Visual Protocol 1 on devices with different layouts and palettes.
 
 ## Longer Term
 
@@ -38,3 +41,21 @@
 - Repository activity, workflow phase, and risk displays built on the same
   semantic surface interface.
 - A transport abstraction for platforms without Unix-domain socket support.
+
+## How to Help
+
+- **Use Codex with a Launchpad Pro Mk1** and report reproducible integration
+  failures.
+- **Run the guided hardware test** for the Launchpad Mini Mk3, Pro Mk3, or
+  another MIDI grid and attach its privacy-preserving report.
+- **Author a declarative device profile** when the controller fits the trusted
+  palette-grid driver.
+- **Prototype another agent adapter** against the semantic state and socket
+  contracts without adding MIDI logic to the integration.
+- **Review Visual Protocol 1** for distinctions that remain clear across
+  different RGB palettes and controller layouts.
+
+Start with the [Developer Guide](../technical-details/developer-guide.md) for
+code changes or [Test a Device](../usage/device-testing.md) for hardware
+validation. Open focused reports in the [GitHub issue
+tracker](https://github.com/mrueda/pad-lattice/issues).

@@ -3,6 +3,18 @@
 Most problems are profile selection, MIDI ownership, controller mode, or a
 socket mismatch.
 
+Start with one read-only report:
+
+```bash
+pad-lattice doctor
+```
+
+It checks discovery, profile matching, daemon reachability, socket permissions,
+and Codex hook installation without opening the controller or changing LEDs.
+Use `pad-lattice doctor --json` when attaching diagnostics to an issue; the
+report omits session identities and agent metadata.
+It also abbreviates home and runtime-directory paths.
+
 ## No Device Is Detected
 
 Inspect raw ports, profile matches, and installed profiles:
@@ -14,7 +26,7 @@ pad-lattice profile list
 ```
 
 Auto-detection uses supported profiles only. Select experimental hardware such
-as the Mini Mk3 explicitly:
+as the Mini Mk3 or Pro Mk3 explicitly:
 
 ```bash
 pad-lattice demo --profile novation/launchpad/mini-mk3
@@ -51,7 +63,7 @@ programmer-mode messages in the selected profile.
 
 ## Controller Does Not Return to Normal Mode
 
-Stop Pad-Lattice with `Ctrl-C` so profile shutdown runs. Both bundled profiles
+Stop Pad-Lattice with `Ctrl-C` so profile shutdown runs. All bundled profiles
 restore their normal Live mode on close. If a process was terminated without
 cleanup, power-cycle the controller or select Live mode from the hardware.
 
@@ -140,8 +152,6 @@ pad-lattice install-codex-hooks
 If the hardware window expires, Codex presents its normal keyboard approval
 prompt. Approve applies only to the current permission request.
 
-Test generic routing with an explicit identity:
-
 Test routing with an explicit identity:
 
 ```bash
@@ -173,11 +183,20 @@ pad-lattice end-session --backend codex --session-id <SESSION_ID>
 
 ## Validate a Profile
 
-Run schema validation without opening MIDI:
+Run Pad-Lattice's built-in parser and semantic checks without opening MIDI:
 
 ```bash
 pad-lattice profile validate ./controller.json
 ```
+
+Profile authors can additionally check the published JSON Schema after
+installing the optional `schema` extra:
+
+```bash
+pad-lattice profile validate ./controller.json --validate-schema
+```
+
+This remains a dry run. Physical mapping is verified separately:
 
 For physical mapping problems, create a guided report:
 

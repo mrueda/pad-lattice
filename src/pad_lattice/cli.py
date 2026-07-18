@@ -5,9 +5,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import socket
 import sys
 import time
+import uuid
+from collections.abc import Callable
+from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import TextIO
 
@@ -20,8 +22,13 @@ from pad_lattice.codex_hooks import (
 )
 from pad_lattice.codex_exec import run_codex_exec
 from pad_lattice.codex_session import run_codex_session
-from pad_lattice.daemon import PadLatticeDaemon
+from pad_lattice.daemon_runtime import PadLatticeDaemon
 from pad_lattice.demo_agent import run_demo_surface
+from pad_lattice.diagnostics import (
+    collect_diagnostics,
+    diagnostics_exit_code,
+    print_diagnostics,
+)
 from pad_lattice.devices.factory import (
     discover_devices,
     open_resolved_surface,
@@ -42,9 +49,12 @@ from pad_lattice.devices.testing import run_profile_test
 from pad_lattice.events import AgentIdentity, AgentState
 from pad_lattice.identity_store import IdentityStore, default_identity_store_path
 from pad_lattice.protocol import (
+    JsonLineConnection,
+    MAX_PREVIEW_TTL,
     default_socket_path,
-    decode_message,
-    encode_message,
+    open_message_connection,
+    preview_end_message,
+    preview_message,
     request_message,
     send_message,
     session_end_message,
@@ -52,6 +62,7 @@ from pad_lattice.protocol import (
     status_message,
     subscribe_actions_message,
 )
+from pad_lattice.visual_protocol import ACCENT_RGB
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -69,6 +80,16 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("ports", help="list MIDI input and output ports")
 
     subparsers.add_parser("devices", help="detect supported and experimental devices")
+
+    doctor = subparsers.add_parser("doctor", help="inspect the local installation")
+    doctor.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
+    doctor.add_argument(
+        "--hooks-path",
+        type=Path,
+        default=default_codex_hooks_path(),
+        help="Codex hooks.json path",
+    )
+    doctor.add_argument("--json", action="store_true", help="emit machine-readable JSON")
 
     demo = subparsers.add_parser("demo", help="run a guided hardware conversation")
     _add_device_arguments(demo)
@@ -136,6 +157,17 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.5,
         help="seconds between --watch updates",
+    )
+
+    symbols = subparsers.add_parser(
+        "symbols", help="cycle all state glyphs on the selected session"
+    )
+    symbols.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
+    symbols.add_argument(
+        "--hold",
+        type=float,
+        default=0.7,
+        help="seconds to display each glyph",
     )
 
     send_state = subparsers.add_parser("send-state", help="send a state to the daemon")
@@ -255,6 +287,11 @@ def build_parser() -> argparse.ArgumentParser:
         "validate", help="validate a device profile JSON file"
     )
     profile_validate.add_argument("path", type=Path, help="profile JSON file")
+    profile_validate.add_argument(
+        "--validate-schema",
+        action="store_true",
+        help="also run the optional JSON Schema dry-run check",
+    )
 
     profile_test = profile_commands.add_parser(
         "test", help="run an interactive hardware profile verification"
@@ -316,6 +353,17 @@ def main(argv: list[str] | None = None) -> int:
                 )
             return 0
 
+        if args.command == "doctor":
+            report = collect_diagnostics(
+                socket_path=args.socket,
+                hooks_path=args.hooks_path,
+            )
+            if args.json:
+                print(json.dumps(report, indent=2, sort_keys=True))
+            else:
+                print_diagnostics(report)
+            return diagnostics_exit_code(report)
+
         if args.command == "demo":
             device = resolve_device(
                 profile_id=args.profile_id,
@@ -364,6 +412,9 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 _print_status(status_payload)
             return 0
+
+        if args.command == "symbols":
+            return cycle_symbols(args.socket, hold=args.hold)
 
         if args.command == "send-state":
             send_message(
@@ -437,7 +488,10 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command == "profile":
             if args.profile_command == "validate":
-                validated = load_profile_file(args.path)
+                validated = load_profile_file(
+                    args.path,
+                    validate_schema=args.validate_schema,
+                )
                 print(f"Valid profile: {validated.id} [{validated.status}]")
                 return 0
 
@@ -507,21 +561,16 @@ def listen_actions(
     *,
     once: bool = False,
 ) -> int:
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
-        client.connect(socket_path)
-        client.sendall(encode_message(subscribe_actions_message(agent)))
-        buffer = b""
+    with open_message_connection(socket_path, timeout=None) as connection:
+        connection.send(subscribe_actions_message(agent))
         while True:
-            data = client.recv(4096)
-            if not data:
+            try:
+                message = connection.receive()
+            except ConnectionError:
                 return 0
-            buffer += data
-            while b"\n" in buffer:
-                line, buffer = buffer.split(b"\n", 1)
-                if line.strip():
-                    print(json.dumps(decode_message(line), separators=(",", ":")), flush=True)
-                    if once:
-                        return 0
+            print(json.dumps(message, separators=(",", ":")), flush=True)
+            if once:
+                return 0
 
 
 def _add_device_arguments(parser: argparse.ArgumentParser) -> None:
@@ -562,16 +611,58 @@ def _profile_summary(profile: DeviceProfile) -> dict[str, object]:
     }
 
 
-ACCENT_RGB: dict[str, tuple[int, int, int]] = {
-    "cyan": (0, 174, 187),
-    "magenta": (200, 62, 201),
-    "lime": (112, 185, 45),
-    "orange": (230, 126, 34),
-    "violet": (118, 86, 199),
-    "teal": (0, 155, 131),
-    "rose": (217, 76, 118),
-    "sky": (55, 136, 216),
-}
+def cycle_symbols(
+    socket_path: str,
+    *,
+    hold: float = 0.7,
+    sleep: Callable[[float], None] = time.sleep,
+    stream: TextIO | None = None,
+    connector: Callable[
+        [str], AbstractContextManager[JsonLineConnection]
+    ] = open_message_connection,
+) -> int:
+    """Preview every state glyph without changing authoritative agent state."""
+
+    if hold <= 0:
+        raise ValueError("symbol hold must be positive")
+    if hold >= MAX_PREVIEW_TTL:
+        raise ValueError(
+            f"symbol hold must be less than {MAX_PREVIEW_TTL:g} seconds"
+        )
+    if stream is None:
+        stream = sys.stdout
+
+    preview_id = uuid.uuid4().hex
+    ttl = hold + 1.0
+    with connector(socket_path) as connection:
+        active = False
+        try:
+            for state in AgentState:
+                response = connection.request(
+                    preview_message(state, preview_id, ttl=ttl)
+                )
+                _expect_response(response, "preview_ack")
+                active = True
+                print(state.value, file=stream, flush=True)
+                sleep(hold)
+        finally:
+            if active:
+                response = connection.request(
+                    preview_end_message(preview_id)
+                )
+                _expect_response(response, "preview_end_ack")
+    return 0
+
+
+def _expect_response(response: object, expected_type: str) -> None:
+    if not isinstance(response, dict):
+        raise ValueError("daemon returned an invalid response")
+    if response.get("type") == "error":
+        raise ValueError(str(response.get("error", "daemon rejected the request")))
+    if response.get("type") != expected_type:
+        raise ValueError(
+            f"daemon returned {response.get('type')!r}; expected {expected_type!r}"
+        )
 
 
 def watch_status(

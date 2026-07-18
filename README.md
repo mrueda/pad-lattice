@@ -25,7 +25,7 @@ AI agents.** A local daemon owns the controller, renders agent state with
 steady RGB feedback, and routes physical actions through a small Unix-socket
 protocol. No browser or graphical agent UI is required.
 
-It also defines **Visual Protocol 0.1**: a hardware-independent grammar for
+It also defines **Visual Protocol 1**: a hardware-independent grammar for
 agent identity, state, selection, action availability, and overflow. Device
 profiles translate that grammar to MIDI without redefining it.
 
@@ -44,6 +44,7 @@ the non-interactive Codex adapter are implemented.
 | --- | --- | --- |
 | Novation Launchpad Pro Mk1 | `novation/launchpad/pro-mk1` | **Supported and physically tested** |
 | Novation Launchpad Mini Mk3 | `novation/launchpad/mini-mk3` | **Experimental; testers wanted** |
+| Novation Launchpad Pro Mk3 | `novation/launchpad/pro-mk3` | **Experimental; testers wanted** |
 
 The generic `midi.palette-grid` driver reads declarative JSON profiles. New
 controllers can define port matching, programmer-mode messages, note maps,
@@ -99,10 +100,11 @@ pad-lattice status --watch
 The launcher uses the terminal directly, without a pseudo-terminal. Closing
 it releases the session lease and clears that Scene immediately.
 
-The experimental Mini Mk3 profile must be selected explicitly:
+Experimental profiles must be selected explicitly:
 
 ```bash
 pad-lattice demo --profile novation/launchpad/mini-mk3
+pad-lattice demo --profile novation/launchpad/pro-mk3
 ```
 
 Run its guided physical verification and create a privacy-preserving report:
@@ -111,6 +113,10 @@ Run its guided physical verification and create a privacy-preserving report:
 pad-lattice profile test novation/launchpad/mini-mk3 \
   --report mini-mk3-report.json
 ```
+
+Use `novation/launchpad/pro-mk3` and a different report name to verify a Pro
+Mk3. Experimental profiles are mapped from Novation's Programmer's Reference
+but remain unverified until a physical report passes.
 
 ## Surface Cheat Sheet
 
@@ -153,7 +159,7 @@ visual protocol](https://mrueda.github.io/pad-lattice/docs/usage/visual-language
 
 The Launchpad-family common surface is **8x8 plus eight top and eight right
 controls**. The Pro Mk1 has 16 additional controls on its left and bottom
-rails; Protocol 0.1 leaves them reserved so the core interaction remains
+rails; Protocol 1 leaves them reserved so the core interaction remains
 portable across Launchpad models.
 
 ## Development

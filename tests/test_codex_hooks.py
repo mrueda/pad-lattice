@@ -17,7 +17,13 @@ from pad_lattice.codex_hooks import (
     state_for_codex_hook,
 )
 from pad_lattice.events import AgentIdentity, AgentState, ControlAction
-from pad_lattice.protocol import action_message, decode_message, encode_message
+from pad_lattice.protocol import (
+    WIRE_PROTOCOL_VERSION,
+    ProtocolError,
+    action_message,
+    decode_message,
+    encode_message,
+)
 
 
 HOOK_COMMAND = (
@@ -27,6 +33,11 @@ HOOK_COMMAND = (
 
 
 class CodexHookTest(TestCase):
+    def setUp(self) -> None:
+        environment = patch.dict("os.environ", {}, clear=True)
+        environment.start()
+        self.addCleanup(environment.stop)
+
     def test_maps_supported_lifecycle_events(self) -> None:
         expected = {
             "SessionStart": AgentState.WAITING_FOR_REPLY,
@@ -71,6 +82,7 @@ class CodexHookTest(TestCase):
                 (
                     "/tmp/pad-lattice.sock",
                     {
+                        "protocol": WIRE_PROTOCOL_VERSION,
                         "type": "state",
                         "state": "running",
                         "agent": {
@@ -96,6 +108,23 @@ class CodexHookTest(TestCase):
             ),
             output,
             sender=unavailable,
+        )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(output.getvalue(), "{}\n")
+
+    def test_daemon_protocol_failure_does_not_fail_hook(self) -> None:
+        def invalid_response(path, message):
+            raise ProtocolError("invalid daemon response")
+
+        output = io.StringIO()
+        result = run_codex_hook(
+            "/tmp/pad-lattice.sock",
+            io.StringIO(
+                '{"hook_event_name":"PostToolUse","session_id":"session-123"}'
+            ),
+            output,
+            sender=invalid_response,
         )
 
         self.assertEqual(result, 0)

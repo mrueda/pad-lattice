@@ -12,9 +12,11 @@ from pad_lattice.devices.profiles import (
     ProfileCatalog,
     ProfileError,
     load_profile_file,
+    load_profile_schema,
     parse_profile,
 )
 from pad_lattice.events import ControlAction
+from pad_lattice.visual_protocol import VISUAL_PROTOCOL_VERSION
 
 
 def valid_profile_data() -> dict:
@@ -25,6 +27,16 @@ def valid_profile_data() -> dict:
 
 
 class DeviceProfileTest(TestCase):
+    def test_machine_readable_schema_is_packaged(self) -> None:
+        schema = load_profile_schema()
+
+        self.assertEqual(schema["title"], "Pad-Lattice Device Profile v1")
+        self.assertEqual(schema["properties"]["schema_version"]["const"], 1)
+        self.assertEqual(
+            schema["properties"]["visual_protocol"]["const"],
+            VISUAL_PROTOCOL_VERSION,
+        )
+
     def test_built_in_profiles_follow_manufacturer_family_model_hierarchy(self) -> None:
         catalog = ProfileCatalog.load(include_user=False)
 
@@ -33,6 +45,7 @@ class DeviceProfileTest(TestCase):
             [
                 "novation/launchpad/mini-mk3",
                 "novation/launchpad/pro-mk1",
+                "novation/launchpad/pro-mk3",
             ],
         )
         self.assertEqual(catalog.get("novation/launchpad/pro-mk1").status, "supported")
@@ -44,6 +57,10 @@ class DeviceProfileTest(TestCase):
             catalog.get("novation/launchpad/mini-mk3").status,
             "experimental",
         )
+        self.assertEqual(
+            catalog.get("novation/launchpad/pro-mk3").status,
+            "experimental",
+        )
 
     def test_profiles_define_eight_multi_agent_slots(self) -> None:
         catalog = ProfileCatalog.load(include_user=False)
@@ -51,7 +68,7 @@ class DeviceProfileTest(TestCase):
         for profile in catalog.profiles:
             with self.subTest(profile=profile.id):
                 self.assertEqual(profile.schema_version, 1)
-                self.assertEqual(profile.visual_protocol, "0.1")
+                self.assertEqual(profile.visual_protocol, 1)
                 self.assertEqual(profile.selector_capacity, 8)
                 self.assertEqual(
                     [address.number for address in profile.selectors],
@@ -120,6 +137,52 @@ class DeviceProfileTest(TestCase):
             {"cc"},
         )
 
+    def test_pro_mk3_profile_uses_documented_programmer_mode(self) -> None:
+        profile = ProfileCatalog.load(include_user=False).get(
+            "novation/launchpad/pro-mk3"
+        )
+
+        self.assertEqual(profile.status, "experimental")
+        self.assertEqual(profile.startup[0].data, (0, 32, 41, 2, 14, 14, 1))
+        self.assertEqual(profile.shutdown[0].data, (0, 32, 41, 2, 14, 14, 0))
+        self.assertEqual(
+            {
+                action: profile.controls[action].number
+                for action in ControlAction
+            },
+            {
+                ControlAction.APPROVE: 91,
+                ControlAction.REJECT: 92,
+                ControlAction.RETRY: 97,
+                ControlAction.STOP: 98,
+            },
+        )
+
+    def test_pro_mk3_detection_prefers_midi_interface(self) -> None:
+        catalog = ProfileCatalog.load(include_user=False)
+
+        candidates = catalog.detect(
+            [
+                "LPProMK3 DIN 20:0",
+                "LPProMK3 MIDI 2 20:1",
+                "LPProMK3 DAW 20:2",
+            ],
+            [
+                "LPProMK3 DIN 20:0",
+                "LPProMK3 MIDI 2 20:1",
+                "LPProMK3 DAW 20:2",
+            ],
+        )
+
+        pro_mk3 = [
+            candidate
+            for candidate in candidates
+            if candidate.profile.id == "novation/launchpad/pro-mk3"
+        ]
+        self.assertEqual(len(pro_mk3), 1)
+        self.assertEqual(pro_mk3[0].input_name, "LPProMK3 MIDI 2 20:1")
+        self.assertEqual(pro_mk3[0].output_name, "LPProMK3 MIDI 2 20:1")
+
     def test_profile_file_loader_reports_invalid_json(self) -> None:
         with TemporaryDirectory() as directory:
             path = Path(directory) / "profile.json"
@@ -127,6 +190,21 @@ class DeviceProfileTest(TestCase):
 
             with self.assertRaisesRegex(ProfileError, "invalid JSON"):
                 load_profile_file(path)
+
+    def test_profile_schema_validation_is_explicit_opt_in(self) -> None:
+        profile = ProfileCatalog.load(include_user=False).get(
+            "novation/launchpad/pro-mk3"
+        )
+        path = Path(profile.source)
+
+        with patch(
+            "pad_lattice.devices.profiles.validate_json_schema"
+        ) as validate:
+            load_profile_file(path)
+            validate.assert_not_called()
+
+            load_profile_file(path, validate_schema=True)
+            validate.assert_called_once()
 
     def test_profile_rejects_unknown_driver(self) -> None:
         data = valid_profile_data()
@@ -172,7 +250,7 @@ class DeviceProfileTest(TestCase):
 
     def test_profile_rejects_unknown_visual_protocol(self) -> None:
         data = valid_profile_data()
-        data["visual_protocol"] = "9.9"
+        data["visual_protocol"] = 9
 
         with self.assertRaisesRegex(ProfileError, "unsupported visual_protocol"):
             parse_profile(data)

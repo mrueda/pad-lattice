@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "visual_protocol": "0.1",
+  "visual_protocol": 1,
   "id": "novation/launchpad/pro-mk1",
   "name": "Novation Launchpad Pro Mk1",
   "manufacturer": "Novation",

@@ -11,7 +11,9 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from pad_lattice.events import AgentState, ControlAction
+from pad_lattice.schema_validation import validate_json_schema
 from pad_lattice.visual_protocol import (
+    IDENTITY_ACCENTS,
     STATE_HEIGHT,
     STATE_WIDTH,
     VISUAL_PROTOCOL_VERSION,
@@ -61,7 +63,7 @@ class GridRegion:
 @dataclass(frozen=True)
 class DeviceProfile:
     schema_version: int
-    visual_protocol: str
+    visual_protocol: int
     id: str
     name: str
     manufacturer: str
@@ -184,14 +186,33 @@ def matching_ports(names: Iterable[str], patterns: tuple[str, ...]) -> tuple[str
     return _matching_ports(names, patterns)
 
 
-def load_profile_file(path: Path) -> DeviceProfile:
+def load_profile_file(
+    path: Path,
+    *,
+    validate_schema: bool = False,
+) -> DeviceProfile:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
         raise ProfileError(f"profile file not found: {path}") from exc
     except json.JSONDecodeError as exc:
         raise ProfileError(f"{path}: invalid JSON: {exc.msg}") from exc
+    if validate_schema:
+        validate_json_schema(
+            data,
+            load_profile_schema(),
+            context=str(path),
+        )
     return parse_profile(data, source=str(path))
+
+
+def load_profile_schema() -> dict[str, Any]:
+    """Load the packaged machine-readable profile schema."""
+
+    schema = resources.files("pad_lattice").joinpath(
+        "schemas", "device-profile-v1.json"
+    )
+    return json.loads(schema.read_text(encoding="utf-8"))
 
 
 def parse_profile(data: Any, *, source: str = "<profile>") -> DeviceProfile:
@@ -204,7 +225,7 @@ def parse_profile(data: Any, *, source: str = "<profile>") -> DeviceProfile:
             f"{source}: unsupported schema_version {schema_version}; "
             f"expected {PROFILE_SCHEMA_VERSION}"
         )
-    visual_protocol = _string(data, "visual_protocol", source)
+    visual_protocol = _integer(data, "visual_protocol", source)
     if visual_protocol != VISUAL_PROTOCOL_VERSION:
         raise ProfileError(
             f"{source}: unsupported visual_protocol {visual_protocol!r}; "
@@ -395,6 +416,12 @@ def parse_profile(data: Any, *, source: str = "<profile>") -> DeviceProfile:
     accent_names = [accent.name for accent in accents]
     if len(set(accent_names)) != len(accent_names):
         raise ProfileError(f"{source}.accents must use unique names")
+    expected_accents = IDENTITY_ACCENTS[: len(selectors)]
+    if tuple(accent_names) != expected_accents:
+        raise ProfileError(
+            f"{source}.accents must use Visual Protocol order: "
+            + ", ".join(expected_accents)
+        )
 
     conformance_data = data.get("conformance")
     if (

@@ -1,21 +1,23 @@
 {
   "schema_version": 1,
   "visual_protocol": 1,
-  "id": "novation/launchpad/mini-mk3",
-  "name": "Novation Launchpad Mini Mk3",
+  "id": "novation/launchpad/pro-mk3",
+  "name": "Novation Launchpad Pro Mk3",
   "manufacturer": "Novation",
   "family": "Launchpad",
-  "model": "Mini Mk3",
+  "model": "Pro Mk3",
   "status": "experimental",
   "driver": "midi.palette-grid",
   "ports": {
     "input": [
-      "LPMiniMK3.*MIDI",
-      "Launchpad Mini.*MIDI"
+      "(?:Launchpad Pro MK3|LPProMK3).*MIDI 2(?:\\D|$)",
+      "MIDIIN ?2.*(?:Launchpad Pro MK3|LPProMK3)",
+      "^(?:Launchpad Pro MK3|LPProMK3).*MIDI(?!.*(?:DAW|DIN))"
     ],
     "output": [
-      "LPMiniMK3.*MIDI",
-      "Launchpad Mini.*MIDI"
+      "(?:Launchpad Pro MK3|LPProMK3).*MIDI 2(?:\\D|$)",
+      "MIDIOUT ?2.*(?:Launchpad Pro MK3|LPProMK3)",
+      "^(?:Launchpad Pro MK3|LPProMK3).*MIDI(?!.*(?:DAW|DIN))"
     ]
   },
   "grid": {
@@ -98,11 +100,11 @@
   "conformance": ["core-state", "multi-agent", "actions"],
   "messages": {
     "startup": [
-      {"type": "sysex", "data": [0, 32, 41, 2, 13, 14, 1]}
+      {"type": "sysex", "data": [0, 32, 41, 2, 14, 14, 1]}
     ],
     "clear": [],
     "shutdown": [
-      {"type": "sysex", "data": [0, 32, 41, 2, 13, 14, 0]}
+      {"type": "sysex", "data": [0, 32, 41, 2, 14, 14, 0]}
     ]
   },
   "capabilities": {

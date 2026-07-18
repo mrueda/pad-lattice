@@ -49,6 +49,11 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'doc',
+          id: 'technical-details/developer-guide',
+          label: 'Developer Guide',
+        },
+        {
+          type: 'doc',
           id: 'technical-details/architecture',
           label: 'Architecture',
         },
@@ -68,6 +73,11 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Reference',
       items: [
+        {
+          type: 'doc',
+          id: 'reference/socket-protocol',
+          label: 'Socket Protocol',
+        },
         {
           type: 'doc',
           id: 'reference/cli',

@@ -1,8 +1,9 @@
 # Multi-Agent Design
 
-Multi-agent selection and targeted routing are implemented in the daemon. One
-MIDI controller can represent several Codex or other agent sessions without
-letting a background update change the intended action target.
+Multi-agent selection and targeted routing are implemented in the deterministic
+`ControlPlane`. The daemon runtime supplies socket, clock, and MIDI events. One
+controller can represent several agent sessions without letting a background
+update change the intended action target.
 
 ## Invariants
 
@@ -19,22 +20,15 @@ letting a background update change the intended action target.
 
 ## Surface Layout
 
-Both bundled profiles expose the common Launchpad topology: eight top
+All bundled profiles expose the common Launchpad topology: eight top
 controls, an 8x8 matrix, and eight right-side Agent Scene controls. The right
 rail selects agents; the rightmost matrix column retains their compact states.
 
-```text
-AP  NO  --  --  OV  --  RE  ST   common top action/system rail
-CC91 CC92 CC93 CC94 CC95 CC96 CC97 CC98
-glyph glyph glyph glyph glyph glyph glyph S1   A1 / CC89
-glyph glyph glyph glyph glyph glyph glyph S2   A2 / CC79
-glyph glyph glyph glyph glyph glyph glyph S3   A3 / CC69
-glyph glyph glyph glyph glyph glyph glyph S4   A4 / CC59
-glyph glyph glyph glyph glyph glyph glyph S5   A5 / CC49
-glyph glyph glyph glyph glyph glyph glyph S6   A6 / CC39
-glyph glyph glyph glyph glyph glyph glyph S7   A7 / CC29
-glyph glyph glyph glyph glyph glyph glyph S8   A8 / CC19
-```
+![Three agent sessions mapped through the daemon registry to one explicitly selected Launchpad view](/img/multi-agent-selection.svg)
+
+_Session 2 is selected. Its amber approval state owns the center and enables
+Approve/Reject, while sessions 1 and 3 remain visible through their compact
+status pads and identity-colored Agent Scenes._
 
 An occupied Agent Scene is bright when selected and dim otherwise. Its status
 pad uses the state's semantic color. This makes a background approval request
@@ -87,21 +81,18 @@ Plain Codex remains supported through explicit `end-session` and TTL cleanup.
 
 ## State Flow
 
-```text
-Codex A -- lifecycle hook --\
-Codex B -- lifecycle hook ----> registry -> selected state -> center LEDs
-Codex C -- lifecycle hook --/       |
-                                    +----> per-slot status LEDs
-```
-
 An update always changes the matching registry record. It affects the center
-only when that record is selected.
+only when that record is selected. The selection diagram above shows both
+outputs: every visible record has a compact state pad, while exactly one record
+drives the 7x8 center glyph and available action rail.
 
 ## Action Flow
 
-```text
-pad press -> profile -> daemon -> selected identity -> matching live subscriber
-```
+![One physical Approve press passing daemon routing gates and reaching only the oldest matching request for the selected agent](/img/multi-agent-action-routing.svg)
+
+_The hardware emits a semantic action without choosing an agent. The daemon
+adds the explicit selected identity, validates state and live capability, and
+delivers to one matching subscriber._
 
 Subscribers declare identity, capabilities, and optional request correlation.
 For example, `codex-exec` advertises only Stop, while a Codex
