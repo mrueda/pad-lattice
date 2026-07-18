@@ -186,7 +186,8 @@ npm run typecheck
 npm run build
 ```
 
-Release instructions are in [RELEASING.md](RELEASING.md).
+Release history is in [CHANGELOG.md](CHANGELOG.md). Release instructions are
+in [RELEASING.md](RELEASING.md).
 
 ## Citation
 
