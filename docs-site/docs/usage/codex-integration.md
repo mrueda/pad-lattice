@@ -4,20 +4,19 @@ Pad-Lattice integrates with Codex CLI through two documented event paths.
 Interactive terminals use lifecycle hooks; non-interactive tasks use the
 `codex exec --json` event stream. Neither path requires a graphical UI.
 
-## Install the Hooks
+## Launch with Scoped Hooks
 
-Install the user-level hooks once:
+Start Codex through the Pad-Lattice launcher:
 
 ```bash
-pad-lattice install-codex-hooks
+pad-lattice codex --label implementation
 ```
 
-The installer merges five handlers into `~/.codex/hooks.json` and preserves
-other hooks. It records the absolute `pad-lattice-hook` executable and resolved
-socket path. The lightweight runner silently drains events when no daemon
-socket exists, so the hooks can remain installed without delaying unrelated
-Codex sessions. Start a new session, then run `/hooks` to review and explicitly
-trust the commands. Reinstalling a changed definition requires another review.
+The launcher passes five lifecycle handlers to that child Codex process using
+session configuration. It does **not** modify `~/.codex/hooks.json`, so ordinary
+`codex` sessions neither run Pad-Lattice hooks nor ask users to review them.
+Run `/hooks` in the first Pad-Lattice-launched session to review and explicitly
+trust the commands. A materially changed definition requires another review.
 
 | Codex hook | Pad-Lattice state |
 | --- | --- |
@@ -87,20 +86,16 @@ controls are completely dark when no live request can consume them.
 This path uses Codex's supported `PermissionRequest` hook output. It does not
 scrape terminals or inject synthetic keys.
 
-## Direct Codex Fallback
+## Plain Codex Sessions
 
-Plain `codex` and `codex resume` sessions still report state and accept
-surface permission decisions after the hooks are trusted. Codex exposes no
-terminal-close hook, so direct sessions use the 24-hour unleased-session TTL
-or explicit cleanup:
+Plain `codex` and `codex resume` sessions intentionally remain outside
+Pad-Lattice. They do not report state, accept surface decisions, or show a
+Pad-Lattice hook-review prompt. Start or resume through `pad-lattice codex`
+when a session should join the control surface:
 
 ```bash
-pad-lattice status
-pad-lattice end-session --backend codex --session-id <SESSION_ID>
+pad-lattice codex --label docs -- resume <SESSION_ID>
 ```
-
-The leased launcher is the recommended multi-agent path because it clears
-Scenes immediately and supplies terminal labels.
 
 ## Interactive Action Boundary
 
@@ -138,25 +133,31 @@ another concurrent `codex-exec` task.
 
 ## Hook Trust and Scope
 
-Codex records trust against the exact hook definition. Reinstalling a changed
-definition requires another review. To install project-local hooks instead:
+Codex records trust against the exact hook definition. Pad-Lattice emits the
+same deterministic definition for the same executable, socket, and timeout,
+so an accepted definition is reusable by later Pad-Lattice-launched sessions.
+The hooks remain scoped to those sessions.
+
+Use `--socket PATH` when the daemon runs on a non-default socket. The launcher
+passes the same resolved path to its hook commands:
 
 ```bash
-pad-lattice install-codex-hooks --path .codex/hooks.json
+pad-lattice codex --socket /tmp/pad-lattice.sock --label docs
 ```
 
-Use `--socket PATH` when the daemon runs on a non-default socket. Reinstall the
-hooks after changing that path. The launcher also exports its socket path to
-the child, allowing one integrated invocation to override the installed
-default.
-
-Set a different surface-decision wait when installing hooks:
+Set a different surface-decision wait on the launcher:
 
 ```bash
-pad-lattice install-codex-hooks --approval-timeout 90
+pad-lattice codex --approval-timeout 90 --label implementation
 ```
 
-The installed Codex handler timeout includes a five-second shutdown margin.
+The Codex handler timeout includes a five-second shutdown margin. Changing the
+socket, timeout, or executable changes the exact definition and may require a
+new review.
 
-Project hooks run only after Codex trusts both the project configuration layer
-and the hook definition.
+Early Pad-Lattice alpha builds installed global hooks. Remove only those legacy
+entries, while preserving unrelated hooks, with:
+
+```bash
+pad-lattice uninstall-codex-hooks
+```

@@ -78,7 +78,8 @@ with `pad-lattice codex --label NAME` when several agents share a repository.
 
 Codex hooks provide no session-close event. `pad-lattice codex` therefore keeps
 a persistent daemon lease while passing the real terminal directly to Codex.
-Plain Codex remains supported through explicit `end-session` and TTL cleanup.
+It also scopes the hooks to that child process; plain Codex stays outside the
+Pad-Lattice registry.
 
 ## State Flow
 
@@ -112,7 +113,7 @@ therefore never approve two pending operations.
 
 | Integration | Multi-session state | Targeted actions |
 | --- | --- | --- |
-| Interactive Codex hooks | Yes | Approve and Reject for permission requests |
+| `pad-lattice codex` session hooks | Yes | Approve and Reject for permission requests |
 | `codex-exec` | Yes | Stop |
 | Manual `listen-actions` | Yes | Approve, reject, retry, stop for its chosen identity |
 

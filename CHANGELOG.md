@@ -8,8 +8,9 @@ versions follow [PEP 440](https://peps.python.org/pep-0440/).
 
 ### Fixed
 
-- Codex lifecycle hooks now use a lightweight, silent no-daemon runner instead
-  of loading the full CLI after every event.
+- Codex lifecycle hooks are now scoped to sessions launched with
+  `pad-lattice codex`, so ordinary Codex sessions no longer run Pad-Lattice
+  hooks or display their review prompt.
 
 ## 0.1.0a1 - 2026-07-18
 

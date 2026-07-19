@@ -69,17 +69,15 @@ Start a virtual surface without MIDI hardware:
 pad-lattice web
 ```
 
-Install the Codex lifecycle hooks once, review them with `/hooks`, and launch
-an integrated session:
+Launch an integrated Codex session:
 
 ```bash
-pad-lattice install-codex-hooks
 pad-lattice codex --label implementation
 ```
 
-The installed hooks use a lightweight runner and remain silent when no
-Pad-Lattice daemon is listening. They can stay installed between surface
-sessions.
+The launcher injects Pad-Lattice lifecycle hooks only into its child Codex
+process. On first use, review those commands with `/hooks`. Ordinary `codex`
+sessions do not load Pad-Lattice hooks or show their review prompt.
 
 When Codex requests permission, select its Agent Scene and press the lit
 Approve or Reject control in the browser. The decision is routed only to that

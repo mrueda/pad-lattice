@@ -138,29 +138,28 @@ export PAD_LATTICE_SOCKET=/tmp/pad-lattice.sock
 pad-lattice send-state running
 ```
 
-If this renders, reinstall the hooks, start a new Codex session, and run
+If this renders, start Codex through the launcher with the same socket and run
 `/hooks` to verify that every Pad-Lattice command is trusted:
 
 ```bash
-pad-lattice install-codex-hooks --socket /tmp/pad-lattice.sock
+pad-lattice codex --socket /tmp/pad-lattice.sock --label test
 ```
 
-The installed commands contain the resolved socket path. Changing the daemon
-socket therefore requires reinstalling and trusting the updated hooks.
+The scoped commands contain the resolved socket path. Changing it may require
+trusting the new definition.
 
-## Hooks Time Out While the Daemon Is Stopped
+## Pad-Lattice Hooks Appear in Plain Codex
 
-Current installations use the dedicated `pad-lattice-hook` runner. It exits
-silently when the configured Unix socket is absent, so hooks may remain enabled
-while Pad-Lattice is stopped. If `/hooks` still shows a command containing
-`pad-lattice codex-hook`, reinstall from the current package:
+Current versions inject hooks only through `pad-lattice codex`. If a plain
+`codex` session still shows Pad-Lattice hooks, remove entries installed by an
+early alpha build:
 
 ```bash
-pad-lattice install-codex-hooks
+pad-lattice uninstall-codex-hooks
 ```
 
-Start a new Codex session, review the changed definitions with `/hooks`, and
-confirm that the command begins with an absolute `pad-lattice-hook` path.
+Restart the plain Codex session after cleanup. Unrelated hook handlers are
+preserved.
 
 ## A Background Session Replaced the Center
 
@@ -186,8 +185,7 @@ pad-lattice end-session --backend codex --session-id SESSION_ID
 ```
 
 Closing a `pad-lattice codex` launcher removes its leased Scene immediately.
-Inactive sessions started with plain `codex` are retired by the daemon TTL or
-can be ended explicitly.
+Plain `codex` sessions do not register with Pad-Lattice.
 
 ## Approve or Reject Does Nothing
 
@@ -198,14 +196,15 @@ hook is waiting for that exact session.
 Confirm all of the following:
 
 - the requesting agent's right-side Scene is selected;
+- the session was started with `pad-lattice codex`;
 - `/hooks` shows the current Pad-Lattice `PermissionRequest` handler as trusted;
-- the daemon and installed hooks use the same socket;
+- the daemon and launcher use the same socket;
 - the 60-second surface-decision window has not elapsed.
 
-Reinstall changed hooks and review them again:
+Restart through the launcher and review a changed definition again:
 
 ```bash
-pad-lattice install-codex-hooks
+pad-lattice codex --label task -- resume <SESSION_ID>
 ```
 
 If the surface window expires, Codex presents its normal keyboard approval
@@ -232,8 +231,8 @@ Use the leased launcher for immediate process-lifecycle cleanup:
 pad-lattice codex --label task -- resume <SESSION_ID>
 ```
 
-Plain Codex exposes no terminal-close hook. Remove a direct session manually
-or let the unleased-session TTL retire it:
+Sessions created by an older integration may be removed manually or retired by
+the unleased-session TTL:
 
 ```bash
 pad-lattice status

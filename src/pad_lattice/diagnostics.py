@@ -10,7 +10,6 @@ from typing import Any
 
 from pad_lattice import __version__
 from pad_lattice.codex_hooks import (
-    HOOK_EVENTS,
     default_codex_hooks_path,
     installed_codex_hook_events,
 )
@@ -156,15 +155,15 @@ def collect_diagnostics(
 
     try:
         installed_events = installed_codex_hook_events(hooks_path)
-        complete = set(installed_events) == set(HOOK_EVENTS)
+        global_hooks_present = bool(installed_events)
         checks.append(
             DiagnosticCheck(
                 "codex_hooks",
-                "ok" if complete else "warning",
+                "warning" if global_hooks_present else "ok",
                 (
-                    "all Pad-Lattice lifecycle hooks are installed"
-                    if complete
-                    else f"{len(installed_events)} of {len(HOOK_EVENTS)} hooks installed"
+                    f"{len(installed_events)} legacy global Pad-Lattice hooks remain"
+                    if global_hooks_present
+                    else "hooks activate only through pad-lattice codex"
                 ),
                 {
                     "path": _redact_path(hooks_path),

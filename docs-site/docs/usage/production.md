@@ -65,12 +65,6 @@ Surface](./virtual-surface.md) for the complete security boundary.
 
 ## Interactive Codex
 
-Install lifecycle hooks once:
-
-```bash
-pad-lattice install-codex-hooks
-```
-
 Start one or more terminal sessions:
 
 ```bash
@@ -78,10 +72,11 @@ pad-lattice codex --label implementation
 pad-lattice codex --label docs -- resume <SESSION_ID>
 ```
 
-Run `/hooks` in each new Codex session to review and trust the installed
-commands. Each hook update carries its Codex session identity. Up to eight
-sessions remain visible, and an Agent Scene selects which state occupies the
-center. Keep a persistent legend in another terminal for larger setups:
+The launcher injects lifecycle hooks only into its child Codex process. Review
+the stable definitions with `/hooks` on first use; ordinary `codex` sessions
+remain untouched. Each hook update carries its Codex session identity. Up to
+eight sessions remain visible, and an Agent Scene selects which state occupies
+the center. Keep a persistent legend in another terminal for larger setups:
 
 ```bash
 pad-lattice status --watch
@@ -146,23 +141,21 @@ pad-lattice status
 pad-lattice end-session --backend codex --session-id <SESSION_ID>
 ```
 
-Plain `codex` remains a hooks-compatible fallback, including Approve and
-Reject, but it cannot signal terminal closure. Prefer the leased launcher for
-multi-agent operation.
+Plain `codex` intentionally stays outside Pad-Lattice. Use the leased launcher
+for state, Approve/Reject, terminal identity, and immediate cleanup.
 
 ## Custom Socket
 
-The daemon, clients, and installed hooks must use the same path:
+The daemon and launcher must use the same path:
 
 ```bash
 pad-lattice web --socket /tmp/pad-lattice.sock
-pad-lattice install-codex-hooks --socket /tmp/pad-lattice.sock
 pad-lattice codex --socket /tmp/pad-lattice.sock --label docs -- resume <SESSION_ID>
 ```
 
 The default is `$XDG_RUNTIME_DIR/pad-lattice.sock` when available, otherwise a
-per-user socket under `/tmp`. The hook installer resolves and embeds that path;
-reinstall and review the hooks after changing it.
+per-user socket under `/tmp`. The launcher resolves that path for its scoped
+hook definitions. Changing it may require reviewing the new definition.
 
 ## Shutdown
 

@@ -39,20 +39,16 @@ pad-lattice web
 Pad-Lattice prints and opens a loopback URL. Leave this process running; it is
 both the agent daemon and local browser bridge.
 
-Install the Codex hooks once:
-
-```bash
-pad-lattice install-codex-hooks
-```
-
 Launch an integrated session:
 
 ```bash
 pad-lattice codex --label implementation
 ```
 
-Run `/hooks` once in Codex to review and trust the installed commands. Prompt,
-running, approval, and completion states now update automatically.
+On the first Pad-Lattice-launched session, run `/hooks` to review and trust the
+scoped commands. Prompt, running, approval, and completion states then update
+automatically. Ordinary `codex` sessions do not load these hooks or show their
+review prompt.
 
 When Codex requests permission, select its Agent Scene and tap the lit Approve
 or Reject control. A decision applies only to the selected session and current

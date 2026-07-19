@@ -39,8 +39,8 @@ nothing.
 | Other CLI clients | Send a state, inspect status, end a session, or subscribe diagnostically. | Usually short-lived; action subscribers remain connected. |
 
 The launcher is deliberately **not** a terminal emulator. Codex inherits the
-terminal's stdin, stdout, and stderr. The launcher adds only environment
-metadata and a daemon lease.
+terminal's stdin, stdout, and stderr. The launcher adds environment metadata,
+a daemon lease, and child-only Codex hook configuration.
 
 ## The Contracts
 
@@ -130,7 +130,8 @@ hook. The integrated launcher bridges that lifecycle gap:
 
 1. `pad-lattice codex` creates a random lease ID and starts `SessionLease`.
 2. The lease connection sends its label and working-directory metadata.
-3. The launcher exports the lease ID to its child Codex process.
+3. The launcher exports the lease ID and injects scoped lifecycle hooks into
+   its child Codex process.
 4. The first lifecycle hook sends both the real Codex identity and lease ID.
 5. The daemon binds the lease to that identity and returns its Scene, accent,
    and label.
@@ -139,8 +140,8 @@ hook. The integrated launcher bridges that lifecycle gap:
 7. When Codex exits, the launcher closes the lease. The daemon removes the
    bound session immediately if no other live lease owns it.
 
-Plain `codex` sessions still work through hooks, but they are unleased. They
-must end through `session_end` or the inactivity TTL.
+Plain `codex` sessions load no Pad-Lattice hooks and remain outside the session
+registry.
 
 ## Execution Model
 
@@ -177,7 +178,7 @@ loop.
 | --- | --- | --- |
 | Sessions, selection, slots, subscriptions, leases | `ControlPlane` memory | None; reconstructed by live clients. |
 | Preferred identity accent | `IdentityStore` | Bounded local LRU containing hashed identities only. |
-| Codex hook commands | Codex hooks file | User or project configuration. |
+| Codex hook commands | `pad-lattice codex` command line | Child process only; not persisted globally. |
 | Device definitions | Profile catalog | Packaged JSON plus optional user profile roots. |
 | Visual meanings | `visual_protocol.py` and documentation | Versioned as Visual Protocol 1. |
 

@@ -12,7 +12,9 @@ from pad_lattice.codex_hook_entry import main as run_codex_hook_entry
 from pad_lattice.codex_hooks import (
     HOOK_EVENTS,
     _wait_for_permission_action_client,
-    install_codex_hooks,
+    codex_hook_config_overrides,
+    installed_codex_hook_events,
+    remove_codex_hooks,
     resolve_hook_command,
     run_codex_hook,
     state_for_codex_hook,
@@ -386,62 +388,23 @@ class CodexHookTest(TestCase):
         self.assertEqual(checked, ["/tmp/launcher.sock"])
 
 
-class CodexHookInstallerTest(TestCase):
-    def test_installs_all_hooks_and_preserves_existing_config(self) -> None:
-        with TemporaryDirectory() as directory:
-            path = Path(directory) / "hooks.json"
-            path.write_text(
-                json.dumps(
-                    {
-                        "hooks": {
-                            "Stop": [
-                                {
-                                    "hooks": [
-                                        {
-                                            "type": "command",
-                                            "command": "existing-hook",
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    }
-                ),
-                encoding="utf-8",
-            )
+class CodexHookConfigurationTest(TestCase):
+    def test_builds_session_scoped_overrides_for_every_hook(self) -> None:
+        command = '/opt/Pad Lattice/pad-lattice-hook --socket "/tmp/pad.sock"'
 
-            self.assertTrue(install_codex_hooks(path, command=HOOK_COMMAND))
-            config = json.loads(path.read_text(encoding="utf-8"))
+        overrides = codex_hook_config_overrides(command, approval_timeout=60)
 
-            self.assertEqual(
-                config["hooks"]["Stop"][0]["hooks"][0]["command"],
-                "existing-hook",
-            )
-            for event_name in HOOK_EVENTS:
-                commands = [
-                    handler["command"]
-                    for group in config["hooks"][event_name]
-                    for handler in group["hooks"]
-                ]
-                self.assertIn(HOOK_COMMAND, commands)
+        self.assertEqual(len(overrides), len(HOOK_EVENTS))
+        for event_name, override in zip(HOOK_EVENTS, overrides, strict=True):
+            self.assertTrue(override.startswith(f"hooks.{event_name}="))
+            self.assertIn('type="command"', override)
+            self.assertIn(json.dumps(command), override)
+            expected_timeout = 65 if event_name == "PermissionRequest" else 5
+            self.assertTrue(override.endswith(f"timeout={expected_timeout}}}]}}]"))
 
-    def test_install_is_idempotent(self) -> None:
-        with TemporaryDirectory() as directory:
-            path = Path(directory) / "hooks.json"
-
-            self.assertTrue(install_codex_hooks(path, command=HOOK_COMMAND))
-            first_content = path.read_text(encoding="utf-8")
-            self.assertFalse(install_codex_hooks(path, command=HOOK_COMMAND))
-
-            self.assertEqual(path.read_text(encoding="utf-8"), first_content)
-
-    def test_rejects_invalid_existing_json(self) -> None:
-        with TemporaryDirectory() as directory:
-            path = Path(directory) / "hooks.json"
-            path.write_text("not-json", encoding="utf-8")
-
-            with self.assertRaisesRegex(ValueError, "invalid JSON"):
-                install_codex_hooks(path, command=HOOK_COMMAND)
+    def test_rejects_nonpositive_session_approval_timeout(self) -> None:
+        with self.assertRaisesRegex(ValueError, "approval_timeout must be positive"):
+            codex_hook_config_overrides(HOOK_COMMAND, approval_timeout=0)
 
     def test_resolves_absolute_console_script_path(self) -> None:
         with TemporaryDirectory(prefix="pad lattice ") as directory:
@@ -472,7 +435,7 @@ class CodexHookInstallerTest(TestCase):
 
         self.assertIn("pad-lattice codex-hook", command)
 
-    def test_replaces_managed_hook_command_without_touching_other_hooks(self) -> None:
+    def test_removes_global_hooks_without_touching_other_handlers(self) -> None:
         with TemporaryDirectory() as directory:
             path = Path(directory) / "hooks.json"
             path.write_text(
@@ -491,17 +454,15 @@ class CodexHookInstallerTest(TestCase):
                                 }
                             ]
                             for event_name in HOOK_EVENTS
-                        }
+                        },
+                        "description": "Keep this metadata.",
                     }
                 ),
                 encoding="utf-8",
             )
-            command = (
-                "/opt/pad-lattice/bin/pad-lattice codex-hook "
-                "--socket /run/user/1000/pad-lattice.sock"
-            )
 
-            self.assertTrue(install_codex_hooks(path, command=command))
+            self.assertEqual(installed_codex_hook_events(path), HOOK_EVENTS)
+            self.assertTrue(remove_codex_hooks(path))
             config = json.loads(path.read_text(encoding="utf-8"))
 
             for event_name in HOOK_EVENTS:
@@ -512,10 +473,40 @@ class CodexHookInstallerTest(TestCase):
                 ]
                 self.assertEqual(
                     [handler["command"] for handler in handlers],
-                    [command, "existing-hook"],
+                    ["existing-hook"],
                 )
-                managed = handlers[0]
-                self.assertEqual(
-                    managed["timeout"],
-                    65 if event_name == "PermissionRequest" else 5,
-                )
+            self.assertEqual(config["description"], "Keep this metadata.")
+            self.assertEqual(installed_codex_hook_events(path), ())
+
+    def test_removing_only_global_hooks_leaves_an_empty_config(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "hooks.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "hooks": {
+                            "PostToolUse": [
+                                {
+                                    "hooks": [
+                                        {"type": "command", "command": HOOK_COMMAND}
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            self.assertTrue(remove_codex_hooks(path))
+
+            self.assertEqual(json.loads(path.read_text(encoding="utf-8")), {})
+            self.assertFalse(remove_codex_hooks(path))
+
+    def test_global_cleanup_rejects_invalid_existing_json(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "hooks.json"
+            path.write_text("not-json", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "invalid JSON"):
+                remove_codex_hooks(path)

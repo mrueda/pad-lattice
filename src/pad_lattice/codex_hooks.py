@@ -188,7 +188,7 @@ def default_codex_hooks_path() -> Path:
 
 
 def installed_codex_hook_events(path: Path) -> tuple[str, ...]:
-    """Return lifecycle events containing a Pad-Lattice hook command."""
+    """Return lifecycle events containing a legacy global Pad-Lattice hook."""
 
     config = _read_hooks_config(path)
     hooks = config.get("hooks")
@@ -250,66 +250,75 @@ def resolve_hook_command(
     )
 
 
-def install_codex_hooks(
-    path: Path,
-    *,
+def codex_hook_config_overrides(
     command: str,
+    *,
     approval_timeout: float = DEFAULT_APPROVAL_TIMEOUT,
-) -> bool:
-    """Merge Pad-Lattice lifecycle hooks into a Codex hooks file.
-
-    Returns ``True`` when the file changed and ``False`` when the same hooks
-    were already installed.
-    """
+) -> tuple[str, ...]:
+    """Return deterministic Codex ``-c`` values for one launcher invocation."""
 
     if approval_timeout <= 0:
         raise ValueError("approval_timeout must be positive")
-    config = _read_hooks_config(path)
-    hooks = config.setdefault("hooks", {})
-    if not isinstance(hooks, dict):
-        raise ValueError(f"{path}: 'hooks' must be a JSON object")
-
-    changed = False
+    encoded_command = json.dumps(command, ensure_ascii=True)
+    overrides = []
     for event_name in HOOK_EVENTS:
         timeout = (
             math.ceil(approval_timeout) + HOOK_TIMEOUT_MARGIN
             if event_name == "PermissionRequest"
             else 5
         )
-        groups = hooks.setdefault(event_name, [])
-        if not isinstance(groups, list):
-            raise ValueError(f"{path}: hooks.{event_name} must be a JSON array")
-        groups, found, replaced = _replace_managed_commands(
-            groups,
-            command,
-            timeout=timeout,
+        overrides.append(
+            f"hooks.{event_name}="
+            f"[{{hooks=[{{type=\"command\",command={encoded_command},"
+            f"timeout={timeout}}}]}}]"
         )
-        if replaced:
-            hooks[event_name] = groups
+    return tuple(overrides)
+
+
+def remove_codex_hooks(path: Path) -> bool:
+    """Remove global Pad-Lattice hooks while preserving unrelated handlers."""
+
+    config = _read_hooks_config(path)
+    hooks = config.get("hooks")
+    if not isinstance(hooks, dict):
+        return False
+
+    changed = False
+    for event_name in HOOK_EVENTS:
+        groups = hooks.get(event_name)
+        if not isinstance(groups, list):
+            continue
+        updated_groups = []
+        for group in groups:
+            if not isinstance(group, dict) or not isinstance(group.get("hooks"), list):
+                updated_groups.append(group)
+                continue
+            handlers = [
+                handler
+                for handler in group["hooks"]
+                if not (
+                    isinstance(handler, dict)
+                    and _is_pad_lattice_hook_command(handler.get("command"))
+                )
+            ]
+            if len(handlers) == len(group["hooks"]):
+                updated_groups.append(group)
+                continue
             changed = True
-        if not found:
-            groups.append(
-                {
-                    "hooks": [
-                        {
-                            "type": "command",
-                            "command": command,
-                            "timeout": timeout,
-                        }
-                    ]
-                }
-            )
-            hooks[event_name] = groups
-            changed = True
+            if handlers:
+                updated_group = dict(group)
+                updated_group["hooks"] = handlers
+                updated_groups.append(updated_group)
+
+        if updated_groups:
+            hooks[event_name] = updated_groups
+        else:
+            hooks.pop(event_name, None)
 
     if changed:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        temporary_path = path.with_name(f".{path.name}.tmp")
-        temporary_path.write_text(
-            json.dumps(config, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
-        temporary_path.replace(path)
+        if not hooks:
+            config.pop("hooks", None)
+        _write_hooks_config(path, config)
     return changed
 
 
@@ -405,64 +414,14 @@ def _read_hooks_config(path: Path) -> dict[str, Any]:
     return config
 
 
-def _replace_managed_commands(
-    groups: list[Any],
-    command: str,
-    *,
-    timeout: int,
-) -> tuple[list[Any], bool, bool]:
-    updated_groups: list[Any] = []
-    found = False
-    changed = False
-
-    for group in groups:
-        if not isinstance(group, dict):
-            updated_groups.append(group)
-            continue
-        handlers = group.get("hooks")
-        if not isinstance(handlers, list):
-            updated_groups.append(group)
-            continue
-
-        updated_handlers: list[Any] = []
-        group_changed = False
-        for handler in handlers:
-            managed = (
-                isinstance(handler, dict)
-                and _is_pad_lattice_hook_command(handler.get("command"))
-            )
-            if not managed:
-                updated_handlers.append(handler)
-                continue
-            if found:
-                group_changed = True
-                changed = True
-                continue
-
-            found = True
-            if (
-                handler.get("command") == command
-                and handler.get("timeout") == timeout
-            ):
-                updated_handlers.append(handler)
-                continue
-            updated_handler = dict(handler)
-            updated_handler["command"] = command
-            updated_handler["timeout"] = timeout
-            updated_handlers.append(updated_handler)
-            group_changed = True
-            changed = True
-
-        if not updated_handlers and group_changed:
-            continue
-        if group_changed:
-            updated_group = dict(group)
-            updated_group["hooks"] = updated_handlers
-            updated_groups.append(updated_group)
-        else:
-            updated_groups.append(group)
-
-    return updated_groups, found, changed
+def _write_hooks_config(path: Path, config: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path = path.with_name(f".{path.name}.tmp")
+    temporary_path.write_text(
+        json.dumps(config, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    temporary_path.replace(path)
 
 
 def _is_pad_lattice_hook_command(command: Any) -> bool:

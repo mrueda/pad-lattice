@@ -20,8 +20,7 @@ from pad_lattice import __version__
 from pad_lattice.audio import SystemAudioFeedback
 from pad_lattice.codex_hooks import (
     default_codex_hooks_path,
-    install_codex_hooks,
-    resolve_hook_command,
+    remove_codex_hooks,
     run_codex_hook,
 )
 from pad_lattice.codex_exec import run_codex_exec
@@ -94,7 +93,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--hooks-path",
         type=Path,
         default=default_codex_hooks_path(),
-        help="Codex hooks.json path",
+        help="legacy Codex hooks.json path",
     )
     doctor.add_argument("--json", action="store_true", help="emit machine-readable JSON")
 
@@ -284,25 +283,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="seconds to wait for a hardware approval decision",
     )
 
-    install_hooks = subparsers.add_parser(
-        "install-codex-hooks", help="install lifecycle hooks for interactive Codex"
+    uninstall_hooks = subparsers.add_parser(
+        "uninstall-codex-hooks",
+        help="remove legacy global Pad-Lattice hooks",
     )
-    install_hooks.add_argument(
+    uninstall_hooks.add_argument(
         "--path",
         type=Path,
         default=default_codex_hooks_path(),
-        help="hooks.json path (default: ~/.codex/hooks.json)",
-    )
-    install_hooks.add_argument(
-        "--socket",
-        default=default_socket_path(),
-        help="daemon Unix socket path to embed in the installed hooks",
-    )
-    install_hooks.add_argument(
-        "--approval-timeout",
-        type=float,
-        default=60.0,
-        help="seconds before falling back to Codex's keyboard approval prompt",
+        help="legacy hooks.json path (default: ~/.codex/hooks.json)",
     )
 
     listen_actions = subparsers.add_parser(
@@ -333,6 +322,12 @@ def build_parser() -> argparse.ArgumentParser:
     codex.add_argument("--socket", default=default_socket_path(), help="Unix socket path")
     codex.add_argument("--codex", default="codex", help="Codex CLI executable")
     codex.add_argument("--label", help="human-readable session label")
+    codex.add_argument(
+        "--approval-timeout",
+        type=float,
+        default=60.0,
+        help="seconds before falling back to Codex's keyboard approval prompt",
+    )
     codex.add_argument(
         "--no-terminal-title",
         action="store_true",
@@ -600,20 +595,10 @@ def main(argv: list[str] | None = None) -> int:
                 approval_timeout=args.approval_timeout,
             )
 
-        if args.command == "install-codex-hooks":
-            hook_command = resolve_hook_command(
-                args.socket,
-                approval_timeout=args.approval_timeout,
-            )
-            changed = install_codex_hooks(
-                args.path,
-                command=hook_command,
-                approval_timeout=args.approval_timeout,
-            )
-            status = "Installed" if changed else "Already installed"
+        if args.command == "uninstall-codex-hooks":
+            changed = remove_codex_hooks(args.path)
+            status = "Removed" if changed else "No Pad-Lattice hooks found"
             print(f"{status}: {args.path}")
-            print(f"Command: {hook_command}")
-            print("Review and trust the hooks with /hooks in Codex.")
             return 0
 
         if args.command == "listen-actions":
@@ -633,6 +618,7 @@ def main(argv: list[str] | None = None) -> int:
                 label=args.label,
                 codex_binary=args.codex,
                 terminal_title=not args.no_terminal_title,
+                approval_timeout=args.approval_timeout,
             )
 
         if args.command == "codex-exec":

@@ -13,6 +13,12 @@ from pad_lattice.codex_session import (
 from pad_lattice.events import AgentIdentity
 
 
+HOOK_COMMAND = (
+    "/opt/pad-lattice/bin/pad-lattice-hook "
+    "--socket /tmp/pad-lattice.sock --approval-timeout 60"
+)
+
+
 class CodexSessionTest(TestCase):
     def test_label_validation_rejects_empty_long_and_control_text(self) -> None:
         self.assertEqual(normalize_session_label("  docs  "), "docs")
@@ -47,21 +53,21 @@ class CodexSessionTest(TestCase):
                 "/tmp/pad-lattice.sock",
                 label="docs",
                 codex_binary="/opt/codex",
+                hook_command=HOOK_COMMAND,
             )
 
         self.assertEqual(result, 17)
         command = popen.call_args.args[0]
         options = popen.call_args.kwargs
-        self.assertEqual(
-            command,
-            [
-                "/opt/codex",
-                "-c",
-                "tui.terminal_title=[]",
-                "resume",
-                "session-123",
-            ],
-        )
+        self.assertEqual(command[:3], ["/opt/codex", "--enable", "hooks"])
+        self.assertEqual(command[-4:], ["-c", "tui.terminal_title=[]", "resume", "session-123"])
+        overrides = [
+            command[index + 1]
+            for index, value in enumerate(command[:-1])
+            if value == "-c" and command[index + 1].startswith("hooks.")
+        ]
+        self.assertEqual(len(overrides), 5)
+        self.assertTrue(all(HOOK_COMMAND in override for override in overrides))
         self.assertNotIn("stdin", options)
         self.assertNotIn("stdout", options)
         self.assertNotIn("stderr", options)
@@ -88,7 +94,11 @@ class CodexSessionTest(TestCase):
             ),
             self.assertRaises(FileNotFoundError),
         ):
-            run_codex_session([], "/tmp/pad-lattice.sock")
+            run_codex_session(
+                [],
+                "/tmp/pad-lattice.sock",
+                hook_command=HOOK_COMMAND,
+            )
 
         self.assertEqual(closed, [True])
 
@@ -109,6 +119,7 @@ class CodexSessionTest(TestCase):
                 [],
                 "/tmp/missing.sock",
                 terminal_title=False,
+                hook_command=HOOK_COMMAND,
                 stderr=stderr,
             )
 
@@ -142,6 +153,7 @@ class CodexSessionTest(TestCase):
                 [],
                 "/tmp/pad-lattice.sock",
                 terminal_title=False,
+                hook_command=HOOK_COMMAND,
             )
 
         environment = popen.call_args.kwargs["env"]

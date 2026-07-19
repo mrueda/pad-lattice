@@ -38,7 +38,7 @@ class DiagnosticsTest(TestCase):
             patch("pad_lattice.diagnostics.request_message", return_value=status),
             patch(
                 "pad_lattice.diagnostics.installed_codex_hook_events",
-                return_value=HOOK_EVENTS,
+                return_value=(),
             ),
         ):
             report = collect_diagnostics(
@@ -59,6 +59,30 @@ class DiagnosticsTest(TestCase):
             print_diagnostics(report)
         self.assertIn("[OK", output.getvalue())
         self.assertIn("Overall: OK", output.getvalue())
+
+    def test_legacy_global_hooks_produce_a_cleanup_warning(self) -> None:
+        with (
+            patch(
+                "pad_lattice.diagnostics.ProfileCatalog.load",
+                side_effect=ProfileError("skip profile checks"),
+            ),
+            patch("pad_lattice.diagnostics.list_midi_ports", return_value=([], [])),
+            patch(
+                "pad_lattice.diagnostics.request_message",
+                side_effect=FileNotFoundError("missing socket"),
+            ),
+            patch(
+                "pad_lattice.diagnostics.installed_codex_hook_events",
+                return_value=HOOK_EVENTS,
+            ),
+        ):
+            report = collect_diagnostics()
+
+        hooks = next(
+            check for check in report["checks"] if check["name"] == "codex_hooks"
+        )
+        self.assertEqual(hooks["status"], "warning")
+        self.assertIn("legacy global", hooks["summary"])
 
     def test_broken_dependencies_produce_error_report(self) -> None:
         with (

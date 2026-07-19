@@ -246,20 +246,17 @@ class CliTest(TestCase):
         self.assertEqual(args.socket, "/tmp/pad-lattice.sock")
         self.assertEqual(args.approval_timeout, 30.0)
 
-    def test_install_codex_hooks_accepts_path(self) -> None:
+    def test_uninstall_codex_hooks_accepts_path(self) -> None:
         args = build_parser().parse_args(
             [
-                "install-codex-hooks",
+                "uninstall-codex-hooks",
                 "--path",
                 "/tmp/hooks.json",
-                "--socket",
-                "/tmp/custom.sock",
             ]
         )
 
-        self.assertEqual(args.command, "install-codex-hooks")
+        self.assertEqual(args.command, "uninstall-codex-hooks")
         self.assertEqual(str(args.path), "/tmp/hooks.json")
-        self.assertEqual(args.socket, "/tmp/custom.sock")
 
     def test_codex_launcher_passes_resume_arguments_after_separator(self) -> None:
         args = build_parser().parse_args(
@@ -269,6 +266,8 @@ class CliTest(TestCase):
                 "docs",
                 "--socket",
                 "/tmp/pad-lattice.sock",
+                "--approval-timeout",
+                "45",
                 "--",
                 "resume",
                 "session-123",
@@ -277,6 +276,7 @@ class CliTest(TestCase):
 
         self.assertEqual(args.command, "codex")
         self.assertEqual(args.label, "docs")
+        self.assertEqual(args.approval_timeout, 45.0)
         self.assertEqual(args.codex_args, ["--", "resume", "session-123"])
 
     def test_listen_actions_accepts_socket(self) -> None:

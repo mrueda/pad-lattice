@@ -215,24 +215,22 @@ pad-lattice codex --label docs -- resume <SESSION_ID>
 pad-lattice codex --label review -- --ask-for-approval on-request
 ```
 
-Useful options are `--socket`, `--codex`, `--label`, and
+Useful options are `--socket`, `--codex`, `--label`, `--approval-timeout`, and
 `--no-terminal-title`. Arguments after `--` are passed to Codex unchanged.
 Without a label, the Codex working-directory name is used.
 
-Install lifecycle handlers:
+The launcher injects deterministic lifecycle handlers only into its child
+Codex process. Start the first integrated session and use `/hooks` to review
+and trust those commands. Plain `codex` sessions do not load them.
+
+Remove global Pad-Lattice hooks left by an early alpha installation:
 
 ```bash
-pad-lattice install-codex-hooks
-pad-lattice install-codex-hooks --path .codex/hooks.json
-pad-lattice install-codex-hooks --socket /tmp/pad-lattice.sock
-pad-lattice install-codex-hooks --approval-timeout 90
+pad-lattice uninstall-codex-hooks
+pad-lattice uninstall-codex-hooks --path .codex/hooks.json
 ```
 
-After installation, start a new Codex session and use `/hooks` to review and
-trust the commands. The installer embeds an absolute executable path and the
-resolved daemon socket path. Installed definitions call the lightweight
-`pad-lattice-hook` executable, which silently no-ops when the daemon socket is
-absent.
+The cleanup preserves unrelated hook handlers and configuration fields.
 
 `codex-hook` remains available as a low-level diagnostic handler and is not
 normally invoked directly:

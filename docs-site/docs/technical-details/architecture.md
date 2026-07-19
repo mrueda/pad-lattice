@@ -53,7 +53,7 @@ evolve independently.
 | `pad_lattice.devices.midi_grid` | Trusted palette-grid driver with optional show-only RGB SysEx. |
 | `pad_lattice.identity_store` | Bounded LRU of hashed identity-to-accent preferences. |
 | `pad_lattice.audio` | Optional semantic earcons, WAV synthesis, and system-player output. |
-| `pad_lattice.codex_hooks` | Interactive Codex lifecycle adapter and hook installer. |
+| `pad_lattice.codex_hooks` | Interactive Codex lifecycle adapter and scoped-hook configuration. |
 | `pad_lattice.codex_session` | Native-terminal Codex launcher and reconnecting lease. |
 | `pad_lattice.codex_exec` | Non-interactive Codex JSONL adapter and Stop sink. |
 
