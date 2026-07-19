@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Protocol, TypeAlias
+from typing import Literal, Protocol, TypeAlias
 
 from pad_lattice.events import AgentState, ControlAction
 
@@ -61,6 +61,31 @@ class ShowFrame:
     right: tuple[ShowColor, ...]
 
 
+ExperienceKind: TypeAlias = Literal["demo", "show"]
+ExperienceStatus: TypeAlias = Literal["idle", "blocked", "starting", "playing"]
+
+
+@dataclass(frozen=True)
+class ExperienceView:
+    """Transport-neutral lifecycle state for Demo and Show playback."""
+
+    status: ExperienceStatus
+    kind: ExperienceKind | None = None
+    title: str | None = None
+    cue_index: int | None = None
+    caption: str | None = None
+    detail: str | None = None
+    elapsed_ms: int = 0
+    duration_ms: int | None = None
+    tempo: float = 1.0
+    audio_asset: str | None = None
+    audio_cue: str | None = None
+    audio_slot: int | None = None
+    audio_sequence: int = 0
+    start_delay_ms: int = 0
+    reason: str | None = None
+
+
 @dataclass(frozen=True)
 class ActionPressed:
     action: ControlAction
@@ -71,7 +96,19 @@ class SessionSelected:
     slot: int
 
 
-SurfaceEvent: TypeAlias = ActionPressed | SessionSelected
+@dataclass(frozen=True)
+class ExperienceRequested:
+    kind: ExperienceKind
+
+
+@dataclass(frozen=True)
+class ExperienceStopRequested:
+    pass
+
+
+SurfaceEvent: TypeAlias = (
+    ActionPressed | SessionSelected | ExperienceRequested | ExperienceStopRequested
+)
 
 
 class ControlSurface(Protocol):
@@ -89,18 +126,10 @@ class ControlSurface(Protocol):
 
     def render(self, view: SurfaceView) -> None: ...
 
-    def poll_events(self) -> list[SurfaceEvent]: ...
-
-    def close(self) -> None: ...
-
-
-class ShowSurface(Protocol):
-    """Operations required by a standalone visual performance."""
-
-    profile_id: str
-
-    def initialize(self) -> None: ...
-
     def render_show_frame(self, frame: ShowFrame) -> None: ...
+
+    def set_experience(self, view: ExperienceView) -> None: ...
+
+    def poll_events(self) -> list[SurfaceEvent]: ...
 
     def close(self) -> None: ...

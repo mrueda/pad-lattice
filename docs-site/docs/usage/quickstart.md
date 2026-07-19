@@ -5,7 +5,7 @@
 Open the [virtual pad](pathname:///play/) on any modern desktop, phone, or tablet. The
 guided simulation demonstrates three agents, explicit selection, a real-looking
 approval gate, retry, and shared success. Its sandbox then exposes the complete
-Visual Protocol 1 vocabulary.
+Visual Protocol 1 vocabulary, while Show plays the full audiovisual story.
 
 No account, MIDI hardware, API key, or installation is required. This public
 mode is deliberately simulated.
@@ -36,8 +36,9 @@ Start the virtual surface:
 pad-lattice web
 ```
 
-Pad-Lattice prints and opens a loopback URL. Leave this process running; it is
-both the agent daemon and local browser bridge.
+Pad-Lattice prints and opens a tokenized loopback administrator URL. Leave this
+process running; it is both the agent daemon and local browser bridge. Treat
+that URL as a credential and do not share it.
 
 Launch an integrated session:
 
@@ -55,7 +56,10 @@ or Reject control. A decision applies only to the selected session and current
 request. After 60 seconds without a surface decision, Codex restores its normal
 keyboard prompt.
 
-## Phone and Tablet
+Continue with [Control Codex](./control-codex.md) for resuming conversations,
+running several agents, and understanding what each surface state means.
+
+## Phone, Tablet, or Laptop
 
 Expose the virtual surface to the trusted local network:
 
@@ -67,29 +71,9 @@ The local admin page shows a one-use QR code and six-digit PIN that expire in
 five minutes. Scan the QR or open the printed LAN URL and enter the PIN. The
 paired device can reconnect until the daemon stops.
 
-Use `--advertise-host` when automatic address selection chooses the wrong
-network interface:
-
-```bash
-pad-lattice web --lan --advertise-host 192.168.1.20
-```
-
-LAN mode is for a network you trust. Do not port-forward it or use it on public
-Wi-Fi. See [Virtual Surface](./virtual-surface.md) for pairing and security.
-
-## Multiple Sessions
-
-Start or resume labeled sessions from other terminals:
-
-```bash
-pad-lattice codex --label docs -- resume <SESSION_ID>
-pad-lattice codex --label review
-pad-lattice status --watch
-```
-
-Each session receives a stable accent and one of eight visible Agent Scenes.
-Background updates change their compact status pads without stealing selection.
-Closing a leased launcher removes its Scene immediately.
+See [Connect a Phone, Tablet, or Laptop](./connect-browsers.md) for one or more
+devices, network troubleshooting, and Parallels Desktop. LAN mode is for a
+network you trust; never expose it through a router or use it on public Wi-Fi.
 
 ## Physical Launchpad
 
@@ -101,6 +85,17 @@ pad-lattice devices
 pad-lattice demo
 ```
 
+Demo and Show can also run without MIDI:
+
+```bash
+pad-lattice demo --surface web
+pad-lattice show --surface web
+```
+
+The tokenized local page opens first. Choose **Demo** or **Show** there to
+start. Its Sound control is muted by default and belongs only to that browser.
+Use `--surface both` to keep a Launchpad and every browser synchronized.
+
 Run normal physical control by itself:
 
 ```bash
@@ -111,36 +106,19 @@ Mirror the same state and actions in browsers at the same time:
 
 ```bash
 pad-lattice daemon --web --no-greeting
-pad-lattice daemon --web --lan --audio-feedback
 ```
 
 Only the daemon owns MIDI ports. Every surface feeds the same selected-session
 action router, so a tap and a physical press have identical semantics.
 
-Experimental profiles must be selected explicitly:
+## Where Next
 
-```bash
-pad-lattice demo --profile novation/launchpad/mini-mk3
-pad-lattice demo --profile novation/launchpad/pro-mk3
-```
-
-## Audiovisual Hardware Show
-
-Stop the daemon, then run:
-
-```bash
-pad-lattice show
-pad-lattice show --audio
-```
-
-**A Spark Becomes a Constellation** is an authored 43-second performance across
-the full physical surface. `--audio` adds its synchronized score.
-
-## Development Checkout
-
-```bash
-git clone https://github.com/mrueda/pad-lattice.git
-cd pad-lattice
-python3 -m venv .venv
-.venv/bin/python -m pip install -e .
-```
+| I want to... | Continue with... |
+| --- | --- |
+| Resume or run several Codex sessions | [Control Codex](./control-codex.md) |
+| Connect several browser devices | [Connect a Phone, Tablet, or Laptop](./connect-browsers.md) |
+| Learn the colors and symbols | [Visual Protocol](../technical-details/visual-language.md) |
+| Enable sounds | [Audio Feedback](./audio-feedback.md) |
+| Play the audiovisual story | [Visual Show](./visual-show.md) |
+| Test experimental hardware | [Device Testing](../technical-details/device-testing.md) |
+| Work on Pad-Lattice itself | [Developer Guide](../technical-details/developer-guide.md) |

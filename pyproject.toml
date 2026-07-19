@@ -69,6 +69,8 @@ pad_lattice = [
   "schemas/*.json",
   "web_dist/play/*",
   "web_dist/play/assets/*",
+  "web_dist/play/experiences/*.json",
+  "web_dist/play/experiences/audio/*.wav",
 ]
 
 [tool.setuptools.dynamic]

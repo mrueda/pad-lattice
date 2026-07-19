@@ -49,6 +49,9 @@ evolve independently.
 | `pad_lattice.visual_protocol` | Device-independent glyphs and semantic light tokens. |
 | `pad_lattice.web_protocol` | Narrow, versioned browser command and rendering contract. |
 | `pad_lattice.web_surface` | Static app server, WebSocket authentication, pairing, and browser event queue. |
+| `pad_lattice.experience_manifest` | Dependency-free Version 1 Demo and performance manifest loader. |
+| `pad_lattice.experience_runtime` | Nonblocking Demo graph and absolute-time Show playback shared by standalone commands and daemon. |
+| `pad_lattice.experience_compiler` | Authoring-time compiler for the performance manifest and browser WAV assets. |
 | `pad_lattice.devices.profiles` | Dependency-free device-profile parsing and catalog. |
 | `pad_lattice.devices.midi_grid` | Trusted palette-grid driver with optional show-only RGB SysEx. |
 | `pad_lattice.identity_store` | Bounded LRU of hashed identity-to-accent preferences. |
@@ -89,42 +92,70 @@ surface message.
 MIDI polling remains in the daemon loop. Optional audio starts nonblocking
 system-player processes and cannot change routing decisions.
 
+## Shared Demo and Show Pipeline
+
+Python remains the expressive authoring source for the visual story and score,
+but neither runtime executes that authoring code independently. The asset
+compiler produces a compact Version 1 performance manifest, exact RGB frames,
+one synchronized browser soundtrack, and the browser earcon bank. The guided
+Demo is a Version 1 stage graph of semantic views and transitions. The browser
+build copies both manifests and audio into the packaged application.
+
+At runtime, Python loads the packaged artifact through small structural
+parsers; TypeScript consumes the same JSON. `ExperienceController` advances
+Demo transitions from `SessionSelected` and `ActionPressed` events, and chooses
+Show cues from absolute monotonic time. A delayed iteration skips stale Show
+cues instead of accumulating timing drift.
+
+Standalone `demo` and `show` commands use that controller directly. The live
+daemon embeds the same controller in its normal selector loop, so sockets and
+surface input remain responsive. Any real agent in `waiting_for_reply` or
+`waiting_for_approval` preempts playback and forces an authoritative semantic
+render. Only a loopback administrator may send browser start/stop commands;
+paired clients may answer Demo inputs and receive Show frames.
+
 ## Protocols and Schemas
 
-Pad-Lattice has three versioned contracts with different audiences:
+Pad-Lattice has versioned contracts with different audiences:
 
 | Contract | Audience | Carries |
 | --- | --- | --- |
 | Wire Protocol 1 | Trusted local agent integrations | State, identity, leases, inspection, subscriptions, targeted actions. |
 | Web Surface Protocol 1 | Authenticated browser clients | Compiled visual frames, sanitized labels, Scene selection, actions, pairing administration. |
 | Visual Protocol 1 | Any conforming surface | Glyph shapes, semantic colors, identity accents, actions, and overflow. |
+| Demo Manifest 1 | Python and browser experience runtimes | Prompt stages, semantic views, and allowed transitions. |
+| Performance Manifest 1 | Python and browser experience runtimes | Exact full-surface frames, absolute cue durations, palette, and audio metadata. |
 
 Device Profile Schema 1 translates the visual contract to trusted MIDI-driver
-data. Packaged JSON Schemas document Wire Protocol 1, Web Surface Protocol 1,
-and device profiles for tooling. Runtime code uses small typed parsers instead
-of general schema validation in live paths.
+data. Packaged JSON Schemas document the two transports, device profiles, and
+both experience manifests for editors, CI, and conformance tooling. Runtime
+code uses small typed parsers instead of general schema validation in live
+paths.
 
-See [Socket Protocol](../reference/socket-protocol.md), [Virtual
-Surface](../usage/virtual-surface.md), [Visual
-Language](../usage/visual-language.md), and [Device
+See [Socket Protocol](../reference/socket-protocol.md), [Browser
+Surface](./virtual-surface.md), [Visual
+Protocol](./visual-language.md), and [Device
 Profiles](./device-profiles.md).
 
 ## Browser Security Boundary
 
-Loopback browser clients are local administrators. LAN clients receive no
-state before presenting a valid one-use pairing secret, PIN, or in-memory
-session token. The server also checks Host and same-origin WebSocket headers,
-disables CORS, caps frames, bounds clients and pending events, rate-limits
-failed PINs and authenticated commands, and serves a restrictive Content
-Security Policy.
+Loopback browser clients must present the daemon's random administrator token.
+LAN clients receive no state before presenting a valid one-use pairing secret,
+PIN, or in-memory session token, and the LAN listener binds only to the selected
+private interface. The server also checks Host and same-origin WebSocket
+headers, disables CORS, caps frames, bounds clients and pending events,
+rate-limits failed PINs and authenticated commands, and serves a restrictive
+Content Security Policy.
 
-Only labels, states, slots, accents, available actions, overflow, and compiled
-light tokens reach the browser. Prompts, responses, terminal output, full
-working directories, raw Codex events, and arbitrary Wire Protocol commands do
-not.
+Only labels, states, slots, accents, available actions, overflow, compiled
+light tokens, and explicit Demo/Show lifecycle data reach the browser. Show
+adds exact full-surface RGB frames; Demo adds its built-in prompt text. Real
+agent prompts, responses, terminal output, full working directories, raw Codex
+events, and arbitrary Wire Protocol commands do not.
 
 Pairing authenticates control but does not encrypt LAN traffic. The supported
 network scope is a trusted local network, never an internet-facing port.
+See the [Security Model](./security-model.md) for the complete threat model.
 
 ## Platform Scope
 

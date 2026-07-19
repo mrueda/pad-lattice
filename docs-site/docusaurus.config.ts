@@ -77,13 +77,13 @@ const config: Config = {
           position: 'left',
         },
         {
-          to: '/docs/usage/production',
-          label: 'Production Use',
+          to: '/docs/usage/connect-browsers',
+          label: 'Connect Screens',
           position: 'left',
         },
         {
-          to: '/docs/usage/device-testing',
-          label: 'Test a Device',
+          to: '/docs/usage/control-codex',
+          label: 'Control Codex',
           position: 'left',
         },
         {
@@ -112,12 +112,12 @@ const config: Config = {
               to: '/docs/usage/quickstart',
             },
             {
-              label: 'Production Use',
-              to: '/docs/usage/production',
+              label: 'Phones, Tablets & Laptops',
+              to: '/docs/usage/connect-browsers',
             },
             {
-              label: 'Test a Device',
-              to: '/docs/usage/device-testing',
+              label: 'Control Codex',
+              to: '/docs/usage/control-codex',
             },
             {
               label: 'Troubleshooting',

@@ -8,6 +8,7 @@ from typing import Any, TextIO
 
 from pad_lattice.devices.base import (
     ActionPressed,
+    ExperienceView,
     SessionSelected,
     ShowFrame,
     SurfaceEvent,
@@ -150,6 +151,9 @@ class MidiGridSurface:
             for address, color in zip(self.profile.show_right, frame.right):
                 self._set_address(address, self._resolve_color(color.fallback))
         self._showing = True
+
+    def set_experience(self, view: ExperienceView) -> None:
+        """MIDI rendering is fully described by semantic or Show frames."""
 
     def poll_events(self) -> list[SurfaceEvent]:
         events: list[SurfaceEvent] = []

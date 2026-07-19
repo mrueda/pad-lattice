@@ -18,38 +18,13 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'doc',
-          id: 'usage/production',
-          label: 'Production Use',
+          id: 'usage/connect-browsers',
+          label: 'Phones, Tablets & Laptops',
         },
         {
           type: 'doc',
-          id: 'usage/virtual-surface',
-          label: 'Virtual Surface',
-        },
-        {
-          type: 'doc',
-          id: 'usage/codex-integration',
-          label: 'Codex Integration',
-        },
-        {
-          type: 'doc',
-          id: 'usage/visual-language',
-          label: 'Visual Language',
-        },
-        {
-          type: 'doc',
-          id: 'usage/audio-feedback',
-          label: 'Audio Feedback',
-        },
-        {
-          type: 'doc',
-          id: 'usage/visual-show',
-          label: 'Visual Show',
-        },
-        {
-          type: 'doc',
-          id: 'usage/device-testing',
-          label: 'Test a Device',
+          id: 'usage/control-codex',
+          label: 'Control Codex',
         },
         {
           type: 'doc',
@@ -60,17 +35,38 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Explore',
+      items: [
+        {
+          type: 'doc',
+          id: 'usage/audio-feedback',
+          label: 'Audio Feedback',
+        },
+        {
+          type: 'doc',
+          id: 'usage/visual-show',
+          label: 'Visual Show',
+        },
+      ],
+    },
+    {
+      type: 'category',
       label: 'Technical Details',
       items: [
         {
           type: 'doc',
-          id: 'technical-details/developer-guide',
-          label: 'Developer Guide',
+          id: 'technical-details/architecture',
+          label: 'Architecture',
         },
         {
           type: 'doc',
-          id: 'technical-details/architecture',
-          label: 'Architecture',
+          id: 'technical-details/codex-integration',
+          label: 'Codex Integration',
+        },
+        {
+          type: 'doc',
+          id: 'technical-details/virtual-surface',
+          label: 'Browser Surface',
         },
         {
           type: 'doc',
@@ -79,8 +75,33 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'doc',
+          id: 'technical-details/visual-language',
+          label: 'Visual Protocol',
+        },
+        {
+          type: 'doc',
+          id: 'technical-details/security-model',
+          label: 'Security Model',
+        },
+        {
+          type: 'doc',
+          id: 'technical-details/production',
+          label: 'Production Operations',
+        },
+        {
+          type: 'doc',
           id: 'technical-details/device-profiles',
           label: 'Device Profiles',
+        },
+        {
+          type: 'doc',
+          id: 'technical-details/device-testing',
+          label: 'Device Testing',
+        },
+        {
+          type: 'doc',
+          id: 'technical-details/developer-guide',
+          label: 'Developer Guide',
         },
       ],
     },

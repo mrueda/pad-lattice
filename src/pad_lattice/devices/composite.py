@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from pad_lattice.devices.base import ControlSurface, SurfaceEvent, SurfaceView
+from pad_lattice.devices.base import (
+    ControlSurface,
+    ExperienceView,
+    ShowFrame,
+    SurfaceEvent,
+    SurfaceView,
+)
 
 
 class CompositeSurface:
@@ -51,6 +57,14 @@ class CompositeSurface:
     def render(self, view: SurfaceView) -> None:
         for surface in self.surfaces:
             surface.render(view)
+
+    def render_show_frame(self, frame: ShowFrame) -> None:
+        for surface in self.surfaces:
+            surface.render_show_frame(frame)
+
+    def set_experience(self, view: ExperienceView) -> None:
+        for surface in self.surfaces:
+            surface.set_experience(view)
 
     def poll_events(self) -> list[SurfaceEvent]:
         events: list[SurfaceEvent] = []

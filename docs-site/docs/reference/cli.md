@@ -38,12 +38,20 @@ pad-lattice devices
 
 ## `pad-lattice demo`
 
-Run the standalone hardware demo:
+Run the shared guided Demo on MIDI, browser, or both surfaces:
 
 ```bash
 pad-lattice demo --no-greeting
 pad-lattice demo --audio
+pad-lattice demo --surface web
+pad-lattice demo --surface both --lan
 ```
+
+`--surface` accepts `midi` (default), `web`, or `both`. Browser modes open the
+tokenized local administrator page and wait for it to start Demo. Paired
+browsers may answer Demo prompts, but only that administrator can start or
+stop it. `--lan`, `--port`, `--bind-host`, `--advertise-host`, and `--no-open`
+match the browser command.
 
 `--audio` speaks **HELLO FROM CODEX CLI** while it scrolls, then plays the
 daemon's default semantic earcons in context: question, approval request,
@@ -63,7 +71,8 @@ pad-lattice demo --input "MIDI input" --output "MIDI output"
 ```
 
 `--profile` and `--profile-file` are mutually exclusive. Without either,
-auto-detection considers only supported profiles.
+auto-detection considers only supported profiles. They apply only to `midi`
+and `both`.
 
 ## `pad-lattice show`
 
@@ -74,13 +83,17 @@ pad-lattice show
 pad-lattice show --audio
 pad-lattice show --tempo 0.8
 pad-lattice show --profile novation/launchpad/pro-mk3
+pad-lattice show --surface web
+pad-lattice show --surface both
 ```
 
 The default script is approximately 43 seconds. `--tempo` is a positive speed
 multiplier, so values below `1` slow the story down. `--audio` synthesizes and
 plays the synchronized piano-and-strings score through the computer.
-Device-selection options match `demo`. Stop the daemon first because the show
-owns the MIDI ports directly.
+Device and browser options match `demo`. Stop a MIDI daemon before standalone
+`midi` or `both` playback because the command owns those ports. In `web` and
+`both`, the local administrator page starts and stops Show; paired browsers
+are synchronized viewers. Browser Sound is independent and muted by default.
 
 ## `pad-lattice web`
 
@@ -92,21 +105,33 @@ pad-lattice web --port 0
 pad-lattice web --no-open
 ```
 
-The default listener is `127.0.0.1:8765`. Loopback clients are local
-administrators and may inspect sanitized session labels, select Agent Scenes,
-invoke available actions, and manage remote pairing. `--port 0` asks the
-operating system for a free port.
+The default listener is `127.0.0.1:8765`. The command prints and opens a
+per-daemon tokenized administrator URL. An authenticated local administrator
+may inspect sanitized session labels, select Agent Scenes, invoke available
+actions, and manage remote pairing. `--port 0` asks the operating system for a
+free port.
 
 Allow explicitly paired browsers on a trusted local network:
 
 ```bash
 pad-lattice web --lan
-pad-lattice web --lan --advertise-host 192.168.1.20 --port 8765
+pad-lattice web --lan --bind-host 192.168.1.20 --port 8765
 ```
 
 The command prints a one-use QR link and six-digit PIN valid for five minutes.
-`--advertise-host` changes the address encoded in pairing links and requires
-`--lan`. LAN mode is unencrypted and must not be exposed to the internet.
+`--bind-host` selects the private IPv4 interface that accepts phone traffic.
+`--advertise-host` optionally selects a different private hostname or address
+encoded in pairing links, as required by a NATed VM with an explicit
+host-to-guest forward. Both options require `--lan`. LAN mode is unencrypted
+and must not be exposed to the internet.
+
+For example, when a VM at `10.211.55.4` is reached through its host at
+`192.168.1.20`, with TCP port `8001` forwarded to the same guest port:
+
+```bash
+pad-lattice web --lan --port 8001 \
+  --bind-host 10.211.55.4 --advertise-host 192.168.1.20
+```
 
 The command also accepts `--socket`, `--terminal-hold`, `--session-ttl`,
 `--activity-motion`, `--audio-feedback`, and `--identity-store`.
@@ -130,8 +155,9 @@ pad-lattice daemon --web --lan
 ```
 
 `--web` adds the same virtual surface served by `pad-lattice web`. It accepts
-`--port`, `--no-open`, and, with LAN mode, `--advertise-host`. `--lan` requires
-`--web`. MIDI and browser input share one selected-session action router.
+`--port`, `--no-open`, and, with LAN mode, `--bind-host` and
+`--advertise-host`. `--lan` requires `--web`. MIDI and browser input share one
+selected-session action router.
 
 Additional lifecycle options:
 

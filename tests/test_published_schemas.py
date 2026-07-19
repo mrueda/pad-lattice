@@ -10,9 +10,19 @@ except ImportError:  # pragma: no cover - exercised by installations without the
     Draft202012Validator = None  # type: ignore[assignment]
 
 from pad_lattice.daemon_runtime import PadLatticeDaemon
-from pad_lattice.devices.base import SessionIndicator, SurfaceView
+from pad_lattice.devices.base import (
+    ExperienceView,
+    SessionIndicator,
+    ShowColor,
+    ShowFrame,
+    SurfaceView,
+)
 from pad_lattice.devices.profiles import load_profile_schema
 from pad_lattice.events import AgentIdentity, AgentState, ControlAction
+from pad_lattice.experience_manifest import (
+    load_demo_schema,
+    load_performance_schema,
+)
 from pad_lattice.protocol import (
     ProtocolError,
     action_message,
@@ -31,7 +41,9 @@ from pad_lattice.protocol import (
 from pad_lattice.visual_protocol import IDENTITY_ACCENTS, VISUAL_PROTOCOL_VERSION
 from pad_lattice.web_protocol import (
     WebProtocolError,
+    experience_message,
     load_web_protocol_schema,
+    performance_frame_message,
     surface_message,
     web_error,
     web_message,
@@ -54,6 +66,12 @@ class SchemaSurface:
     def render(self, view: SurfaceView) -> None:
         pass
 
+    def render_show_frame(self, frame: ShowFrame) -> None:
+        pass
+
+    def set_experience(self, view: ExperienceView) -> None:
+        pass
+
     def poll_events(self) -> list[object]:
         return []
 
@@ -68,6 +86,8 @@ class PublishedSchemaTest(TestCase):
             load_profile_schema(),
             load_protocol_schema(),
             load_web_protocol_schema(),
+            load_performance_schema(),
+            load_demo_schema(),
         )
         for schema in schemas:
             with self.subTest(schema=schema["title"]):
@@ -143,6 +163,8 @@ class PublishedSchemaTest(TestCase):
             web_message("authenticate"),
             web_message("action", action="approve"),
             web_message("select_session", slot=0),
+            web_message("start_experience", kind="demo"),
+            web_message("stop_experience"),
             web_message("create_pairing"),
             web_message("revoke_remote"),
             web_message(
@@ -153,6 +175,19 @@ class PublishedSchemaTest(TestCase):
             ),
             pairing,
             surface_message(view, 8),
+            experience_message(
+                ExperienceView(
+                    status="playing",
+                    kind="demo",
+                    title="Demo",
+                    cue_index=1,
+                    caption="Approve",
+                    audio_cue="approval",
+                    audio_slot=0,
+                    audio_sequence=2,
+                )
+            ),
+            performance_frame_message(_show_frame()),
             web_message("remote_revoked"),
             web_error(WebProtocolError("bad request")),
         )
@@ -160,3 +195,12 @@ class PublishedSchemaTest(TestCase):
         for message in messages:
             with self.subTest(message=message["type"]):
                 validator.validate(message)
+
+
+def _show_frame() -> ShowFrame:
+    color = ShowColor("off", (0, 0, 0))
+    return ShowFrame(
+        grid=tuple(tuple(color for _ in range(8)) for _ in range(8)),
+        top=tuple(color for _ in range(8)),
+        right=tuple(color for _ in range(8)),
+    )

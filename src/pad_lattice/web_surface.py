@@ -24,7 +24,11 @@ from websockets.sync.server import Server, ServerConnection, serve
 
 from pad_lattice.devices.base import (
     ActionPressed,
+    ExperienceRequested,
+    ExperienceStopRequested,
+    ExperienceView,
     SessionSelected,
+    ShowFrame,
     SurfaceEvent,
     SurfaceView,
 )
@@ -35,10 +39,14 @@ from pad_lattice.web_protocol import (
     CreatePairingCommand,
     RevokeRemoteCommand,
     SelectSessionCommand,
+    StartExperienceCommand,
+    StopExperienceCommand,
     WebProtocolError,
     decode_web_message,
     encode_web_message,
+    experience_message,
     parse_web_command,
+    performance_frame_message,
     surface_message,
     web_error,
     web_message,
@@ -54,6 +62,7 @@ MAX_BROWSER_CLIENTS = 16
 MAX_REMOTE_CLIENTS = 8
 COMMAND_RATE_WINDOW = 1.0
 COMMAND_RATE_LIMIT = 20
+ADMIN_TOKEN_BYTES = 32
 
 
 @dataclass(frozen=True)
@@ -101,13 +110,19 @@ class BrowserSurfaceServer:
         port: int = 8765,
         asset_root: Path | None = None,
         clock: Callable[[], float] = time.monotonic,
+        admin_token: str | None = None,
     ) -> None:
         self.event_sink = event_sink
         self.host = host
         self.port = port
         self.asset_root = asset_root
         self.clock = clock
+        self._admin_token = admin_token or secrets.token_urlsafe(ADMIN_TOKEN_BYTES)
+        if len(self._admin_token) > 256:
+            raise ValueError("browser administrator token is too long")
         self._server: Server | None = None
+        self._lan_server: Server | None = None
+        self._lan_thread: threading.Thread | None = None
         self._thread: threading.Thread | None = None
         self._ready = threading.Event()
         self._startup_error: BaseException | None = None
@@ -117,6 +132,8 @@ class BrowserSurfaceServer:
         self._pending_remote_clients = 0
         self._auth_lock = threading.RLock()
         self._latest_surface: dict[str, Any] | None = None
+        self._latest_experience = experience_message(ExperienceView(status="idle"))
+        self._latest_performance_frame: dict[str, Any] | None = None
         self._pairing: PairingCredential | None = None
         self._session_tokens: set[str] = set()
         self._failed_attempts: dict[str, list[float]] = {}
@@ -133,6 +150,10 @@ class BrowserSurfaceServer:
     @property
     def local_url(self) -> str:
         return f"http://127.0.0.1:{self.actual_port}"
+
+    @property
+    def admin_url(self) -> str:
+        return f"{self.local_url}/#admin={self._admin_token}"
 
     def start(self) -> None:
         if self._thread is not None:
@@ -152,6 +173,16 @@ class BrowserSurfaceServer:
 
     def broadcast_surface(self, message: dict[str, Any]) -> None:
         self._latest_surface = message
+        self._broadcast(message)
+
+    def broadcast_experience(self, message: dict[str, Any]) -> None:
+        self._latest_experience = message
+        if message.get("status") in {"idle", "blocked"}:
+            self._latest_performance_frame = None
+        self._broadcast(message)
+
+    def broadcast_performance_frame(self, message: dict[str, Any]) -> None:
+        self._latest_performance_frame = message
         self._broadcast(message)
 
     def configure_lan(self, advertised_base_url: str) -> None:
@@ -233,10 +264,18 @@ class BrowserSurfaceServer:
                 client.connection.close(1001, "server shutting down")
             except OSError:
                 pass
-        if self._server is not None:
-            self._server.shutdown()
+        for server in (self._lan_server, self._server):
+            if server is not None:
+                server.shutdown()
         if self._thread is not None and self._thread is not threading.current_thread():
             self._thread.join(timeout=5.0)
+        if (
+            self._lan_thread is not None
+            and self._lan_thread is not threading.current_thread()
+        ):
+            self._lan_thread.join(timeout=5.0)
+        self._lan_thread = None
+        self._lan_server = None
         self._thread = None
         self._server = None
 
@@ -244,7 +283,7 @@ class BrowserSurfaceServer:
         try:
             self._server = serve(
                 self._handle_connection,
-                self.host,
+                "127.0.0.1",
                 self.port,
                 process_request=self._process_request,
                 server_header=None,
@@ -253,14 +292,50 @@ class BrowserSurfaceServer:
                 max_size=16 * 1024,
                 max_queue=8,
             )
+            if self.host != "127.0.0.1":
+                self._lan_server = serve(
+                    self._handle_connection,
+                    self.host,
+                    self.actual_port,
+                    process_request=self._process_request,
+                    server_header=None,
+                    compression=None,
+                    close_timeout=1,
+                    max_size=16 * 1024,
+                    max_queue=8,
+                )
         except BaseException as exc:
             self._startup_error = exc
+            for server in (self._lan_server, self._server):
+                if server is not None:
+                    server.shutdown()
+            self._lan_server = None
+            self._server = None
             self._ready.set()
             return
+        if self._lan_server is not None:
+            self._lan_thread = threading.Thread(
+                target=self._lan_server.serve_forever,
+                name="pad-lattice-web-lan",
+                daemon=True,
+            )
+            self._lan_thread.start()
         self._ready.set()
         try:
             self._server.serve_forever()
         finally:
+            if (
+                self._lan_server is not None
+                and self._lan_server.socket.fileno() != -1
+            ):
+                self._lan_server.shutdown()
+            if (
+                self._lan_thread is not None
+                and self._lan_thread is not threading.current_thread()
+            ):
+                self._lan_thread.join(timeout=5.0)
+            self._lan_thread = None
+            self._lan_server = None
             self._server = None
 
     def _process_request(
@@ -354,6 +429,9 @@ class BrowserSurfaceServer:
                     )
             if self._latest_surface is not None:
                 client.send(self._latest_surface)
+            client.send(self._latest_experience)
+            if self._latest_performance_frame is not None:
+                client.send(self._latest_performance_frame)
 
             while True:
                 raw = connection.recv()
@@ -432,6 +510,14 @@ class BrowserSurfaceServer:
             self.revoke_remote()
             client.send(web_message("remote_revoked"))
             return
+        if isinstance(command, StartExperienceCommand):
+            self._require_admin(client)
+            self.event_sink(ExperienceRequested(command.kind))
+            return
+        if isinstance(command, StopExperienceCommand):
+            self._require_admin(client)
+            self.event_sink(ExperienceStopRequested())
+            return
         raise AssertionError(f"unhandled web command: {command!r}")
 
     def _authenticate(
@@ -442,8 +528,12 @@ class BrowserSurfaceServer:
         loopback: bool,
     ) -> tuple[bool, str | None]:
         with self._auth_lock:
-            if loopback and credential is None:
-                return True, None
+            if loopback:
+                return (
+                    credential is not None
+                    and hmac.compare_digest(credential, self._admin_token),
+                    None,
+                )
             if credential is None or self._rate_limited(peer):
                 return False, None
             if any(
@@ -628,6 +718,7 @@ class WebSurface:
         host: str = "127.0.0.1",
         port: int = 8765,
         asset_root: Path | None = None,
+        admin_token: str | None = None,
     ) -> None:
         self._events: queue.Queue[SurfaceEvent] = queue.Queue(
             maxsize=MAX_PENDING_SURFACE_EVENTS
@@ -637,11 +728,16 @@ class WebSurface:
             host=host,
             port=port,
             asset_root=asset_root,
+            admin_token=admin_token,
         )
 
     @property
     def local_url(self) -> str:
         return self.server.local_url
+
+    @property
+    def admin_url(self) -> str:
+        return self.server.admin_url
 
     def initialize(self) -> None:
         self.server.start()
@@ -656,6 +752,12 @@ class WebSurface:
 
     def render(self, view: SurfaceView) -> None:
         self.server.broadcast_surface(surface_message(view, self.selector_capacity))
+
+    def render_show_frame(self, frame: ShowFrame) -> None:
+        self.server.broadcast_performance_frame(performance_frame_message(frame))
+
+    def set_experience(self, view: ExperienceView) -> None:
+        self.server.broadcast_experience(experience_message(view))
 
     def poll_events(self) -> list[SurfaceEvent]:
         events: list[SurfaceEvent] = []

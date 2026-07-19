@@ -1,17 +1,24 @@
 # Visual Show
 
-`pad-lattice show` turns the controller into a small stage. The reference
+`pad-lattice show` turns a physical or virtual surface into a small stage. The reference
 performance, **A Spark Becomes a Constellation**, is an emotional visual story
 rather than a tour of Pad-Lattice features.
 
 ```bash
-pad-lattice show
-pad-lattice show --audio
+pad-lattice show --surface midi --audio
+pad-lattice show --surface web
+pad-lattice show --surface both --audio
 ```
 
-The daemon must be stopped. The show opens the MIDI ports directly, enters the
-profile's programmer mode, plays once, clears every mapped light, and restores
-the controller's normal mode.
+`midi` is the default and starts immediately. It opens MIDI ports directly, so
+stop a running MIDI daemon first. `web` and `both` open the tokenized local
+administrator page and wait for that page to choose **Show**. A normal live
+`pad-lattice web` or `pad-lattice daemon --web` also exposes Show from its
+administrator page without stopping the daemon.
+
+Every connected surface receives the same cue. Paired browsers can watch but
+cannot start or stop playback. A real agent waiting for a reply or approval
+preempts Show and restores operational state immediately.
 
 ## The Story
 
@@ -78,15 +85,17 @@ says **"PAD LATTICE"**. The score briefly ducks beneath it for intelligibility.
 
 The voice is synthesized directly from voiced formants, stop bursts, and
 fricative noise. It uses no recorded speech, external text-to-speech service,
-audio asset, or Python audio dependency.
+or Python audio dependency.
 
 Every musical entrance is attached to a named story cue, so tempo changes
 rescale the complete visual and musical timelines together.
 
-The controller carries MIDI control data, not audio. The score plays through
-the computer using an available local player. No Python audio dependency or
-bundled recording is required. See [Audio Feedback](./audio-feedback.md) for
-the supported players and the separate daemon earcon vocabulary.
+The Python host renders the score through an available local player. The
+browser uses a deterministic WAV compiled from that same score and bundled
+with the application, avoiding a second TypeScript composition. Browser sound
+is per-device, muted by default, and synchronized independently of the host
+`--audio` flag. See [Audio Feedback](./audio-feedback.md) for supported host
+players and the separate daemon earcon vocabulary.
 
 ## Visual Safety
 
@@ -99,8 +108,8 @@ so only lights whose values change are resent.
 
 Visual Protocol 1 communicates operational agent meaning. A white question
 mark, amber approval mark, or bright action must remain semantically reliable.
-The show is an explicitly selected standalone performance and therefore uses a
-separate `ShowFrame` contract.
+The show is an explicitly selected performance and therefore uses a separate
+`ShowFrame` contract.
 
 Each device profile maps an 8x8 canvas plus eight top and eight right showcase
 lights. `ShowColor` pairs exact RGB with a semantic fallback, while the story

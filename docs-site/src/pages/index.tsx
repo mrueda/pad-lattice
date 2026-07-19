@@ -14,19 +14,19 @@ const featureLinks = [
     label: 'Operation',
     title: 'Use with Codex',
     text: 'Connect real Codex CLI sessions to a browser, phone, tablet, Launchpad, or all of them at once.',
-    to: '/docs/usage/codex-integration',
+    to: '/docs/usage/control-codex',
   },
   {
-    label: 'Profiles',
-    title: 'Add physical hardware',
-    text: 'Translate the same visual language to MIDI grid controllers through declarative device profiles.',
-    to: '/docs/technical-details/device-profiles',
+    label: 'Everyday setup',
+    title: 'Connect your screens',
+    text: 'Pair phones, tablets, and laptops, including a clear setup for Parallels Desktop.',
+    to: '/docs/usage/connect-browsers',
   },
   {
     label: 'Protocol',
     title: 'Read the visual protocol',
     text: 'See how identity accents, state glyphs, selection, actions, and overflow form one shared visual language.',
-    to: '/docs/usage/visual-language',
+    to: '/docs/technical-details/visual-language',
   },
 ];
 

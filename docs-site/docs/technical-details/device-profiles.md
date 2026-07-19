@@ -236,5 +236,5 @@ One complete passing physical report is the minimum evidence for promoting a
 built-in profile from experimental to supported. Maintainers may request more
 coverage when firmware revisions or platform-specific MIDI names differ.
 
-See [Test a Device](../usage/device-testing.md) for the tester workflow and
+See [Device Testing](./device-testing.md) for the tester workflow and
 privacy guarantees.

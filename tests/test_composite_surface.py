@@ -2,7 +2,14 @@ from __future__ import annotations
 
 from unittest import TestCase
 
-from pad_lattice.devices.base import ActionPressed, SessionSelected, SurfaceView
+from pad_lattice.devices.base import (
+    ActionPressed,
+    ExperienceView,
+    SessionSelected,
+    ShowColor,
+    ShowFrame,
+    SurfaceView,
+)
 from pad_lattice.devices.composite import CompositeSurface, surface_descriptors
 from pad_lattice.events import AgentState, ControlAction
 
@@ -23,6 +30,8 @@ class FakeSurface:
         self.initialized = False
         self.closed = False
         self.views = []
+        self.show_frames = []
+        self.experiences = []
         self.events = []
 
     def initialize(self) -> None:
@@ -32,6 +41,12 @@ class FakeSurface:
 
     def render(self, view) -> None:
         self.views.append(view)
+
+    def render_show_frame(self, frame) -> None:
+        self.show_frames.append(frame)
+
+    def set_experience(self, view) -> None:
+        self.experiences.append(view)
 
     def poll_events(self):
         events, self.events = self.events, []
@@ -49,12 +64,25 @@ class CompositeSurfaceTest(TestCase):
         midi.events.append(ActionPressed(ControlAction.STOP))
         web.events.append(SessionSelected(2))
         view = SurfaceView(AgentState.RUNNING)
+        show_color = ShowColor("off", (0, 0, 0))
+        show_frame = ShowFrame(
+            grid=tuple(tuple(show_color for _ in range(8)) for _ in range(8)),
+            top=tuple(show_color for _ in range(8)),
+            right=tuple(show_color for _ in range(8)),
+        )
+        experience = ExperienceView(status="playing", kind="show")
 
         composite.initialize()
         composite.render(view)
+        composite.render_show_frame(show_frame)
+        composite.set_experience(experience)
 
         self.assertEqual(midi.views, [view])
         self.assertEqual(web.views, [view])
+        self.assertEqual(midi.show_frames, [show_frame])
+        self.assertEqual(web.show_frames, [show_frame])
+        self.assertEqual(midi.experiences, [experience])
+        self.assertEqual(web.experiences, [experience])
         self.assertEqual(
             composite.poll_events(),
             [ActionPressed(ControlAction.STOP), SessionSelected(2)],

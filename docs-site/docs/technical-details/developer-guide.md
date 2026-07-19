@@ -13,8 +13,9 @@ Most of the architecture follows from four rules:
 
 1. **The daemon owns policy and live surfaces during normal operation.** Agent
    integrations communicate through a local Unix socket; they never open MIDI
-   ports or connect directly to browser clients. Standalone hardware demos and
-   profile tests require the MIDI daemon to be stopped.
+   ports or connect directly to browser clients. Standalone experiences may
+   own MIDI and/or a temporary browser surface; direct MIDI use requires the
+   MIDI daemon to be stopped.
 2. **Integrations report semantics, not lights.** They emit an agent identity,
    state, and supported actions. The visual layer decides what those semantics
    look like.
@@ -36,6 +37,7 @@ nothing.
 | `pad-lattice-hook` | Silently ignores events without a daemon, otherwise converts one Codex lifecycle event into state and may await one permission decision. | One lightweight Codex-managed process per hook event. |
 | `pad-lattice codex` | Launches Codex on the real terminal and holds a reconnecting session lease. | Same lifetime as the child Codex process. |
 | `pad-lattice codex-exec` | Converts a non-interactive Codex JSONL stream and subscribes to Stop. | Same lifetime as one non-interactive task. |
+| `pad-lattice demo`, `show` | Runs one shared experience on MIDI, browser, or both. Browser modes wait for local-admin start. | One experience, then exit. |
 | Other CLI clients | Send a state, inspect status, end a session, or subscribe diagnostically. | Usually short-lived; action subscribers remain connected. |
 
 The launcher is deliberately **not** a terminal emulator. Codex inherits the
@@ -52,6 +54,7 @@ Pad-Lattice keeps its contracts separate:
 | Local IPC | `protocol.py`, `client.py` | Wire Protocol 1 and the public typed integration API. |
 | Surface semantics | `devices/base.py`, `visual_protocol.py` | A hardware-independent `SurfaceView` and its semantic light tokens. |
 | Browser transport | `web_protocol.py`, `web_surface.py` | Authenticated, sanitized browser rendering and input. |
+| Experiences | `experience_manifest.py`, `experience_runtime.py` | Shared Demo graph, Show timeline, playback lifecycle, and preemption. |
 | Audio semantics | `audio.py` | Optional earcons, Scene pitch identity, authored score, and playback lifecycle. |
 | Hardware translation | `devices/profiles.py`, `devices/midi_grid.py` | Validated profile data, MIDI addresses, palette values, and physical events. |
 
@@ -59,13 +62,13 @@ Pad-Lattice keeps its contracts separate:
 `control_plane.py` owns the policy transitions and creates a `SurfaceView`
 without importing sockets, browser servers, MIDI, or a system clock.
 
-The packaged JSON Schemas mirror the three machine-facing data contracts: Wire
-Protocol 1, Web Surface Protocol 1, and Device Profile Schema 1. Runtime code
-uses direct typed parsers. Optional device-profile JSON Schema validation is an
-authoring-time dry run.
+Packaged JSON Schemas mirror Wire Protocol 1, Web Surface Protocol 1, Device
+Profile Schema 1, Demo Manifest 1, and Performance Manifest 1. Runtime code
+uses direct typed parsers. JSON Schema validation remains an authoring and CI
+dry run, not part of real-time playback.
 
 The [Socket Protocol](../reference/socket-protocol.md), [Visual
-Language](../usage/visual-language.md), [Audio
+Protocol](./visual-language.md), [Audio
 Feedback](../usage/audio-feedback.md), and [Device
 Profiles](./device-profiles.md) pages define each boundary in more detail.
 
@@ -123,6 +126,26 @@ queues, and each semantic event is processed once by the same method. Browser
 clients never send an agent identity with an action; the control plane adds the
 currently selected identity after all routing gates pass.
 
+## Experience Path
+
+Demo and Show deliberately reuse surface events instead of creating a second
+input stack:
+
+1. The token-authenticated local administrator emits `ExperienceRequested`.
+2. `ExperienceController` loads the packaged Version 1 manifest.
+3. Demo renders semantic `SurfaceView` stages and consumes ordinary Scene and
+   action events; Show renders full `ShowFrame` cues selected by absolute time.
+4. `CompositeSurface` fans the same stage or frame to MIDI and browser outputs.
+5. The controller publishes lifecycle/audio metadata through
+   `set_experience()` for every browser.
+6. A real reply or approval wait stops playback and forces the daemon's
+   authoritative `SurfaceView` back onto every surface.
+
+The Show and score are authored in Python once. Run
+`python -m pad_lattice.experience_compiler --write` to regenerate the compact
+manifest and browser WAV bank. CI runs `--check`; do not hand-edit generated
+performance or audio files. `demo-v1.json` is the human-authored Demo graph.
+
 ## Session Lease Path
 
 Codex hooks know the real Codex session ID, but there is no terminal-close
@@ -168,9 +191,9 @@ Threads are confined to adapters that must wait independently:
 - a permission hook waits synchronously because Codex is waiting for that
   hook's decision.
 
-Audio uses short-lived operating-system player processes. Synthesis and
-playback are outside the control plane, and playback never blocks the selector
-loop.
+Host audio uses short-lived operating-system player processes. Browser audio
+uses compiled WAV assets. Synthesis, playback, and browser autoplay state are
+outside the control plane and never block the selector loop.
 
 ## State Ownership
 
@@ -181,6 +204,7 @@ loop.
 | Codex hook commands | `pad-lattice codex` command line | Child process only; not persisted globally. |
 | Device definitions | Profile catalog | Packaged JSON plus optional user profile roots. |
 | Visual meanings | `visual_protocol.py` and documentation | Versioned as Visual Protocol 1. |
+| Demo and Show artifacts | Packaged Version 1 manifests and generated browser WAV files | Committed, compiler-checked build inputs. |
 
 Slots are presentation state, not identity. A session may move into or out of
 overflow while retaining its identity and preferred accent.
@@ -200,6 +224,8 @@ overflow while retaining its identity and preferred accent.
 | Invalid protocol message | The daemon returns a protocol error on that client connection. |
 | Browser fails authentication | It receives no surface state and must pair again. |
 | Browser server cannot bind | Startup fails before the daemon claims normal operation. |
+| Paired browser requests Demo or Show | Rejected; only the loopback administrator can start or stop experiences. |
+| Agent needs approval or a reply during playback | Experience stops and authoritative agent state renders immediately. |
 | One child surface fails to initialize | Composite initialization closes already-opened children. |
 | Requested audio player unavailable | Explicit audio startup fails clearly; operation without an audio flag is unaffected. |
 | Audio playback fails after startup | State, rendering, MIDI input, and action routing continue. |
@@ -214,8 +240,10 @@ overflow while retaining its identity and preferred accent.
 | Change a glyph or semantic color role | `visual_protocol.py` | `test_visual_protocol.py`, `test_midi_grid.py` |
 | Change browser commands or rendering | `web_protocol.py`, `web_surface.py`, `web-app/src/` | `test_web_protocol.py`, `test_web_surface.py`, Vitest, Playwright |
 | Change multi-surface fan-out | `devices/composite.py` | `test_composite_surface.py`, `test_daemon.py` |
-| Change an earcon or show score | `audio.py` | `test_audio.py`, `test_daemon.py` |
-| Change the visual story | `show.py` | `test_show.py`, real-device performance test |
+| Change an earcon or Show score | `audio.py`, then run the experience compiler | `test_audio.py`, compiler check, browser tests |
+| Change the visual story | `show.py`, then run the experience compiler | `test_show.py`, manifest tests, real-device performance test |
+| Change the guided Demo | `web-app/public/experiences/demo-v1.json` | manifest tests, `test_demo_agent.py`, Vitest, Playwright |
+| Change experience playback | `experience_runtime.py` | `test_demo_agent.py`, `test_show.py`, `test_daemon.py` |
 | Add a palette-grid controller | A profile JSON file | `test_device_profiles.py`, guided profile test |
 | Add a new hardware driver | `devices/base.py`, `devices/factory.py`, new trusted driver | Driver tests and profile validation tests |
 | Change Codex lifecycle mapping | `codex_hooks.py` or `codex_exec.py` | Matching Codex adapter tests |
@@ -233,6 +261,7 @@ Run the hardware-independent suite:
 
 ```bash
 .venv/bin/python -m unittest discover -s tests
+.venv/bin/python -m pad_lattice.experience_compiler --check
 ```
 
 Validate the documentation:
@@ -254,15 +283,15 @@ npm run test:e2e
 ```
 
 Unit tests use fake surfaces and MIDI ports. A profile intended for real
-hardware also needs the guided physical test described in [Test a
-Device](../usage/device-testing.md).
+hardware also needs the guided physical test described in [Device
+Testing](./device-testing.md).
 
 ## Recommended Reading Order
 
 1. [Architecture](./architecture.md) for system boundaries.
 2. [Socket Protocol](../reference/socket-protocol.md) for client behavior.
 3. [Multi-Agent Design](./multi-agent-design.md) for routing invariants.
-4. [Visual Language](../usage/visual-language.md) for surface semantics.
-5. [Virtual Surface](../usage/virtual-surface.md) for browser transport and pairing.
+4. [Visual Protocol](./visual-language.md) for surface semantics.
+5. [Browser Surface](./virtual-surface.md) for browser transport and pairing.
 6. [Audio Feedback](../usage/audio-feedback.md) for optional sonification.
 7. [Device Profiles](./device-profiles.md) for hardware extension.

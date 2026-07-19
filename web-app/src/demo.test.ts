@@ -1,9 +1,13 @@
 import {describe, expect, it} from 'vitest';
-import {demoReducer, demoSurfaceView, initialDemoState} from './demo';
+import demoManifestData from '../public/experiences/demo-v1.json';
+import {createDemoState, demoReducer, demoSurfaceView} from './demo';
+import type {DemoManifest} from './types';
+
+const demoManifest = demoManifestData as DemoManifest;
 
 describe('guided demo', () => {
   it('routes the visitor through selection, approval, retry, and success', () => {
-    let state = structuredClone(initialDemoState);
+    let state = createDemoState(demoManifest);
     state = demoReducer(state, {type: 'select', slot: 1});
     expect(state.stage).toBe('approve_reviewer');
     expect(demoSurfaceView(state).available_actions).toEqual(['approve', 'reject']);
@@ -14,11 +18,11 @@ describe('guided demo', () => {
     state = demoReducer(state, {type: 'action', action: 'retry'});
 
     expect(state.stage).toBe('complete');
-    expect(state.sessions.every((session) => session.state === 'success')).toBe(true);
+    expect(demoSurfaceView(state).sessions.every((session) => session.state === 'success')).toBe(true);
   });
 
   it('does not unlock the sandbox before completion', () => {
-    const state = demoReducer(structuredClone(initialDemoState), {
+    const state = demoReducer(createDemoState(demoManifest), {
       type: 'mode',
       mode: 'sandbox',
     });

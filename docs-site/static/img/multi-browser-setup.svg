@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-labelledby="title description">
+  <title id="title">Several browsers controlling one Pad-Lattice daemon</title>
+  <desc id="description">A paired phone and laptop connect through a trusted private network to one Pad-Lattice daemon. A local administrator browser manages pairing. The daemon mirrors one shared Agent Scene selection and routes actions to several Codex sessions.</desc>
+  <defs>
+    <marker id="browser-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#3674e8"/>
+    </marker>
+    <marker id="local-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#60747d"/>
+    </marker>
+    <marker id="agent-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#00aebb"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="560" fill="#ffffff"/>
+  <g font-family="Arial, sans-serif">
+    <text x="30" y="30" fill="#49616c" font-size="13" font-weight="700">CONTROL SURFACES</text>
+    <text x="325" y="30" fill="#49616c" font-size="13" font-weight="700">PRIVATE CONNECTION</text>
+    <text x="585" y="30" fill="#49616c" font-size="13" font-weight="700">ONE PAD-LATTICE DAEMON</text>
+    <text x="930" y="30" fill="#49616c" font-size="13" font-weight="700">CODEX AGENT SCENES</text>
+
+    <g>
+      <rect x="30" y="58" width="230" height="112" rx="7" fill="#eff6ff" stroke="#6791d5" stroke-width="2"/>
+      <rect x="48" y="76" width="45" height="72" rx="7" fill="#ffffff" stroke="#3674e8" stroke-width="3"/>
+      <rect x="55" y="84" width="31" height="51" rx="3" fill="#111827"/>
+      <circle cx="70.5" cy="141" r="3" fill="#3674e8"/>
+      <text x="112" y="90" fill="#315f82" font-size="13" font-weight="700">PHONE</text>
+      <text x="112" y="114" fill="#314c57" font-size="16" font-weight="700">Paired remote</text>
+      <rect x="112" y="129" width="115" height="22" rx="5" fill="#dbeafe" stroke="#93b4e7"/>
+      <text x="169.5" y="144" fill="#315f82" font-size="10" font-weight="700" text-anchor="middle">FRESH CODE 1</text>
+
+      <rect x="30" y="192" width="230" height="112" rx="7" fill="#f2fbfc" stroke="#4aa4ad" stroke-width="2"/>
+      <rect x="47" y="213" width="58" height="40" rx="4" fill="#ffffff" stroke="#00aebb" stroke-width="3"/>
+      <rect x="53" y="219" width="46" height="28" rx="2" fill="#111827"/>
+      <path d="M41 260H111L104 269H48Z" fill="#d8eef0" stroke="#4aa4ad"/>
+      <text x="124" y="224" fill="#176a72" font-size="13" font-weight="700">LAPTOP</text>
+      <text x="124" y="248" fill="#314c57" font-size="16" font-weight="700">Paired remote</text>
+      <rect x="124" y="263" width="110" height="22" rx="5" fill="#d9f3f5" stroke="#7fcbd1"/>
+      <text x="179" y="278" fill="#176a72" font-size="10" font-weight="700" text-anchor="middle">FRESH CODE 2</text>
+
+      <rect x="30" y="326" width="230" height="112" rx="7" fill="#f7f8f9" stroke="#8fa2ab" stroke-width="2"/>
+      <rect x="48" y="349" width="60" height="43" rx="4" fill="#ffffff" stroke="#60747d" stroke-width="3"/>
+      <rect x="54" y="355" width="48" height="31" rx="2" fill="#111827"/>
+      <path d="M72 394H84V402H100" fill="none" stroke="#60747d" stroke-width="3"/>
+      <text x="124" y="359" fill="#455d68" font-size="13" font-weight="700">LOCAL BROWSER</text>
+      <text x="124" y="383" fill="#314c57" font-size="16" font-weight="700">Administrator</text>
+      <text x="124" y="407" fill="#60747d" font-size="11">Creates and revokes codes</text>
+      <text x="124" y="424" fill="#60747d" font-size="11">Loopback only</text>
+    </g>
+
+    <g>
+      <rect x="325" y="111" width="190" height="218" rx="7" fill="#f4f8fa" stroke="#2e7289" stroke-width="2"/>
+      <circle cx="420" cy="175" r="42" fill="#ffffff" stroke="#3674e8" stroke-width="3"/>
+      <path d="M389 166C406 150 434 150 451 166" fill="none" stroke="#3674e8" stroke-width="5" stroke-linecap="round"/>
+      <path d="M399 178C411 167 429 167 441 178" fill="none" stroke="#3674e8" stroke-width="5" stroke-linecap="round"/>
+      <path d="M411 190C416 185 424 185 429 190" fill="none" stroke="#3674e8" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="420" cy="200" r="4" fill="#3674e8"/>
+      <text x="420" y="240" fill="#174e62" font-size="16" font-weight="700" text-anchor="middle">TRUSTED LAN</text>
+      <text x="420" y="263" fill="#536871" font-size="12" text-anchor="middle">Same private Wi-Fi</text>
+      <rect x="350" y="282" width="140" height="27" rx="5" fill="#fff8e7" stroke="#d39a18"/>
+      <text x="420" y="300" fill="#895f08" font-size="11" font-weight="700" text-anchor="middle">OPTIONAL VM FORWARD</text>
+    </g>
+
+    <path d="M260 114H294Q309 114 320 137" fill="none" stroke="#3674e8" stroke-width="3" marker-end="url(#browser-arrow)"/>
+    <path d="M260 248H320" fill="none" stroke="#3674e8" stroke-width="3" marker-end="url(#browser-arrow)"/>
+    <path d="M515 220H570" fill="none" stroke="#3674e8" stroke-width="3" marker-end="url(#browser-arrow)"/>
+    <path d="M260 382H525Q549 382 570 352" fill="none" stroke="#60747d" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#local-arrow)"/>
+    <text x="427" y="372" fill="#60747d" font-size="10" font-weight="700" text-anchor="middle">PRIVATE ADMIN TOKEN</text>
+
+    <g>
+      <rect x="585" y="58" width="270" height="380" rx="7" fill="#f4f8fa" stroke="#2e7289" stroke-width="2"/>
+      <rect x="605" y="79" width="230" height="49" rx="6" fill="#174e62"/>
+      <circle cx="628" cy="103" r="8" fill="#35a94a"/>
+      <text x="646" y="100" fill="#ffffff" font-size="14" font-weight="700">PAD-LATTICE</text>
+      <text x="646" y="116" fill="#c9e6ee" font-size="11">Live control plane</text>
+
+      <rect x="605" y="146" width="230" height="153" rx="6" fill="#111827" stroke="#374151" stroke-width="2"/>
+      <g fill="#202731" stroke="#3c4755">
+        <rect x="627" y="165" width="27" height="27" rx="5"/><rect x="663" y="165" width="27" height="27" rx="5"/><rect x="699" y="165" width="27" height="27" rx="5"/><rect x="735" y="165" width="27" height="27" rx="5"/>
+        <rect x="627" y="201" width="27" height="27" rx="5"/><rect x="663" y="201" width="27" height="27" rx="5"/><rect x="699" y="201" width="27" height="27" rx="5"/><rect x="735" y="201" width="27" height="27" rx="5"/>
+        <rect x="627" y="237" width="27" height="27" rx="5"/><rect x="663" y="237" width="27" height="27" rx="5"/><rect x="699" y="237" width="27" height="27" rx="5"/><rect x="735" y="237" width="27" height="27" rx="5"/>
+      </g>
+      <rect x="663" y="165" width="27" height="27" rx="5" fill="#d39a18" stroke="#eec35c"/>
+      <rect x="663" y="201" width="27" height="27" rx="5" fill="#d39a18" stroke="#eec35c"/>
+      <rect x="627" y="237" width="27" height="27" rx="5" fill="#35a94a" stroke="#78d187"/>
+      <rect x="699" y="237" width="27" height="27" rx="5" fill="#cf3f42" stroke="#ed8587"/>
+      <circle cx="798" cy="178.5" r="13" fill="#00aebb"/>
+      <circle cx="798" cy="214.5" r="13" fill="#c83ec9" stroke="#ffffff" stroke-width="3"/>
+      <circle cx="798" cy="250.5" r="13" fill="#70b92d"/>
+      <text x="720" y="284" fill="#aeb7c2" font-size="10" text-anchor="middle">one shared selected Scene</text>
+
+      <rect x="605" y="319" width="230" height="92" rx="6" fill="#ffffff" stroke="#b8cbd2"/>
+      <text x="625" y="343" fill="#174e62" font-size="11" font-weight="700">EVERY SURFACE STAYS IN SYNC</text>
+      <circle cx="628" cy="363" r="5" fill="#c83ec9"/>
+      <text x="640" y="367" fill="#536871" font-size="11">Scene selection</text>
+      <circle cx="728" cy="363" r="5" fill="#d39a18"/>
+      <text x="740" y="367" fill="#536871" font-size="11">Agent state</text>
+      <circle cx="628" cy="389" r="5" fill="#35a94a"/>
+      <text x="640" y="393" fill="#536871" font-size="11">Available actions</text>
+      <circle cx="752" cy="389" r="5" fill="#3674e8"/>
+      <text x="764" y="393" fill="#536871" font-size="11">Identity</text>
+    </g>
+
+    <path d="M855 193H916" fill="none" stroke="#00aebb" stroke-width="3" marker-end="url(#agent-arrow)"/>
+    <path d="M916 287H862" fill="none" stroke="#00aebb" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#agent-arrow)"/>
+    <text x="885" y="180" fill="#176a72" font-size="10" font-weight="700" text-anchor="middle">STATE</text>
+    <text x="888" y="305" fill="#176a72" font-size="10" font-weight="700" text-anchor="middle">ONE ACTION</text>
+
+    <g>
+      <rect x="930" y="58" width="240" height="112" rx="7" fill="#f2fbfc" stroke="#00aebb" stroke-width="2"/>
+      <rect x="930" y="58" width="8" height="112" rx="4" fill="#00aebb"/>
+      <text x="954" y="84" fill="#176a72" font-size="12" font-weight="700">SCENE 1 / CYAN</text>
+      <text x="954" y="110" fill="#314c57" font-size="17" font-weight="700">implementation</text>
+      <circle cx="960" cy="139" r="7" fill="#3674e8"/>
+      <text x="976" y="143" fill="#60747d" font-size="12">running</text>
+
+      <rect x="930" y="192" width="240" height="112" rx="7" fill="#fcf5fc" stroke="#c83ec9" stroke-width="3"/>
+      <rect x="930" y="192" width="8" height="112" rx="4" fill="#c83ec9"/>
+      <text x="954" y="218" fill="#803681" font-size="12" font-weight="700">SCENE 2 / MAGENTA</text>
+      <text x="954" y="244" fill="#314c57" font-size="17" font-weight="700">review</text>
+      <circle cx="960" cy="273" r="7" fill="#d39a18"/>
+      <text x="976" y="277" fill="#60747d" font-size="12">waiting for approval</text>
+
+      <rect x="930" y="326" width="240" height="112" rx="7" fill="#f6faef" stroke="#70b92d" stroke-width="2"/>
+      <rect x="930" y="326" width="8" height="112" rx="4" fill="#70b92d"/>
+      <text x="954" y="352" fill="#527727" font-size="12" font-weight="700">SCENE 3 / LIME</text>
+      <text x="954" y="378" fill="#314c57" font-size="17" font-weight="700">docs</text>
+      <circle cx="960" cy="407" r="7" fill="#ffffff" stroke="#7f929b"/>
+      <text x="976" y="411" fill="#60747d" font-size="12">waiting for reply</text>
+    </g>
+
+    <rect x="30" y="474" width="1140" height="58" rx="7" fill="#f4f8fa" stroke="#b8cbd2"/>
+    <text x="55" y="499" fill="#174e62" font-size="13" font-weight="700">ONE DAEMON</text>
+    <text x="150" y="499" fill="#536871" font-size="12">keeps every browser and MIDI surface in sync.</text>
+    <text x="490" y="499" fill="#174e62" font-size="13" font-weight="700">ONE FRESH CODE</text>
+    <text x="617" y="499" fill="#536871" font-size="12">pairs each remote device.</text>
+    <text x="842" y="499" fill="#174e62" font-size="13" font-weight="700">ONE SELECTION</text>
+    <text x="955" y="499" fill="#536871" font-size="12">targets one agent.</text>
+    <text x="55" y="519" fill="#60747d" font-size="11">Up to eight remote browsers may connect at once. Revoke remote access if any paired device is no longer trusted.</text>
+  </g>
+</svg>

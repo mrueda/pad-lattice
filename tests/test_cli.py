@@ -61,7 +61,49 @@ class CliTest(TestCase):
             "HELLO FROM CODEX CLI",
             duration=10.32,
         )
-        run_demo.assert_called_once_with(surface, audio_feedback=feedback)
+        run_demo.assert_called_once_with(
+            surface,
+            audio_feedback=feedback,
+            wait_for_request=False,
+        )
+
+    def test_demo_and_show_accept_virtual_surface_options(self) -> None:
+        demo = build_parser().parse_args(
+            ["demo", "--surface", "web", "--port", "9000", "--no-open"]
+        )
+        show = build_parser().parse_args(
+            ["show", "--surface", "both", "--lan", "--no-open"]
+        )
+
+        self.assertEqual(demo.surface, "web")
+        self.assertEqual(demo.port, 9000)
+        self.assertEqual(show.surface, "both")
+        self.assertTrue(show.lan)
+
+    def test_web_demo_waits_for_admin_start_without_resolving_midi(self) -> None:
+        surface = Mock()
+        with (
+            patch("pad_lattice.cli._open_web_surface", return_value=surface),
+            patch("pad_lattice.cli.resolve_device") as resolve_device,
+            patch("pad_lattice.cli.run_demo_surface") as run_demo,
+        ):
+            result = main(["demo", "--surface", "web", "--no-open"])
+
+        self.assertEqual(result, 0)
+        resolve_device.assert_not_called()
+        run_demo.assert_called_once_with(
+            surface,
+            audio_feedback=None,
+            wait_for_request=True,
+        )
+
+    def test_midi_demo_rejects_lan_only_options(self) -> None:
+        error = io.StringIO()
+        with contextlib.redirect_stderr(error):
+            result = main(["demo", "--lan"])
+
+        self.assertEqual(result, 2)
+        self.assertIn("require --surface web or both", error.getvalue())
 
     def test_daemon_audio_speaks_the_visual_greeting(self) -> None:
         surface = Mock(
@@ -137,6 +179,8 @@ class CliTest(TestCase):
                 "--lan",
                 "--port",
                 "9000",
+                "--bind-host",
+                "10.211.55.4",
                 "--advertise-host",
                 "192.168.1.10",
                 "--no-open",
@@ -146,11 +190,15 @@ class CliTest(TestCase):
         self.assertEqual(args.command, "web")
         self.assertTrue(args.lan)
         self.assertEqual(args.port, 9000)
+        self.assertEqual(args.bind_host, "10.211.55.4")
         self.assertEqual(args.advertise_host, "192.168.1.10")
         self.assertTrue(args.no_open)
 
     def test_web_command_runs_daemon_without_resolving_midi(self) -> None:
-        surface = Mock(local_url="http://127.0.0.1:8765")
+        surface = Mock(
+            local_url="http://127.0.0.1:8765",
+            admin_url="http://127.0.0.1:8765/#admin=test-secret",
+        )
         surface.server.actual_port = 8765
         daemon = Mock()
         with (
@@ -164,6 +212,68 @@ class CliTest(TestCase):
         surface.initialize.assert_called_once_with()
         resolve_device.assert_not_called()
         daemon.run.assert_called_once_with()
+
+    def test_lan_web_supports_a_separate_nat_forwarding_address(self) -> None:
+        surface = Mock(
+            local_url="http://127.0.0.1:8765",
+            admin_url="http://127.0.0.1:8765/#admin=test-secret",
+        )
+        surface.server.actual_port = 8765
+        surface.create_pairing.return_value = {"pin": "123456"}
+        daemon = Mock()
+        with (
+            patch("pad_lattice.cli.WebSurface", return_value=surface) as web_surface,
+            patch("pad_lattice.cli.PadLatticeDaemon", return_value=daemon),
+        ):
+            result = main(
+                [
+                    "web",
+                    "--lan",
+                    "--bind-host",
+                    "10.211.55.4",
+                    "--advertise-host",
+                    "192.168.1.10",
+                    "--no-open",
+                ]
+            )
+
+        self.assertEqual(result, 0)
+        web_surface.assert_called_once_with(host="10.211.55.4", port=8765)
+        surface.configure_lan.assert_called_once_with("http://192.168.1.10:8765")
+
+    def test_lan_web_rejects_a_public_advertised_interface(self) -> None:
+        error = io.StringIO()
+        with contextlib.redirect_stderr(error):
+            result = main(
+                [
+                    "web",
+                    "--lan",
+                    "--bind-host",
+                    "10.211.55.4",
+                    "--advertise-host",
+                    "8.8.8.8",
+                    "--no-open",
+                ]
+            )
+
+        self.assertEqual(result, 2)
+        self.assertIn("private LAN IPv4 address", error.getvalue())
+
+    def test_lan_web_rejects_a_public_bind_interface(self) -> None:
+        error = io.StringIO()
+        with contextlib.redirect_stderr(error):
+            result = main(
+                [
+                    "web",
+                    "--lan",
+                    "--bind-host",
+                    "8.8.8.8",
+                    "--no-open",
+                ]
+            )
+
+        self.assertEqual(result, 2)
+        self.assertIn("--bind-host must be a private", error.getvalue())
 
     def test_status_supports_json_output(self) -> None:
         args = build_parser().parse_args(

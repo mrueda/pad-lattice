@@ -7,6 +7,7 @@ import os
 import selectors
 import socket
 import stat
+import struct
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -21,12 +22,15 @@ from pad_lattice.control_plane import (
 from pad_lattice.devices.base import (
     ActionPressed,
     ControlSurface,
+    ExperienceRequested,
+    ExperienceStopRequested,
     SessionSelected,
     SurfaceEvent,
     SurfaceView,
 )
 from pad_lattice.devices.composite import surface_descriptors
 from pad_lattice.events import AgentIdentity, AgentState, ControlAction
+from pad_lattice.experience_runtime import ExperienceController
 from pad_lattice.identity_store import IdentityStore
 from pad_lattice.protocol import (
     MAX_MESSAGE_BYTES,
@@ -105,6 +109,10 @@ class PadLatticeDaemon:
             session_ttl=session_ttl,
             identity_store=identity_store,
         )
+        self.experience = ExperienceController(
+            surface,
+            audio_feedback=audio_feedback,
+        )
         self._selector = selectors.DefaultSelector()
         self._server: socket.socket | None = None
         self._owns_socket_path = False
@@ -138,6 +146,7 @@ class PadLatticeDaemon:
         if self._closed:
             return
         self._closed = True
+        self.experience.stop(reason="daemon_stopped")
         for client in list(self._clients.values()):
             self._close_client(client)
         if self._server is not None:
@@ -187,6 +196,7 @@ class PadLatticeDaemon:
                     metadata=command.metadata,
                     now=now,
                 )
+                self._preempt_experience_if_needed()
                 self._announce_state(session)
                 if command.reply:
                     self._send(client, self._state_ack(session))
@@ -280,6 +290,7 @@ class PadLatticeDaemon:
             overflow_count=self.control.overflow_count,
             activity_motion=self.activity_motion,
             audio_feedback=self.audio_feedback is not None,
+            experience=self.experience.kind,
             preview_active=self.control.preview is not None,
             session_ttl=self.control.session_ttl,
             sessions=[
@@ -363,6 +374,9 @@ class PadLatticeDaemon:
 
     def _accept_client(self, server: socket.socket, mask: int) -> None:
         client_socket, _ = server.accept()
+        if not _peer_is_current_user(client_socket):
+            client_socket.close()
+            return
         client_socket.setblocking(False)
         client = Client(client_socket)
         self._clients[client.client_id] = client
@@ -414,8 +428,29 @@ class PadLatticeDaemon:
                 self._send(client, error_message(exc))
 
     def _handle_surface_event(self, event: SurfaceEvent) -> None:
+        now = time.monotonic()
+        if isinstance(event, ExperienceRequested):
+            if self._agent_attention_required():
+                self.experience.block(
+                    event.kind,
+                    "An agent is waiting for approval or a reply.",
+                )
+                return
+            self.experience.start(
+                event.kind,
+                now=now,
+                host_show_audio=self.audio_feedback is not None,
+            )
+            return
+        if isinstance(event, ExperienceStopRequested):
+            if self.experience.stop():
+                self._rendered_revision = -1
+            return
+        if self.experience.active:
+            self.experience.handle_event(event, now=now)
+            return
         if isinstance(event, SessionSelected):
-            if self.control.select_slot(event.slot, now=time.monotonic()):
+            if self.control.select_slot(event.slot, now=now):
                 self._play_audio(Earcon.SESSION_SELECTED, slot=event.slot)
         elif isinstance(event, ActionPressed):
             self._handle_action(event.action)
@@ -449,6 +484,12 @@ class PadLatticeDaemon:
     def _render_if_needed(self) -> None:
         now = time.monotonic()
         self.control.tick(now=now)
+        self._preempt_experience_if_needed()
+        if self.experience.active:
+            if self.experience.tick(now=now):
+                self._rendered_revision = -1
+            else:
+                return
         refresh_running = (
             self.control.preview is None
             and self.activity_motion
@@ -462,6 +503,18 @@ class PadLatticeDaemon:
         self._frame += 1
         self._rendered_revision = self.control.revision
         self._next_activity_render = now + RUNNING_ACTIVITY_INTERVAL
+
+    def _agent_attention_required(self) -> bool:
+        return any(
+            session.state
+            in {AgentState.WAITING_FOR_REPLY, AgentState.WAITING_FOR_APPROVAL}
+            for session in self.control.sessions
+        )
+
+    def _preempt_experience_if_needed(self) -> None:
+        if self.experience.active and self._agent_attention_required():
+            self.experience.stop(reason="agent_attention_required")
+            self._rendered_revision = -1
 
     def _announce_state(self, session: AgentSession) -> None:
         previous = self._announced_states.get(session.identity)
@@ -537,3 +590,22 @@ class PadLatticeDaemon:
 
 def _identity_payload(identity: AgentIdentity) -> dict[str, str]:
     return {"backend": identity.backend, "session_id": identity.session_id}
+
+
+def _peer_is_current_user(client: socket.socket) -> bool:
+    """Reject cross-user Unix-socket clients where peer credentials exist."""
+
+    peer_credential_option = getattr(socket, "SO_PEERCRED", None)
+    if peer_credential_option is None:
+        return True
+    credential_size = struct.calcsize("3i")
+    try:
+        credentials = client.getsockopt(
+            socket.SOL_SOCKET,
+            peer_credential_option,
+            credential_size,
+        )
+        _, peer_uid, _ = struct.unpack("3i", credentials)
+    except (OSError, struct.error):
+        return False
+    return peer_uid == os.geteuid()

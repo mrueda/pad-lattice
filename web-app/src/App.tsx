@@ -1,26 +1,45 @@
-import {useEffect, useMemo, useReducer, useState, type FormEvent} from 'react';
+import {useEffect, useMemo, useReducer, useRef, useState, type FormEvent} from 'react';
 import {
   BookOpen,
   ExternalLink,
   Link2,
   MonitorSmartphone,
+  Play,
   RefreshCw,
   ShieldCheck,
   ShieldOff,
   Wifi,
   WifiOff,
+  Square,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import {
+  createDemoState,
+  demoComplete,
   demoPrompt,
   demoReducer,
   demoSurfaceView,
-  initialDemoState,
   stateLabels,
   validDemoState,
 } from './demo';
+import {useAudioOutput} from './audio';
+import {
+  cueIndexAt,
+  loadExperienceAssets,
+  performanceFrame,
+  type ExperienceAssets,
+} from './experiences';
 import {useLiveSurface} from './live';
 import {compileVisualFrame, tokenColor} from './surfaceModel';
-import type {AgentState, ControlAction, SessionView, SurfaceView, VisualFrame} from './types';
+import type {
+  AgentState,
+  ControlAction,
+  ExperienceStateMessage,
+  SessionView,
+  SurfaceView,
+  VisualFrame,
+} from './types';
 import {VirtualSurface} from './VirtualSurface';
 
 type AppMode = 'loading' | 'demo' | 'live';
@@ -41,16 +60,92 @@ export default function App() {
 }
 
 function DemoApp() {
-  const [demo, dispatch] = useReducer(demoReducer, initialDemoState);
+  const [assets, setAssets] = useState<ExperienceAssets | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    loadExperienceAssets().then(setAssets).catch((reason: unknown) => {
+      setError(reason instanceof Error ? reason.message : 'Experience assets are unavailable.');
+    });
+  }, []);
+  if (error) return <LoadFailure message={error} />;
+  if (!assets) return <Loading />;
+  return <PublicExperienceApp assets={assets} />;
+}
+
+function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
+  const [demo, dispatch] = useReducer(demoReducer, assets.demo, createDemoState);
+  const [mode, setMode] = useState<'guided' | 'sandbox' | 'show'>('guided');
+  const [showStatus, setShowStatus] = useState<'idle' | 'starting' | 'playing'>('idle');
+  const [showElapsed, setShowElapsed] = useState(0);
+  const showStartRef = useRef(0);
+  const audio = useAudioOutput();
   const view = demoSurfaceView(demo);
   const frame = useMemo(() => compileVisualFrame(view), [view]);
   const prompt = demoPrompt(demo);
+  const showCueIndex = cueIndexAt(assets.performance, showElapsed);
+  const showCue = assets.performance.cues[showCueIndex];
+  const fullFrame = mode === 'show' && showStatus === 'playing'
+    ? performanceFrame(assets.performance, showCueIndex)
+    : null;
+
+  useEffect(() => {
+    if (mode !== 'show') audio.playCue(demo.audioCue, demo.audioSlot, demo.audioSequence);
+  }, [audio, demo.audioCue, demo.audioSequence, demo.audioSlot, mode]);
+
+  useEffect(() => {
+    if (showStatus === 'idle') return;
+    const timer = window.setInterval(() => {
+      const now = performance.now();
+      if (now < showStartRef.current) return;
+      if (showStatus === 'starting') setShowStatus('playing');
+      const elapsed = now - showStartRef.current;
+      if (elapsed >= assets.performance.duration_ms) {
+        setShowElapsed(assets.performance.duration_ms - 1);
+        setShowStatus('idle');
+        audio.stop();
+      } else {
+        setShowElapsed(elapsed);
+      }
+    }, 30);
+    return () => window.clearInterval(timer);
+  }, [assets.performance.duration_ms, audio, showStatus]);
+
+  useEffect(() => {
+    if (mode !== 'show' || showStatus === 'idle') return;
+    if (showStatus === 'starting') {
+      const remaining = Math.max(0, showStartRef.current - performance.now());
+      audio.syncExperience(publicShowState(assets, 'starting', 0, remaining));
+    } else {
+      audio.syncExperience(publicShowState(assets, 'playing', showElapsed));
+    }
+  }, [assets, audio, mode, showElapsed, showStatus]);
+
+  const chooseMode = (next: 'guided' | 'sandbox' | 'show') => {
+    if (next !== 'show') {
+      setShowStatus('idle');
+      audio.stop();
+      dispatch({type: 'mode', mode: next});
+    }
+    setMode(next);
+  };
+  const startShow = () => {
+    const delay = 500;
+    setShowElapsed(0);
+    showStartRef.current = performance.now() + delay;
+    setShowStatus('starting');
+  };
+  const stopShow = () => {
+    setShowStatus('idle');
+    audio.stop();
+  };
+
   return (
     <PageFrame modeLabel="PUBLIC SIMULATION" connected>
       <div className="workspace">
         <section className="surfaceWorkspace">
           <VirtualSurface
             frame={frame}
+            performanceFrame={fullFrame}
             view={view}
             onAction={(action) => dispatch({type: 'action', action})}
             onSelect={(slot) => dispatch({type: 'select', slot})}
@@ -59,29 +154,54 @@ function DemoApp() {
         <aside className="contextPane">
           <div className="modeSwitch" aria-label="Demo mode">
             <button
-              className={demo.mode === 'guided' ? 'active' : ''}
-              onClick={() => dispatch({type: 'mode', mode: 'guided'})}>Guided</button>
+              className={mode === 'guided' ? 'active' : ''}
+              onClick={() => chooseMode('guided')}>Guided</button>
             <button
-              className={demo.mode === 'sandbox' ? 'active' : ''}
-              disabled={demo.stage !== 'complete'}
-              onClick={() => dispatch({type: 'mode', mode: 'sandbox'})}>Sandbox</button>
+              className={mode === 'sandbox' ? 'active' : ''}
+              disabled={!demoComplete(demo)}
+              onClick={() => chooseMode('sandbox')}>Sandbox</button>
+            <button
+              className={mode === 'show' ? 'active' : ''}
+              onClick={() => chooseMode('show')}>Show</button>
           </div>
 
           <section className="narrative" aria-live="polite">
-            <span>{prompt.eyebrow}</span>
-            <h1>{prompt.title}</h1>
-            <p>{prompt.detail}</p>
+            <span>{mode === 'show' ? assets.performance.acts[showCue.act] : prompt.eyebrow}</span>
+            <h1>{mode === 'show' ? assets.performance.title : prompt.title}</h1>
+            <p>{mode === 'show' ? showCue.caption ?? 'The story continues.' : prompt.detail}</p>
           </section>
 
-          <SessionList
-            sessions={view.sessions}
-            sandbox={demo.mode === 'sandbox'}
-            onSelect={(slot) => dispatch({type: 'select', slot})}
-            onState={(slot, state) => dispatch({type: 'set_state', slot, state})}
-          />
+          {mode === 'show' ? (
+            <ExperienceControls
+              active={showStatus !== 'idle'}
+              admin
+              audioEnabled={audio.enabled}
+              onAudio={audio.toggle}
+              onStartDemo={() => chooseMode('guided')}
+              onStartShow={startShow}
+              onStop={stopShow}
+            />
+          ) : (
+            <SessionList
+              sessions={view.sessions}
+              sandbox={demo.mode === 'sandbox'}
+              onSelect={(slot) => dispatch({type: 'select', slot})}
+              onState={(slot, state) => dispatch({type: 'set_state', slot, state})}
+            />
+          )}
 
           <div className="paneActions">
-            <button className="textButton" onClick={() => dispatch({type: 'reset'})}>
+            {mode !== 'show' ? (
+              <button className="textButton" onClick={audio.toggle} aria-pressed={audio.enabled}>
+                {audio.enabled ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
+                Sound {audio.enabled ? 'on' : 'off'}
+              </button>
+            ) : null}
+            <button className="textButton" onClick={() => {
+              dispatch({type: 'reset'});
+              setMode('guided');
+              stopShow();
+            }}>
               <RefreshCw aria-hidden="true" /> Reset story
             </button>
             <a
@@ -99,10 +219,25 @@ function DemoApp() {
 
 function LiveApp() {
   const live = useLiveSurface();
+  const audio = useAudioOutput();
   const [pin, setPin] = useState('');
   const empty = emptySurface();
   const view = live.surface?.view ?? empty.view;
   const frame = live.surface?.visual_frame ?? empty.frame;
+  const performance = live.experience?.kind === 'show'
+    && ['starting', 'playing'].includes(live.experience.status)
+    ? live.performanceFrame
+    : null;
+  useEffect(() => {
+    audio.syncExperience(live.experience);
+    if (live.experience?.kind === 'demo') {
+      audio.playCue(
+        live.experience.audio_cue,
+        live.experience.audio_slot,
+        live.experience.audio_sequence,
+      );
+    }
+  }, [audio, live.experience]);
   const submitPin = (event: FormEvent) => {
     event.preventDefault();
     if (/^\d{6}$/.test(pin.replace(/\s/g, ''))) live.pair(pin);
@@ -116,6 +251,7 @@ function LiveApp() {
           <VirtualSurface
             disabled={live.connection !== 'connected'}
             frame={frame}
+            performanceFrame={performance}
             view={view}
             onAction={live.sendAction}
             onSelect={live.selectSession}
@@ -123,6 +259,21 @@ function LiveApp() {
         </section>
         <aside className="contextPane">
           <ConnectionSummary state={live.connection} error={live.error} />
+
+          {live.connection === 'connected' ? (
+            <ExperienceControls
+              active={live.experience?.status === 'playing' || live.experience?.status === 'starting'}
+              admin={live.admin}
+              audioEnabled={audio.enabled}
+              blockedReason={live.experience?.status === 'blocked' ? live.experience.reason : null}
+              caption={live.experience?.caption}
+              detail={live.experience?.detail}
+              onAudio={audio.toggle}
+              onStartDemo={() => live.startExperience('demo')}
+              onStartShow={() => live.startExperience('show')}
+              onStop={live.stopExperience}
+            />
+          ) : null}
 
           {live.connection === 'pairing_required' ? (
             <form className="pairForm" onSubmit={submitPin}>
@@ -159,6 +310,89 @@ function LiveApp() {
       </div>
     </PageFrame>
   );
+}
+
+function ExperienceControls({
+  active,
+  admin,
+  audioEnabled,
+  blockedReason = null,
+  caption = null,
+  detail = null,
+  onAudio,
+  onStartDemo,
+  onStartShow,
+  onStop,
+}: {
+  active: boolean;
+  admin: boolean;
+  audioEnabled: boolean;
+  blockedReason?: string | null;
+  caption?: string | null;
+  detail?: string | null;
+  onAudio: () => void;
+  onStartDemo: () => void;
+  onStartShow: () => void;
+  onStop: () => void;
+}) {
+  const AudioIcon = audioEnabled ? Volume2 : VolumeX;
+  return (
+    <section className="experiencePanel" aria-live="polite">
+      <div className="sectionTitle"><span>EXPERIENCES</span><span>{active ? 'PLAYING' : 'READY'}</span></div>
+      {caption ? <p className="experienceCaption">{caption}</p> : null}
+      {detail ? <p className="experienceDetail">{detail}</p> : null}
+      {blockedReason ? <p className="experienceWarning">{blockedReason}</p> : null}
+      <div className="experienceActions">
+        {admin && !active ? (
+          <>
+            <button className="primaryButton" onClick={onStartDemo}>
+              <Play aria-hidden="true" /> Demo
+            </button>
+            <button className="primaryButton" onClick={onStartShow}>
+              <Play aria-hidden="true" /> Show
+            </button>
+          </>
+        ) : null}
+        {admin && active ? (
+          <button className="primaryButton danger" onClick={onStop}>
+            <Square aria-hidden="true" /> Stop
+          </button>
+        ) : null}
+        <button className="textButton" onClick={onAudio} aria-pressed={audioEnabled}>
+          <AudioIcon aria-hidden="true" /> Sound {audioEnabled ? 'on' : 'off'}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function publicShowState(
+  assets: ExperienceAssets,
+  status: 'starting' | 'playing',
+  elapsedMs: number,
+  startDelayMs = 0,
+): ExperienceStateMessage {
+  const cueIndex = cueIndexAt(assets.performance, elapsedMs);
+  const cue = assets.performance.cues[cueIndex];
+  return {
+    protocol: 1,
+    type: 'experience_state',
+    status,
+    kind: 'show',
+    title: assets.performance.title,
+    cue_index: cueIndex,
+    caption: cue.caption,
+    detail: null,
+    elapsed_ms: elapsedMs,
+    duration_ms: assets.performance.duration_ms,
+    tempo: 1,
+    audio_asset: `experiences/${assets.performance.audio.asset}`,
+    audio_cue: null,
+    audio_slot: null,
+    audio_sequence: 0,
+    start_delay_ms: startDelayMs,
+    reason: null,
+  };
 }
 
 function PageFrame({
@@ -293,6 +527,15 @@ function Loading() {
     <main className="loadingPage">
       <img src="./pad-lattice-logo.svg" alt="Pad-Lattice" />
       <span>Opening surface…</span>
+    </main>
+  );
+}
+
+function LoadFailure({message}: {message: string}) {
+  return (
+    <main className="loadingPage">
+      <img src="./pad-lattice-logo.svg" alt="Pad-Lattice" />
+      <span>{message}</span>
     </main>
   );
 }

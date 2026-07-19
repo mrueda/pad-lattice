@@ -7,7 +7,12 @@ from dataclasses import dataclass
 from importlib import resources
 from typing import Any, TypeAlias
 
-from pad_lattice.devices.base import SurfaceView
+from pad_lattice.devices.base import (
+    ExperienceKind,
+    ExperienceView,
+    ShowFrame,
+    SurfaceView,
+)
 from pad_lattice.events import ControlAction
 from pad_lattice.visual_protocol import VISUAL_PROTOCOL_VERSION, compile_visual_frame
 
@@ -47,12 +52,24 @@ class RevokeRemoteCommand:
     pass
 
 
+@dataclass(frozen=True)
+class StartExperienceCommand:
+    kind: ExperienceKind
+
+
+@dataclass(frozen=True)
+class StopExperienceCommand:
+    pass
+
+
 WebCommand: TypeAlias = (
     AuthenticateCommand
     | ActionCommand
     | SelectSessionCommand
     | CreatePairingCommand
     | RevokeRemoteCommand
+    | StartExperienceCommand
+    | StopExperienceCommand
 )
 
 
@@ -112,6 +129,15 @@ def parse_web_command(message: dict[str, Any]) -> WebCommand:
     if message_type == "revoke_remote":
         _require_keys(message, required={"protocol", "type"})
         return RevokeRemoteCommand()
+    if message_type == "start_experience":
+        _require_keys(message, required={"protocol", "type", "kind"})
+        kind = message.get("kind")
+        if kind not in {"demo", "show"}:
+            raise WebProtocolError("experience kind must be demo or show")
+        return StartExperienceCommand(kind)
+    if message_type == "stop_experience":
+        _require_keys(message, required={"protocol", "type"})
+        return StopExperienceCommand()
     raise WebProtocolError("unknown message type")
 
 
@@ -150,6 +176,36 @@ def surface_message(view: SurfaceView, selector_capacity: int) -> dict[str, Any]
             },
             "overflow": visual.overflow,
         },
+    )
+
+
+def experience_message(view: ExperienceView) -> dict[str, Any]:
+    return web_message(
+        "experience_state",
+        status=view.status,
+        kind=view.kind,
+        title=view.title,
+        cue_index=view.cue_index,
+        caption=view.caption,
+        detail=view.detail,
+        elapsed_ms=view.elapsed_ms,
+        duration_ms=view.duration_ms,
+        tempo=view.tempo,
+        audio_asset=view.audio_asset,
+        audio_cue=view.audio_cue,
+        audio_slot=view.audio_slot,
+        audio_sequence=view.audio_sequence,
+        start_delay_ms=view.start_delay_ms,
+        reason=view.reason,
+    )
+
+
+def performance_frame_message(frame: ShowFrame) -> dict[str, Any]:
+    return web_message(
+        "performance_frame",
+        grid=[[_rgb_hex(color.rgb) for color in row] for row in frame.grid],
+        top=[_rgb_hex(color.rgb) for color in frame.top],
+        right=[_rgb_hex(color.rgb) for color in frame.right],
     )
 
 
@@ -192,3 +248,7 @@ def _require_keys(
 def _display_label(value: str, *, slot: int) -> str:
     normalized = " ".join(value.split())
     return (normalized or f"Session {slot + 1}")[:MAX_WEB_LABEL_LENGTH]
+
+
+def _rgb_hex(rgb: tuple[int, int, int]) -> str:
+    return "#" + "".join(f"{channel:02x}" for channel in rgb)

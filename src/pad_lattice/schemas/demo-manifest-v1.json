@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mrueda.github.io/pad-lattice/schemas/demo-manifest-v1.json",
+  "title": "Pad-Lattice Demo Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "id", "title", "initial_stage", "stages"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "demo"},
+    "id": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "initial_stage": {"type": "string", "minLength": 1},
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/stage"}
+    }
+  },
+  "$defs": {
+    "state": {
+      "enum": [
+        "running", "waiting_for_reply", "user_typing",
+        "waiting_for_approval", "success", "error", "cancelled"
+      ]
+    },
+    "action": {"enum": ["approve", "reject", "stop", "retry"]},
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slot", "state", "selected", "accent", "label"],
+      "properties": {
+        "slot": {"type": "integer", "minimum": 0, "maximum": 7},
+        "state": {"$ref": "#/$defs/state"},
+        "selected": {"type": "boolean"},
+        "accent": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1}
+      }
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event", "slot", "action", "next_stage", "audio"],
+      "properties": {
+        "event": {"enum": ["select", "action"]},
+        "slot": {"type": ["integer", "null"], "minimum": 0, "maximum": 7},
+        "action": {"oneOf": [{"$ref": "#/$defs/action"}, {"type": "null"}]},
+        "next_stage": {"type": "string", "minLength": 1},
+        "audio": {"type": ["string", "null"], "minLength": 1}
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "prompt", "view", "transitions", "enter_audio", "terminal"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "prompt": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["eyebrow", "title", "detail"],
+          "properties": {
+            "eyebrow": {"type": "string", "minLength": 1},
+            "title": {"type": "string", "minLength": 1},
+            "detail": {"type": "string", "minLength": 1}
+          }
+        },
+        "view": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sessions", "available_actions"],
+          "properties": {
+            "sessions": {
+              "type": "array",
+              "maxItems": 8,
+              "items": {"$ref": "#/$defs/session"}
+            },
+            "available_actions": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"$ref": "#/$defs/action"}
+            }
+          }
+        },
+        "transitions": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/transition"}
+        },
+        "enter_audio": {"type": ["string", "null"], "minLength": 1},
+        "terminal": {"type": "boolean"}
+      }
+    }
+  }
+}

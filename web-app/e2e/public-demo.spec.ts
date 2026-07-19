@@ -21,10 +21,20 @@ test('teaches selection, approval, retry, and multi-agent success', async ({page
 
 test('keeps the controller inside the viewport', async ({page}) => {
   await page.goto('/');
-  const metrics = await page.evaluate(() => ({
-    viewport: document.documentElement.clientWidth,
-    scroll: document.documentElement.scrollWidth,
-  }));
-  expect(metrics.scroll).toBeLessThanOrEqual(metrics.viewport);
   await expect(page.locator('.virtualSurface')).toBeVisible();
+  const metrics = await page.evaluate(() => {
+    const surface = document.querySelector('.virtualSurface')?.getBoundingClientRect();
+    const modes = document.querySelector('.modeSwitch')?.getBoundingClientRect();
+    return {
+      viewport: document.documentElement.clientWidth,
+      scroll: document.documentElement.scrollWidth,
+      surface: surface ? {left: surface.left, right: surface.right} : null,
+      modes: modes ? {left: modes.left, right: modes.right} : null,
+    };
+  });
+  expect(metrics.scroll).toBeLessThanOrEqual(metrics.viewport);
+  expect(metrics.surface?.left).toBeGreaterThanOrEqual(0);
+  expect(metrics.surface?.right).toBeLessThanOrEqual(metrics.viewport);
+  expect(metrics.modes?.left).toBeGreaterThanOrEqual(0);
+  expect(metrics.modes?.right).toBeLessThanOrEqual(metrics.viewport);
 });

@@ -3,18 +3,14 @@
 from __future__ import annotations
 
 import colorsys
-import sys
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TextIO
 
-from pad_lattice.audio import (
-    Soundtrack,
-    StoryBeat,
-    start_constellation_soundtrack,
-)
-from pad_lattice.devices.base import ShowColor, ShowFrame, ShowSurface
+from pad_lattice.audio import StoryBeat
+from pad_lattice.devices.base import ControlSurface, ShowColor, ShowFrame
+from pad_lattice.experience_manifest import load_builtin_performance
 
 SHOW_TITLE = "A Spark Becomes a Constellation"
 SHOW_WIDTH = 8
@@ -123,7 +119,22 @@ class ShowCue:
 
 
 def build_constellation_show() -> tuple[ShowCue, ...]:
-    """Build the deterministic reference performance."""
+    """Load the compiled reference performance used by every runtime."""
+
+    performance = load_builtin_performance()
+    return tuple(
+        ShowCue(
+            act=cue.act,
+            frame=cue.frame,
+            duration=cue.duration,
+            caption=cue.caption,
+        )
+        for cue in performance.cues
+    )
+
+
+def _author_constellation_show() -> tuple[ShowCue, ...]:
+    """Build the source performance consumed only by the asset compiler."""
 
     cues: list[ShowCue] = []
     _add_alone(cues)
@@ -138,55 +149,30 @@ def build_constellation_show() -> tuple[ShowCue, ...]:
 
 
 def run_show_surface(
-    surface: ShowSurface,
+    surface: ControlSurface,
     *,
-    cues: Sequence[ShowCue] | None = None,
     tempo: float = 1.0,
     audio: bool = False,
+    wait_for_request: bool = False,
     output: TextIO | None = None,
+    clock: Callable[[], float] = time.monotonic,
     sleep: Callable[[float], None] = time.sleep,
-    soundtrack_factory: Callable[[Sequence[StoryBeat]], Soundtrack] = (
-        start_constellation_soundtrack
-    ),
 ) -> bool:
-    """Play one visual performance and always restore the device."""
+    """Play the compiled performance using the shared absolute-time engine."""
 
-    if tempo <= 0:
-        raise ValueError("show tempo must be positive")
-    script = tuple(cues) if cues is not None else build_constellation_show()
-    if not script:
-        raise ValueError("show must contain at least one cue")
-    stream = output or sys.stdout
-    completed = False
-    current_act: str | None = None
-    soundtrack: Soundtrack | None = None
-    try:
-        surface.initialize()
-        print(f"Pad-Lattice show: {SHOW_TITLE}", file=stream, flush=True)
-        print("Press Ctrl-C to end the performance.", file=stream, flush=True)
-        if audio:
-            soundtrack = soundtrack_factory(_story_timeline(script, tempo=tempo))
-        for cue in script:
-            if cue.duration <= 0:
-                raise ValueError("show cue duration must be positive")
-            if cue.act != current_act:
-                current_act = cue.act
-                print(current_act, file=stream, flush=True)
-            if cue.caption is not None:
-                print(f"  {cue.caption}", file=stream, flush=True)
-            surface.render_show_frame(cue.frame)
-            sleep(cue.duration / tempo)
-        completed = True
-        print("Show complete.", file=stream, flush=True)
-    except KeyboardInterrupt:
-        print("Show ended.", file=stream, flush=True)
-    finally:
-        try:
-            if soundtrack is not None:
-                soundtrack.close()
-        finally:
-            surface.close()
-    return completed
+    from pad_lattice.experience_runtime import run_experience_loop
+
+    controller = run_experience_loop(
+        surface,
+        "show",
+        tempo=tempo,
+        host_show_audio=audio,
+        wait_for_request=wait_for_request,
+        output=output,
+        clock=clock,
+        sleep=sleep,
+    )
+    return controller.last_reason == "complete"
 
 
 def show_duration(cues: Sequence[ShowCue], *, tempo: float = 1.0) -> float:

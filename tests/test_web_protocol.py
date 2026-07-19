@@ -2,17 +2,27 @@ from __future__ import annotations
 
 from unittest import TestCase
 
-from pad_lattice.devices.base import SessionIndicator, SurfaceView
+from pad_lattice.devices.base import (
+    ExperienceView,
+    SessionIndicator,
+    ShowColor,
+    ShowFrame,
+    SurfaceView,
+)
 from pad_lattice.events import AgentState, ControlAction
 from pad_lattice.web_protocol import (
     ActionCommand,
     AuthenticateCommand,
     SelectSessionCommand,
+    StartExperienceCommand,
+    StopExperienceCommand,
     WebProtocolError,
     decode_web_message,
     encode_web_message,
+    experience_message,
     load_web_protocol_schema,
     parse_web_command,
+    performance_frame_message,
     surface_message,
 )
 
@@ -31,9 +41,17 @@ class WebProtocolTest(TestCase):
         selection = parse_web_command(
             {"protocol": 1, "type": "select_session", "slot": 7}
         )
+        start = parse_web_command(
+            {"protocol": 1, "type": "start_experience", "kind": "show"}
+        )
+        stop = parse_web_command(
+            {"protocol": 1, "type": "stop_experience"}
+        )
         self.assertEqual(auth, AuthenticateCommand(None))
         self.assertEqual(action, ActionCommand(ControlAction.APPROVE))
         self.assertEqual(selection, SelectSessionCommand(7))
+        self.assertEqual(start, StartExperienceCommand("show"))
+        self.assertEqual(stop, StopExperienceCommand())
 
     def test_rejects_unknown_and_oversized_messages(self) -> None:
         with self.assertRaises(WebProtocolError):
@@ -75,3 +93,35 @@ class WebProtocolTest(TestCase):
     def test_outbound_messages_are_bounded(self) -> None:
         with self.assertRaisesRegex(WebProtocolError, "size limit"):
             encode_web_message({"protocol": 1, "type": "error", "error": "x" * 20_000})
+
+    def test_experience_and_performance_messages_preserve_exact_state(self) -> None:
+        lifecycle = experience_message(
+            ExperienceView(
+                status="playing",
+                kind="show",
+                title="A show",
+                cue_index=4,
+                detail="A synchronized full-surface performance.",
+                elapsed_ms=1200,
+                duration_ms=5000,
+                tempo=1.25,
+                audio_asset="experiences/audio/show.wav",
+            )
+        )
+        color = ShowColor("state:success:primary", (1, 127, 255))
+        frame = performance_frame_message(
+            ShowFrame(
+                grid=tuple(tuple(color for _ in range(8)) for _ in range(8)),
+                top=tuple(color for _ in range(8)),
+                right=tuple(color for _ in range(8)),
+            )
+        )
+
+        self.assertEqual(lifecycle["type"], "experience_state")
+        self.assertEqual(lifecycle["tempo"], 1.25)
+        self.assertEqual(
+            lifecycle["detail"],
+            "A synchronized full-surface performance.",
+        )
+        self.assertEqual(frame["grid"][0][0], "#017fff")
+        self.assertEqual(frame["top"], ["#017fff"] * 8)

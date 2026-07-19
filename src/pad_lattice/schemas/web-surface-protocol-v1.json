@@ -8,9 +8,13 @@
     {"$ref": "#/$defs/selectSession"},
     {"$ref": "#/$defs/createPairing"},
     {"$ref": "#/$defs/revokeRemote"},
+    {"$ref": "#/$defs/startExperience"},
+    {"$ref": "#/$defs/stopExperience"},
     {"$ref": "#/$defs/authenticated"},
     {"$ref": "#/$defs/pairing"},
     {"$ref": "#/$defs/surface"},
+    {"$ref": "#/$defs/experienceState"},
+    {"$ref": "#/$defs/performanceFrame"},
     {"$ref": "#/$defs/remoteRevoked"},
     {"$ref": "#/$defs/error"}
   ],
@@ -69,6 +73,25 @@
       "properties": {
         "protocol": {"$ref": "#/$defs/protocol"},
         "type": {"const": "revoke_remote"}
+      }
+    },
+    "startExperience": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "kind"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "start_experience"},
+        "kind": {"enum": ["demo", "show"]}
+      }
+    },
+    "stopExperience": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "stop_experience"}
       }
     },
     "authenticated": {
@@ -161,6 +184,58 @@
             "overflow": {"type": "string"}
           }
         }
+      }
+    },
+    "experienceState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol", "type", "status", "kind", "title", "cue_index",
+        "caption", "detail", "elapsed_ms", "duration_ms", "tempo", "audio_asset",
+        "audio_cue", "audio_slot", "audio_sequence", "start_delay_ms", "reason"
+      ],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "experience_state"},
+        "status": {"enum": ["idle", "blocked", "starting", "playing"]},
+        "kind": {"type": ["string", "null"], "enum": ["demo", "show", null]},
+        "title": {"type": ["string", "null"]},
+        "cue_index": {"type": ["integer", "null"], "minimum": 0},
+        "caption": {"type": ["string", "null"]},
+        "detail": {"type": ["string", "null"]},
+        "elapsed_ms": {"type": "integer", "minimum": 0},
+        "duration_ms": {"type": ["integer", "null"], "minimum": 1},
+        "tempo": {"type": "number", "exclusiveMinimum": 0},
+        "audio_asset": {"type": ["string", "null"]},
+        "audio_cue": {"type": ["string", "null"]},
+        "audio_slot": {"type": ["integer", "null"], "minimum": 0, "maximum": 7},
+        "audio_sequence": {"type": "integer", "minimum": 0},
+        "start_delay_ms": {"type": "integer", "minimum": 0},
+        "reason": {"type": ["string", "null"]}
+      }
+    },
+    "rgbHex": {"type": "string", "pattern": "^#[0-9a-f]{6}$"},
+    "performanceRail": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {"$ref": "#/$defs/rgbHex"}
+    },
+    "performanceFrame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "grid", "top", "right"],
+      "properties": {
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "type": {"const": "performance_frame"},
+        "grid": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "items": {"$ref": "#/$defs/performanceRail"}
+        },
+        "top": {"$ref": "#/$defs/performanceRail"},
+        "right": {"$ref": "#/$defs/performanceRail"}
       }
     },
     "remoteRevoked": {

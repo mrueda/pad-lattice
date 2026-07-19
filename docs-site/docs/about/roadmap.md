@@ -28,6 +28,9 @@
 - Guided physical profile testing with sanitized reports.
 - Read-only `pad-lattice doctor` diagnostics for profiles, MIDI, daemon, and hooks.
 - Full-surface **A Spark Becomes a Constellation** audiovisual performance.
+- Shared manifest-driven Demo and Show playback on MIDI, browser, or both.
+- Deterministic browser audio assets and per-device muted sound controls.
+- Live-experience preemption when an agent needs a reply or approval.
 - Optional semantic earcons for agent states, actions, and Scene selection.
 - On-demand GitHub workflows for tests, documentation, TestPyPI, and PyPI.
 
@@ -68,6 +71,6 @@
   different RGB palettes and controller layouts.
 
 Start with the [Developer Guide](../technical-details/developer-guide.md) for
-code changes or [Test a Device](../usage/device-testing.md) for hardware
+code changes or [Device Testing](../technical-details/device-testing.md) for hardware
 validation. Open focused reports in the [GitHub issue
 tracker](https://github.com/mrueda/pad-lattice/issues).

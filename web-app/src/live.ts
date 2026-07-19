@@ -2,12 +2,16 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import type {
   AuthenticatedMessage,
   ControlAction,
+  ExperienceKind,
+  ExperienceStateMessage,
   PairingMessage,
+  PerformanceFrameMessage,
   ServerMessage,
   SurfaceMessage,
 } from './types';
 
 const tokenKey = 'pad-lattice-session-token';
+const adminTokenKey = 'pad-lattice-admin-token';
 
 export type ConnectionState =
   | 'connecting'
@@ -18,6 +22,8 @@ export type ConnectionState =
 export interface LiveSurfaceState {
   connection: ConnectionState;
   surface: SurfaceMessage | null;
+  experience: ExperienceStateMessage | null;
+  performanceFrame: PerformanceFrameMessage | null;
   pairing: PairingMessage | null;
   admin: boolean;
   lanEnabled: boolean;
@@ -27,11 +33,15 @@ export interface LiveSurfaceState {
   sendAction: (action: ControlAction) => void;
   createPairing: () => void;
   revokeRemote: () => void;
+  startExperience: (kind: ExperienceKind) => void;
+  stopExperience: () => void;
 }
 
 export function useLiveSurface(): LiveSurfaceState {
   const [connection, setConnection] = useState<ConnectionState>('connecting');
   const [surface, setSurface] = useState<SurfaceMessage | null>(null);
+  const [experience, setExperience] = useState<ExperienceStateMessage | null>(null);
+  const [performanceFrame, setPerformanceFrame] = useState<PerformanceFrameMessage | null>(null);
   const [pairing, setPairing] = useState<PairingMessage | null>(null);
   const [admin, setAdmin] = useState(false);
   const [lanEnabled, setLanEnabled] = useState(false);
@@ -85,6 +95,17 @@ export function useLiveSurface(): LiveSurfaceState {
         setSurface(message);
         return;
       }
+      if (message.type === 'experience_state') {
+        setExperience(message);
+        if (message.status === 'idle' || message.status === 'blocked') {
+          setPerformanceFrame(null);
+        }
+        return;
+      }
+      if (message.type === 'performance_frame') {
+        setPerformanceFrame(message);
+        return;
+      }
       if (message.type === 'pairing') {
         setPairing(message);
         return;
@@ -98,6 +119,7 @@ export function useLiveSurface(): LiveSurfaceState {
         if (message.code === 'forbidden' || message.code === 'authentication_timeout') {
           authenticationRejectedRef.current = true;
           window.localStorage.removeItem(tokenKey);
+          window.localStorage.removeItem(adminTokenKey);
           credentialRef.current = null;
           setConnection('pairing_required');
         }
@@ -151,6 +173,8 @@ export function useLiveSurface(): LiveSurfaceState {
   return {
     connection,
     surface,
+    experience,
+    performanceFrame,
     pairing,
     admin,
     lanEnabled,
@@ -160,15 +184,23 @@ export function useLiveSurface(): LiveSurfaceState {
     sendAction: (action) => send({type: 'action', action}),
     createPairing: () => send({type: 'create_pairing'}),
     revokeRemote: () => send({type: 'revoke_remote'}),
+    startExperience: (kind) => send({type: 'start_experience', kind}),
+    stopExperience: () => send({type: 'stop_experience'}),
   };
 }
 
 function initialCredential(): string | null {
   const hash = new URLSearchParams(window.location.hash.slice(1));
+  const adminSecret = hash.get('admin');
+  if (adminSecret) {
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+    window.localStorage.setItem(adminTokenKey, adminSecret);
+    return adminSecret;
+  }
   const pairingSecret = hash.get('pair');
   if (pairingSecret) {
     window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
     return pairingSecret;
   }
-  return window.localStorage.getItem(tokenKey);
+  return window.localStorage.getItem(adminTokenKey) ?? window.localStorage.getItem(tokenKey);
 }

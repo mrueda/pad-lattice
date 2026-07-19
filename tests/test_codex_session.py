@@ -29,6 +29,20 @@ class CodexSessionTest(TestCase):
         with self.assertRaises(ValueError):
             normalize_session_label("docs\nrelease")
 
+    def test_invalid_hook_configuration_fails_before_starting_a_lease(self) -> None:
+        with (
+            patch("pad_lattice.codex_session.SessionLease") as session_lease,
+            self.assertRaisesRegex(ValueError, "approval_timeout must be positive"),
+        ):
+            run_codex_session(
+                [],
+                "/tmp/pad-lattice.sock",
+                approval_timeout=0,
+                hook_command=HOOK_COMMAND,
+            )
+
+        session_lease.assert_not_called()
+
     def test_launcher_inherits_stdio_and_passes_codex_arguments(self) -> None:
         lease = SimpleNamespace(
             start=lambda: None,

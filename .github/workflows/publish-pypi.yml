@@ -52,6 +52,9 @@ jobs:
 
       - name: Test, build, and validate distributions
         run: |
+          python -m pad_lattice.experience_compiler --check
+          python -m pad_lattice.experience_compiler --check --target src/pad_lattice/web_dist/play/experiences
+          cmp web-app/public/experiences/demo-v1.json src/pad_lattice/web_dist/play/experiences/demo-v1.json
           python -m unittest discover -s tests
           python -m build
           python -m twine check dist/*
@@ -68,7 +71,7 @@ jobs:
           /tmp/pad-lattice-wheel-test/bin/pad-lattice profile list
           /tmp/pad-lattice-wheel-test/bin/pad-lattice profile show novation/launchpad/pro-mk1
           /tmp/pad-lattice-wheel-test/bin/python -c "import subprocess; r=subprocess.run(['/tmp/pad-lattice-wheel-test/bin/pad-lattice-hook', '--socket', '/tmp/pad-lattice-missing.sock'], input='{}', text=True, capture_output=True, timeout=5); assert (r.returncode, r.stdout, r.stderr) == (0, '', '')"
-          /tmp/pad-lattice-wheel-test/bin/python -c "from importlib import resources; root=resources.files('pad_lattice'); assert root.joinpath('web_dist/play/index.html').is_file(); assert root.joinpath('schemas/web-surface-protocol-v1.json').is_file()"
+          /tmp/pad-lattice-wheel-test/bin/python -c "from importlib import resources; root=resources.files('pad_lattice'); required=('web_dist/play/index.html','web_dist/play/experiences/demo-v1.json','web_dist/play/experiences/constellation-v1.json','web_dist/play/experiences/audio/constellation-v1.wav','schemas/web-surface-protocol-v1.json','schemas/demo-manifest-v1.json','schemas/performance-manifest-v1.json'); assert all(root.joinpath(*item.split('/')).is_file() for item in required)"
 
       - name: Upload distributions
         uses: actions/upload-artifact@v4

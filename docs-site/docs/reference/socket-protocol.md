@@ -4,7 +4,7 @@ Pad-Lattice clients communicate with the daemon through **Wire Protocol 1**:
 newline-delimited JSON over a local Unix stream socket. It carries agent state,
 session lifecycle, status, leases, capabilities, and targeted actions.
 
-This contract is separate from [Visual Protocol 1](../usage/visual-language.md),
+This contract is separate from [Visual Protocol 1](../technical-details/visual-language.md),
 [device profile schema 1](../technical-details/device-profiles.md), and the
 browser-facing Web Surface Protocol. The wire protocol moves agent semantics;
 it does not describe LEDs, browser pixels, or MIDI addresses.
@@ -56,8 +56,10 @@ The default socket path is resolved in this order:
 2. `$XDG_RUNTIME_DIR/pad-lattice.sock`
 3. `/tmp/pad-lattice-<uid>.sock`
 
-The daemon creates the socket with mode `0600`. It is a local control channel,
-not a network service. Do not proxy it or share it with untrusted processes.
+The daemon creates the socket with mode `0600`. On Linux it also compares the
+kernel-reported peer UID with its own before accepting a client. It is a local
+same-user control channel, not a network service or a sandbox boundary. Do not
+proxy it or share an OS account with untrusted agent processes.
 
 Every frame is one UTF-8 JSON object followed by `\n`, with a maximum encoded
 size of 64 KiB. Every command and response includes the integer wire version:
@@ -211,6 +213,7 @@ transfers ownership safely.
 accents, leases, overflow, TTL, preview status, optional-audio status, and a
 `surfaces` array. Each surface entry identifies its kind (`web` or `midi`),
 profile, Visual Protocol version, and sanitized input/output description.
+The `experience` field is `demo`, `show`, or `null`.
 `{"protocol":1,"type":"ping"}` returns
 `{"protocol":1,"type":"pong"}`.
 
@@ -246,7 +249,13 @@ The browser does not connect to Wire Protocol 1 and cannot send arbitrary agent
 state. `web_surface.py` exposes a narrower Web Surface Protocol over a
 same-origin WebSocket. Authenticated clients receive compiled visual frames and
 sanitized labels; they may request only Scene selection, currently available
-actions, and local-admin pairing operations.
+actions, and local-admin operations. Only an authenticated loopback
+administrator may create/revoke pairing or start/stop Demo and Show. Paired
+clients may still send Scene and action input while Demo is active.
+
+Server messages include semantic surface snapshots, experience lifecycle,
+and exact full-surface RGB frames during Show. Audio fields identify built-in
+cue names or packaged assets; they never carry arbitrary URLs or audio bytes.
 
 That protocol has its own packaged [Web Surface Protocol 1 JSON
 Schema](https://github.com/mrueda/pad-lattice/blob/main/src/pad_lattice/schemas/web-surface-protocol-v1.json).
@@ -254,6 +263,7 @@ Its runtime uses the same small typed-parser approach and message-size bounds as
 the local protocol. The two protocols share semantic domain values but are not
 interchangeable.
 
-Wire Protocol 1, Visual Protocol 1, and Device Profile Schema 1 evolve
-independently. A future incompatible socket format must use a new integer
-`protocol` value rather than silently changing Protocol 1.
+Wire Protocol 1, Web Surface Protocol 1, Visual Protocol 1, Device Profile
+Schema 1, Demo Manifest 1, and Performance Manifest 1 evolve independently. A
+future incompatible socket format must use a new integer `protocol` value
+rather than silently changing Protocol 1.

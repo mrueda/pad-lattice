@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "kind": "demo",
+  "id": "multi-agent-guided-demo",
+  "title": "Three Agents, One Surface",
+  "initial_stage": "select_reviewer",
+  "stages": [
+    {
+      "id": "select_reviewer",
+      "prompt": {
+        "eyebrow": "Three agents, one surface",
+        "title": "The Reviewer needs you.",
+        "detail": "Select its magenta Scene on the right rail."
+      },
+      "view": {
+        "sessions": [
+          {"slot": 0, "state": "running", "selected": true, "accent": "cyan", "label": "Builder"},
+          {"slot": 1, "state": "waiting_for_approval", "selected": false, "accent": "magenta", "label": "Reviewer"},
+          {"slot": 2, "state": "error", "selected": false, "accent": "lime", "label": "Tests"}
+        ],
+        "available_actions": []
+      },
+      "transitions": [
+        {"event": "select", "slot": 1, "action": null, "next_stage": "approve_reviewer", "audio": "session_selected"}
+      ],
+      "enter_audio": "question",
+      "terminal": false
+    },
+    {
+      "id": "approve_reviewer",
+      "prompt": {
+        "eyebrow": "Permission requested",
+        "title": "Approve the review.",
+        "detail": "The green action on the top rail is available now."
+      },
+      "view": {
+        "sessions": [
+          {"slot": 0, "state": "running", "selected": false, "accent": "cyan", "label": "Builder"},
+          {"slot": 1, "state": "waiting_for_approval", "selected": true, "accent": "magenta", "label": "Reviewer"},
+          {"slot": 2, "state": "error", "selected": false, "accent": "lime", "label": "Tests"}
+        ],
+        "available_actions": ["approve", "reject"]
+      },
+      "transitions": [
+        {"event": "action", "slot": null, "action": "approve", "next_stage": "select_tests", "audio": "approve"},
+        {"event": "action", "slot": null, "action": "reject", "next_stage": "recover_reviewer", "audio": "reject"}
+      ],
+      "enter_audio": "approval",
+      "terminal": false
+    },
+    {
+      "id": "recover_reviewer",
+      "prompt": {
+        "eyebrow": "Decision registered",
+        "title": "The Reviewer was rejected.",
+        "detail": "Use Retry on the top rail to bring it back."
+      },
+      "view": {
+        "sessions": [
+          {"slot": 0, "state": "running", "selected": false, "accent": "cyan", "label": "Builder"},
+          {"slot": 1, "state": "cancelled", "selected": true, "accent": "magenta", "label": "Reviewer"},
+          {"slot": 2, "state": "error", "selected": false, "accent": "lime", "label": "Tests"}
+        ],
+        "available_actions": ["retry"]
+      },
+      "transitions": [
+        {"event": "action", "slot": null, "action": "retry", "next_stage": "select_tests", "audio": "retry"}
+      ],
+      "enter_audio": "cancelled",
+      "terminal": false
+    },
+    {
+      "id": "select_tests",
+      "prompt": {
+        "eyebrow": "Progress continues in parallel",
+        "title": "The Tests need attention.",
+        "detail": "Select the lime Scene beside the red status light."
+      },
+      "view": {
+        "sessions": [
+          {"slot": 0, "state": "running", "selected": false, "accent": "cyan", "label": "Builder"},
+          {"slot": 1, "state": "success", "selected": true, "accent": "magenta", "label": "Reviewer"},
+          {"slot": 2, "state": "error", "selected": false, "accent": "lime", "label": "Tests"}
+        ],
+        "available_actions": []
+      },
+      "transitions": [
+        {"event": "select", "slot": 2, "action": null, "next_stage": "retry_tests", "audio": "session_selected"}
+      ],
+      "enter_audio": "success",
+      "terminal": false
+    },
+    {
+      "id": "retry_tests",
+      "prompt": {
+        "eyebrow": "Failure is actionable",
+        "title": "Retry the test agent.",
+        "detail": "The blue action on the top rail is ready."
+      },
+      "view": {
+        "sessions": [
+          {"slot": 0, "state": "running", "selected": false, "accent": "cyan", "label": "Builder"},
+          {"slot": 1, "state": "success", "selected": false, "accent": "magenta", "label": "Reviewer"},
+          {"slot": 2, "state": "error", "selected": true, "accent": "lime", "label": "Tests"}
+        ],
+        "available_actions": ["retry"]
+      },
+      "transitions": [
+        {"event": "action", "slot": null, "action": "retry", "next_stage": "complete", "audio": "retry"}
+      ],
+      "enter_audio": "error",
+      "terminal": false
+    },
+    {
+      "id": "complete",
+      "prompt": {
+        "eyebrow": "One visual language",
+        "title": "The agents form a constellation.",
+        "detail": "Every color has an identity. Every shape has a state."
+      },
+      "view": {
+        "sessions": [
+          {"slot": 0, "state": "success", "selected": false, "accent": "cyan", "label": "Builder"},
+          {"slot": 1, "state": "success", "selected": false, "accent": "magenta", "label": "Reviewer"},
+          {"slot": 2, "state": "success", "selected": true, "accent": "lime", "label": "Tests"}
+        ],
+        "available_actions": []
+      },
+      "transitions": [],
+      "enter_audio": "success",
+      "terminal": true
+    }
+  ]
+}

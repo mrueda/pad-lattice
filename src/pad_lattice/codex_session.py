@@ -167,6 +167,16 @@ def run_codex_session(
     if stderr is None:
         stderr = sys.stderr
     normalized_label = normalize_session_label(label)
+    if hook_command is None:
+        hook_command = resolve_hook_command(
+            socket_path,
+            approval_timeout=approval_timeout,
+        )
+    hook_overrides = codex_hook_config_overrides(
+        hook_command,
+        approval_timeout=approval_timeout,
+    )
+
     lease_id = uuid.uuid4().hex
     metadata = {"cwd": str(Path.cwd())}
     if normalized_label is not None:
@@ -186,17 +196,8 @@ def run_codex_session(
     if terminal_title:
         environment["PAD_LATTICE_TERMINAL_TITLE"] = "1"
 
-    if hook_command is None:
-        hook_command = resolve_hook_command(
-            socket_path,
-            approval_timeout=approval_timeout,
-        )
-
     command = [codex_binary, "--enable", "hooks"]
-    for override in codex_hook_config_overrides(
-        hook_command,
-        approval_timeout=approval_timeout,
-    ):
+    for override in hook_overrides:
         command.extend(["-c", override])
     if terminal_title:
         command.extend(["-c", "tui.terminal_title=[]"])

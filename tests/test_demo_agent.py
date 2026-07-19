@@ -3,23 +3,24 @@ from __future__ import annotations
 import io
 from unittest import TestCase
 
-from pad_lattice.audio import Earcon
-from pad_lattice.demo_agent import ANSWER_ACTIONS, DEMO_QUESTIONS, run_demo_surface
-from pad_lattice.devices.base import ActionPressed
+from pad_lattice.demo_agent import run_demo_surface
+from pad_lattice.devices.base import ActionPressed, SessionSelected
 from pad_lattice.events import AgentState, ControlAction
 
 
 class FakeSurface:
     profile_id = "test/grid/device"
+    surface_kind = "midi"
     input_name = "input"
     output_name = "output"
-    selector_capacity = 4
-    accent_names = ("cyan",)
+    selector_capacity = 8
+    accent_names = ("cyan", "magenta", "lime", "orange", "violet", "teal", "rose", "sky")
     visual_protocol = 1
 
     def __init__(self, polls=()) -> None:
         self.polls = list(polls)
         self.views = []
+        self.experiences = []
         self.initialized = False
         self.closed = False
 
@@ -29,10 +30,14 @@ class FakeSurface:
     def render(self, view) -> None:
         self.views.append(view)
 
+    def render_show_frame(self, frame) -> None:
+        raise AssertionError("Demo rendered a Show frame")
+
+    def set_experience(self, view) -> None:
+        self.experiences.append(view)
+
     def poll_events(self):
-        if not self.polls:
-            raise AssertionError("demo polled after the scripted input ended")
-        return self.polls.pop(0)
+        return self.polls.pop(0) if self.polls else []
 
     def close(self) -> None:
         self.closed = True
@@ -55,70 +60,49 @@ class FakeAudioFeedback:
         self.closed = True
 
 
+class IncrementingClock:
+    def __init__(self) -> None:
+        self.value = -1.0
+
+    def __call__(self) -> float:
+        self.value += 1.0
+        return self.value
+
+
 class DemoAgentTest(TestCase):
-    def test_guided_demo_asks_questions_and_renders_feedback(self) -> None:
+    def test_shared_multi_agent_demo_accepts_scene_and_action_input(self) -> None:
         surface = FakeSurface(
             (
-                [ActionPressed(ControlAction.STOP)],
+                [SessionSelected(1)],
                 [ActionPressed(ControlAction.APPROVE)],
-                [ActionPressed(ControlAction.REJECT)],
-                [ActionPressed(ControlAction.APPROVE)],
+                [SessionSelected(2)],
+                [ActionPressed(ControlAction.RETRY)],
             )
         )
         output = io.StringIO()
         audio_feedback = FakeAudioFeedback()
 
-        answers = run_demo_surface(
+        actions = run_demo_surface(
             surface,
             poll_interval=0,
-            feedback_seconds=0,
-            success_seconds=0,
             output=output,
             audio_feedback=audio_feedback,
+            clock=IncrementingClock(),
             sleep=lambda _: None,
         )
 
-        self.assertEqual(
-            answers,
-            (
-                ControlAction.APPROVE,
-                ControlAction.REJECT,
-                ControlAction.APPROVE,
-            ),
-        )
+        self.assertEqual(actions, (ControlAction.APPROVE, ControlAction.RETRY))
         self.assertTrue(surface.initialized)
         self.assertTrue(surface.closed)
-        self.assertEqual(
-            [view.selected_state for view in surface.views],
-            [
-                AgentState.WAITING_FOR_REPLY,
-                AgentState.RUNNING,
-                AgentState.WAITING_FOR_APPROVAL,
-                AgentState.CANCELLED,
-                AgentState.WAITING_FOR_REPLY,
-                AgentState.RUNNING,
-                AgentState.SUCCESS,
-            ],
-        )
-        self.assertEqual(surface.views[0].available_actions, ANSWER_ACTIONS)
-        self.assertEqual(surface.views[2].available_actions, ANSWER_ACTIONS)
-        self.assertEqual(surface.views[4].available_actions, ANSWER_ACTIONS)
-        self.assertIn(DEMO_QUESTIONS[0].prompt, output.getvalue())
-        self.assertIn("Answer: yes", output.getvalue())
-        self.assertIn("Answer: no", output.getvalue())
-        self.assertIn("Demo complete.", output.getvalue())
-        self.assertEqual(
-            [cue for cue, _ in audio_feedback.calls],
-            [
-                Earcon.QUESTION,
-                Earcon.APPROVE,
-                Earcon.APPROVAL,
-                Earcon.REJECT,
-                Earcon.QUESTION,
-                Earcon.APPROVE,
-                Earcon.SUCCESS,
-            ],
-        )
+        self.assertEqual(len(surface.views), 5)
+        self.assertEqual(surface.views[0].sessions[0].label, "Builder")
+        self.assertEqual(surface.views[1].selected_state, AgentState.WAITING_FOR_APPROVAL)
+        self.assertEqual(surface.views[-1].selected_state, AgentState.SUCCESS)
+        self.assertEqual(surface.experiences[0].kind, "demo")
+        self.assertEqual(surface.experiences[-1].status, "idle")
+        self.assertIn("The Reviewer needs you.", output.getvalue())
+        self.assertIn("The agents form a constellation.", output.getvalue())
+        self.assertTrue(audio_feedback.calls)
         self.assertTrue(audio_feedback.closed)
 
     def test_initialization_failure_still_closes_surface(self) -> None:

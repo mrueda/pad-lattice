@@ -7,10 +7,11 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import {tokenColor} from './surfaceModel';
-import type {ControlAction, SurfaceView, VisualFrame} from './types';
+import type {ControlAction, FullSurfaceFrame, SurfaceView, VisualFrame} from './types';
 
 interface Props {
   frame: VisualFrame;
+  performanceFrame?: FullSurfaceFrame | null;
   view: SurfaceView;
   disabled?: boolean;
   onAction: (action: ControlAction) => void;
@@ -35,7 +36,15 @@ const topControls: TopControl[] = [
   {action: 'stop', label: 'Stop', icon: Square},
 ];
 
-export function VirtualSurface({frame, view, disabled = false, onAction, onSelect}: Props) {
+export function VirtualSurface({
+  frame,
+  performanceFrame = null,
+  view,
+  disabled = false,
+  onAction,
+  onSelect,
+}: Props) {
+  const performance = performanceFrame !== null;
   return (
     <div className="virtualSurface" aria-label="Pad-Lattice virtual control surface">
       <div className="surfaceCaption">
@@ -50,7 +59,8 @@ export function VirtualSurface({frame, view, disabled = false, onAction, onSelec
               : control.system === 'overflow'
                 ? frame.overflow
                 : 'off';
-            const enabled = !disabled && token !== 'off' && Boolean(control.action);
+            const displayColor = performanceFrame?.top[index] ?? tokenColor(token);
+            const enabled = !performance && !disabled && token !== 'off' && Boolean(control.action);
             const Icon = control.icon;
             return (
               <button
@@ -58,10 +68,10 @@ export function VirtualSurface({frame, view, disabled = false, onAction, onSelec
                 disabled={!enabled}
                 key={index}
                 onClick={() => control.action && onAction(control.action)}
-                style={{'--pad-color': tokenColor(token)} as React.CSSProperties}
+                style={{'--pad-color': displayColor} as React.CSSProperties}
                 title={control.label}
                 aria-label={control.label}>
-                {Icon && token !== 'off' ? <Icon aria-hidden="true" /> : null}
+                {!performance && Icon && token !== 'off' ? <Icon aria-hidden="true" /> : null}
               </button>
             );
           })}
@@ -73,8 +83,9 @@ export function VirtualSurface({frame, view, disabled = false, onAction, onSelec
         <div className="matrixGrid" aria-label="Selected-agent state and agent status grid">
           {Array.from({length: 8}, (_, row) =>
             Array.from({length: 8}, (_, column) => {
-              const token = column === 7 ? frame.statuses[row] : frame.state[row][column];
-              const status = column === 7;
+              const token = performanceFrame?.grid[row]?.[column]
+                ?? (column === 7 ? frame.statuses[row] : frame.state[row][column]);
+              const status = !performance && column === 7;
               const statusSession = status
                 ? view.sessions.find((session) => session.slot === row)
                 : undefined;
@@ -82,7 +93,9 @@ export function VirtualSurface({frame, view, disabled = false, onAction, onSelec
                 <span
                   className={`matrixPad ${status ? 'statusPad' : ''}`}
                   key={`${row}-${column}`}
-                  style={{'--pad-color': tokenColor(token)} as React.CSSProperties}
+                  style={{
+                    '--pad-color': performance ? token : tokenColor(token),
+                  } as React.CSSProperties}
                   title={statusSession ? `${statusSession.label}: ${statusSession.state}` : undefined}
                 />
               );
@@ -95,21 +108,23 @@ export function VirtualSurface({frame, view, disabled = false, onAction, onSelec
             return (
               <button
                 className="sceneControl"
-                disabled={disabled || token === 'off'}
+                disabled={performance || disabled || token === 'off'}
                 key={slot}
                 onClick={() => onSelect(slot)}
-                style={{'--pad-color': tokenColor(token)} as React.CSSProperties}
+                style={{
+                  '--pad-color': performanceFrame?.right[slot] ?? tokenColor(token),
+                } as React.CSSProperties}
                 title={session ? `Select ${session.label}` : `Empty Scene ${slot + 1}`}
                 aria-label={session ? `Select ${session.label}` : `Empty Scene ${slot + 1}`}>
-                <span>{session ? slot + 1 : ''}</span>
+                <span>{!performance && session ? slot + 1 : ''}</span>
               </button>
             );
           })}
         </div>
       </div>
       <div className="surfaceCaption surfaceFooter">
-        <span>SELECTED AGENT</span>
-        <span>{view.sessions.find((session) => session.selected)?.label ?? 'NO SESSION'}</span>
+        <span>{performance ? 'PERFORMANCE' : 'SELECTED AGENT'}</span>
+        <span>{performance ? 'FULL SURFACE' : view.sessions.find((session) => session.selected)?.label ?? 'NO SESSION'}</span>
       </div>
     </div>
   );

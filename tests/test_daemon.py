@@ -1,16 +1,24 @@
 from __future__ import annotations
 
 import errno
+import os
+import socket
 import stat
+import struct
 import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from pad_lattice.audio import Earcon
-from pad_lattice.daemon_runtime import Client, PadLatticeDaemon
-from pad_lattice.devices.base import SessionSelected
+from pad_lattice.daemon_runtime import Client, PadLatticeDaemon, _peer_is_current_user
+from pad_lattice.devices.base import (
+    ActionPressed,
+    ExperienceRequested,
+    ExperienceStopRequested,
+    SessionSelected,
+)
 from pad_lattice.events import AgentIdentity, AgentState, ControlAction
 from pad_lattice.identity_store import IdentityStore
 from pad_lattice.protocol import (
@@ -58,6 +66,8 @@ class FakeSurface:
 
     def __init__(self) -> None:
         self.views = []
+        self.show_frames = []
+        self.experiences = []
         self.events = []
         self.initialized = False
         self.closed = False
@@ -67,6 +77,12 @@ class FakeSurface:
 
     def render(self, view) -> None:
         self.views.append(view)
+
+    def render_show_frame(self, frame) -> None:
+        self.show_frames.append(frame)
+
+    def set_experience(self, view) -> None:
+        self.experiences.append(view)
 
     def poll_events(self):
         events, self.events = self.events, []
@@ -155,6 +171,27 @@ class DaemonTest(TestCase):
             daemon.run()
 
         self.assertTrue(surface.closed)
+
+    def test_linux_peer_credentials_reject_another_local_user(self) -> None:
+        if not hasattr(socket, "SO_PEERCRED"):
+            self.skipTest("SO_PEERCRED is not available on this platform")
+        client = FakeSocket()
+        client.getsockopt = lambda level, option, size: struct.pack(
+            "3i",
+            os.getpid(),
+            os.geteuid() + 1,
+            os.getegid(),
+        )
+
+        self.assertFalse(_peer_is_current_user(client))
+
+        client.getsockopt = lambda level, option, size: struct.pack(
+            "3i",
+            os.getpid(),
+            os.geteuid(),
+            os.getegid(),
+        )
+        self.assertTrue(_peer_is_current_user(client))
 
     def test_state_message_registers_agent_identity(self) -> None:
         daemon = self.daemon()
@@ -390,6 +427,77 @@ class DaemonTest(TestCase):
             audio.events,
             [(Earcon.SESSION_SELECTED, second_slot)],
         )
+
+    def test_daemon_runs_the_shared_demo_without_dispatching_agent_actions(self) -> None:
+        daemon = self.daemon()
+
+        daemon._handle_surface_event(ExperienceRequested("demo"))
+        daemon._handle_surface_event(SessionSelected(1))
+        daemon._handle_surface_event(ActionPressed(ControlAction.APPROVE))
+
+        self.assertEqual(daemon.status_snapshot()["experience"], "demo")
+        self.assertEqual(daemon.experience.demo_actions[-1], ControlAction.APPROVE)
+        self.assertEqual(daemon.surface.views[-1].sessions[1].state, AgentState.SUCCESS)
+        self.assertEqual(daemon.surface.experiences[-1].kind, "demo")
+
+        daemon._handle_surface_event(ExperienceStopRequested())
+        self.assertIsNone(daemon.status_snapshot()["experience"])
+        self.assertEqual(daemon.surface.experiences[-1].reason, "stopped")
+
+    def test_agent_attention_preempts_show_and_restores_semantic_state(self) -> None:
+        daemon = self.daemon()
+        daemon._handle_surface_event(ExperienceRequested("show"))
+        self.assertEqual(daemon.experience.kind, "show")
+
+        client = Client(FakeSocket())
+        daemon.handle_message(
+            client,
+            wire({
+                "type": "state",
+                "state": "waiting_for_approval",
+                "agent": {"backend": "codex", "session_id": "urgent"},
+            }),
+        )
+        daemon._render_if_needed()
+
+        self.assertIsNone(daemon.experience.kind)
+        self.assertEqual(
+            daemon.surface.experiences[-1].reason,
+            "agent_attention_required",
+        )
+        self.assertIs(
+            daemon.surface.views[-1].selected_state,
+            AgentState.WAITING_FOR_APPROVAL,
+        )
+
+    def test_agent_attention_blocks_new_experiences(self) -> None:
+        daemon = self.daemon()
+        self.update_agent(
+            daemon,
+            AgentIdentity("codex", "urgent"),
+            AgentState.WAITING_FOR_REPLY,
+        )
+
+        daemon._handle_surface_event(ExperienceRequested("demo"))
+
+        self.assertIsNone(daemon.experience.kind)
+        self.assertEqual(daemon.surface.experiences[-1].status, "blocked")
+        self.assertIn("waiting", daemon.surface.experiences[-1].reason)
+
+    def test_daemon_audio_feedback_enables_the_host_show_score(self) -> None:
+        daemon = self.daemon(audio_feedback=FakeAudioFeedback())
+        soundtrack = Mock()
+
+        with patch(
+            "pad_lattice.experience_runtime.start_constellation_soundtrack",
+            return_value=soundtrack,
+        ) as start_soundtrack:
+            daemon._handle_surface_event(ExperienceRequested("show"))
+            daemon.experience.tick(now=daemon.experience._show_start)
+            daemon._handle_surface_event(ExperienceStopRequested())
+
+        start_soundtrack.assert_called_once()
+        soundtrack.close.assert_called_once_with()
 
     def test_action_is_sent_only_to_selected_matching_subscriber(self) -> None:
         daemon = self.daemon()

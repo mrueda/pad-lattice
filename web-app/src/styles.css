@@ -279,7 +279,7 @@ select:focus-visible {
 .modeSwitch {
   display: grid;
   width: 100%;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border: 1px solid #303942;
   border-radius: 6px;
   padding: 3px;
@@ -488,6 +488,12 @@ select:focus-visible {
   color: #ef9096;
 }
 
+.primaryButton.danger {
+  border-color: #b64b55;
+  color: #fff;
+  background: #9f3540;
+}
+
 .primaryButton {
   border-color: #4a9ed3;
   color: #071015;
@@ -557,6 +563,37 @@ select:focus-visible {
 .pairingPanel {
   border-top: 1px solid #2b343b;
   padding-top: 22px;
+}
+
+.experiencePanel {
+  border-top: 1px solid #2b343b;
+  padding-top: 18px;
+}
+
+.experiencePanel p {
+  margin: 0 0 12px;
+  color: #9aa6ae;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.experiencePanel .experienceCaption {
+  color: #e8eef2;
+  font-weight: 700;
+}
+
+.experiencePanel .experienceDetail {
+  color: #aeb9c0;
+}
+
+.experiencePanel .experienceWarning {
+  color: #f1ad72;
+}
+
+.experienceActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .pairingContent {

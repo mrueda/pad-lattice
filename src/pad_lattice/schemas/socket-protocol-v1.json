@@ -200,7 +200,7 @@
       "required": [
         "protocol", "type", "profile", "visual_protocol", "input", "output",
         "selected", "overflow_count", "activity_motion", "audio_feedback",
-        "preview_active", "session_ttl", "surfaces", "sessions"
+        "experience", "preview_active", "session_ttl", "surfaces", "sessions"
       ],
       "properties": {
         "protocol": {"$ref": "#/$defs/protocol"},
@@ -215,6 +215,7 @@
         "overflow_count": {"type": "integer", "minimum": 0},
         "activity_motion": {"type": "boolean"},
         "audio_feedback": {"type": "boolean"},
+        "experience": {"type": ["string", "null"], "enum": ["demo", "show", null]},
         "preview_active": {"type": "boolean"},
         "session_ttl": {"type": "number", "minimum": 0},
         "surfaces": {

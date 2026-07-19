@@ -4,7 +4,8 @@ const python = process.env.PAD_LATTICE_PYTHON ?? '../.venv/bin/python';
 
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: true,
+  fullyParallel: false,
+  workers: 1,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: 'list',

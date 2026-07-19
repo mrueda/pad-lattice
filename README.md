@@ -18,7 +18,9 @@
 
 **🚀 Quick Start:** <https://mrueda.github.io/pad-lattice/docs/usage/quickstart>
 
-**🎛️ Device Testing:** <https://mrueda.github.io/pad-lattice/docs/usage/device-testing>
+**🎛️ Device Testing:** <https://mrueda.github.io/pad-lattice/docs/technical-details/device-testing>
+
+**🔒 Security Model:** <https://mrueda.github.io/pad-lattice/docs/technical-details/security-model>
 
 **📦 GitHub Repository:** <https://github.com/mrueda/pad-lattice>
 
@@ -42,7 +44,7 @@ Pad-Lattice is alpha software.
 
 | Surface | Command | Result |
 | --- | --- | --- |
-| Public browser demo | [Open `/play/`](https://mrueda.github.io/pad-lattice/play/) | Simulated guided multi-agent story and protocol sandbox; no installation. |
+| Public browser | [Open `/play/`](https://mrueda.github.io/pad-lattice/play/) | Guided Demo, protocol sandbox, and audiovisual Show; no installation. |
 | Local browser | `pad-lattice web` | Real Codex control on the same computer. |
 | Phone or tablet | `pad-lattice web --lan` | Real Codex control after one-time pairing on a trusted local network. |
 | Launchpad | `pad-lattice daemon` | Physical MIDI input and RGB state feedback. |
@@ -68,6 +70,9 @@ Start a virtual surface without MIDI hardware:
 ```bash
 pad-lattice web
 ```
+
+The command opens a per-daemon tokenized local administrator URL. Treat that
+URL as a credential and do not share it.
 
 Launch an integrated Codex session:
 
@@ -112,7 +117,7 @@ pad-lattice status --watch
 ```
 
 See the [Quick Start](https://mrueda.github.io/pad-lattice/docs/usage/quickstart)
-and [Virtual Surface](https://mrueda.github.io/pad-lattice/docs/usage/virtual-surface)
+and [Browser Surface](https://mrueda.github.io/pad-lattice/docs/technical-details/virtual-surface)
 guides for complete setup and security details.
 
 ## Supported Hardware
@@ -155,18 +160,28 @@ Scenes**. The rightmost matrix column summarizes all visible agents; the other
 Actions remain completely dark unless the selected agent has a live subscriber
 and its state permits that action. Shapes and colors are steady; rapid flashing
 and pulsing are not part of the protocol. See the [full visual
-language](https://mrueda.github.io/pad-lattice/docs/usage/visual-language).
+language](https://mrueda.github.io/pad-lattice/docs/technical-details/visual-language).
 
-## Hardware Demo and Show
+## Demo and Show
 
 ```bash
 pad-lattice demo --audio
 pad-lattice show --audio
+pad-lattice demo --surface web
+pad-lattice show --surface both
 ```
 
-The guided demo exercises semantic questions and actions. **A Spark Becomes a
-Constellation** is a 43-second audiovisual performance across the full surface.
-Both commands open MIDI directly, so stop the daemon first.
+The shared guided Demo exercises three agents, Scene selection, approval,
+rejection recovery, and retry. **A Spark Becomes a Constellation** is a
+43-second audiovisual performance across the full 8x8 matrix and outer rails.
+Use `--surface midi`, `web`, or `both`; MIDI remains the default.
+
+For `web` or `both`, the tokenized local administrator page starts and stops
+playback. Paired browsers can answer Demo prompts and watch Show, but cannot
+start either experience. Browser sound is per-device and muted by default;
+`--audio` independently enables computer audio. In a live daemon, any real
+agent waiting for a reply or approval interrupts playback and restores its
+authoritative state.
 
 ## Development
 

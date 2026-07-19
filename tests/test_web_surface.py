@@ -9,7 +9,13 @@ from unittest import TestCase
 
 from websockets.sync.client import connect
 
-from pad_lattice.devices.base import ActionPressed, SessionSelected, SurfaceView
+from pad_lattice.devices.base import (
+    ActionPressed,
+    ExperienceRequested,
+    ExperienceStopRequested,
+    SessionSelected,
+    SurfaceView,
+)
 from pad_lattice.events import AgentState, ControlAction
 from pad_lattice.web_surface import (
     COMMAND_RATE_LIMIT,
@@ -17,6 +23,11 @@ from pad_lattice.web_surface import (
     BrowserClient,
     BrowserSurfaceServer,
     WebSurface,
+)
+from pad_lattice.web_protocol import (
+    StartExperienceCommand,
+    StopExperienceCommand,
+    WebProtocolError,
 )
 
 
@@ -82,11 +93,39 @@ class BrowserSurfaceServerTest(TestCase):
         self.assertEqual(sum(accepted for accepted, token in results), 1)
         self.assertEqual(sum(token is not None for accepted, token in results), 1)
 
-    def test_loopback_requires_no_pairing_credential(self) -> None:
-        server = BrowserSurfaceServer(lambda event: None)
+    def test_loopback_requires_its_per_daemon_admin_credential(self) -> None:
+        server = BrowserSurfaceServer(
+            lambda event: None,
+            admin_token="local-admin-secret",
+        )
+
         self.assertEqual(
             server._authenticate("127.0.0.1", None, loopback=True),
+            (False, None),
+        )
+        self.assertEqual(
+            server._authenticate("127.0.0.1", "wrong", loopback=True),
+            (False, None),
+        )
+        self.assertEqual(
+            server._authenticate(
+                "127.0.0.1",
+                "local-admin-secret",
+                loopback=True,
+            ),
             (True, None),
+        )
+        self.assertEqual(
+            server._authenticate(
+                "192.168.1.20",
+                "local-admin-secret",
+                loopback=False,
+            ),
+            (False, None),
+        )
+        self.assertEqual(
+            server.admin_url,
+            "http://127.0.0.1:8765/#admin=local-admin-secret",
         )
 
     def test_lan_host_is_limited_to_advertised_origin(self) -> None:
@@ -117,6 +156,23 @@ class BrowserSurfaceServerTest(TestCase):
         self.assertFalse(client.allow_command(10.0))
         self.assertTrue(client.allow_command(11.1))
 
+    def test_only_the_local_admin_can_control_experiences(self) -> None:
+        events = []
+        server = BrowserSurfaceServer(events.append)
+        admin = BrowserClient(object(), admin=True, remote=False)
+        paired = BrowserClient(object(), admin=False, remote=True)
+
+        server._handle_command(admin, StartExperienceCommand("demo"))
+        server._handle_command(admin, StopExperienceCommand())
+
+        self.assertEqual(
+            events,
+            [ExperienceRequested("demo"), ExperienceStopRequested()],
+        )
+        with self.assertRaisesRegex(WebProtocolError, "administrator") as raised:
+            server._handle_command(paired, StartExperienceCommand("show"))
+        self.assertEqual(raised.exception.code, "admin_required")
+
 
 class WebSurfaceIntegrationTest(TestCase):
     def test_browser_event_queue_is_bounded(self) -> None:
@@ -133,7 +189,11 @@ class WebSurfaceIntegrationTest(TestCase):
     def test_loopback_browser_receives_frames_and_emits_events(self) -> None:
         with TemporaryDirectory() as directory:
             Path(directory, "index.html").write_text("ok", encoding="utf-8")
-            surface = WebSurface(port=0, asset_root=Path(directory))
+            surface = WebSurface(
+                port=0,
+                asset_root=Path(directory),
+                admin_token="local-admin-secret",
+            )
             surface.initialize()
             try:
                 surface.render(SurfaceView(AgentState.WAITING_FOR_REPLY))
@@ -143,8 +203,28 @@ class WebSurfaceIntegrationTest(TestCase):
                     origin=surface.local_url,
                     proxy=None,
                     close_timeout=1,
+                ) as denied_client:
+                    denied_client.send(
+                        json.dumps({"protocol": 1, "type": "authenticate"})
+                    )
+                    denied = json.loads(denied_client.recv())
+                self.assertEqual(denied["code"], "forbidden")
+
+                with connect(
+                    websocket_url,
+                    origin=surface.local_url,
+                    proxy=None,
+                    close_timeout=1,
                 ) as client:
-                    client.send(json.dumps({"protocol": 1, "type": "authenticate"}))
+                    client.send(
+                        json.dumps(
+                            {
+                                "protocol": 1,
+                                "type": "authenticate",
+                                "credential": "local-admin-secret",
+                            }
+                        )
+                    )
                     authenticated = json.loads(client.recv())
                     frame = json.loads(client.recv())
                     client.send(

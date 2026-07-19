@@ -32,14 +32,16 @@ from pad_lattice.diagnostics import (
     diagnostics_exit_code,
     print_diagnostics,
 )
+from pad_lattice.devices.base import ControlSurface
+from pad_lattice.devices.composite import CompositeSurface
 from pad_lattice.devices.factory import (
     discover_devices,
     open_resolved_surface,
     resolve_device,
 )
-from pad_lattice.devices.composite import CompositeSurface
 from pad_lattice.devices.midi_grid import (
     MidiDeviceError,
+    MidiGridSurface,
     list_midi_ports,
     monitor_midi_input,
 )
@@ -97,8 +99,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     doctor.add_argument("--json", action="store_true", help="emit machine-readable JSON")
 
-    demo = subparsers.add_parser("demo", help="run a guided hardware conversation")
+    demo = subparsers.add_parser("demo", help="run the shared guided conversation")
+    _add_experience_surface_argument(demo)
     _add_device_arguments(demo)
+    _add_web_arguments(demo)
     demo.add_argument(
         "--greeting-delay",
         type=float,
@@ -120,7 +124,9 @@ def build_parser() -> argparse.ArgumentParser:
         "show",
         help="play an authored full-surface visual performance",
     )
+    _add_experience_surface_argument(show)
     _add_device_arguments(show)
+    _add_web_arguments(show)
     show.add_argument(
         "--tempo",
         type=float,
@@ -435,53 +441,56 @@ def main(argv: list[str] | None = None) -> int:
             return diagnostics_exit_code(report)
 
         if args.command == "demo":
-            device = resolve_device(
-                profile_id=args.profile_id,
-                profile_file=args.profile_file,
-                input_name=args.input,
-                output_name=args.output,
-            )
-            surface = open_resolved_surface(
-                device,
+            surface, midi_surface = _open_experience_surface(
+                args,
                 startup_greeting=None if args.no_greeting else "HELLO FROM CODEX CLI",
                 scroll_delay=args.greeting_delay,
             )
             audio_feedback = None
             try:
                 audio_feedback = SystemAudioFeedback() if args.audio else None
-                if audio_feedback is not None and surface.startup_greeting:
+                if (
+                    audio_feedback is not None
+                    and midi_surface is not None
+                    and midi_surface.startup_greeting
+                ):
                     audio_feedback.speak(
-                        surface.startup_greeting,
-                        duration=surface.startup_greeting_duration,
+                        midi_surface.startup_greeting,
+                        duration=midi_surface.startup_greeting_duration,
                     )
             except BaseException:
                 if audio_feedback is not None:
                     audio_feedback.close()
                 surface.close()
                 raise
-            run_demo_surface(surface, audio_feedback=audio_feedback)
+            run_demo_surface(
+                surface,
+                audio_feedback=audio_feedback,
+                wait_for_request=args.surface in {"web", "both"},
+            )
             return 0
 
         if args.command == "show":
             if args.tempo <= 0:
                 raise ValueError("show tempo must be positive")
-            device = resolve_device(
-                profile_id=args.profile_id,
-                profile_file=args.profile_file,
-                input_name=args.input,
-                output_name=args.output,
-            )
-            surface = open_resolved_surface(
-                device,
+            surface, _ = _open_experience_surface(
+                args,
                 startup_greeting=None,
                 scroll_delay=0.08,
             )
-            run_show_surface(surface, tempo=args.tempo, audio=args.audio)
+            run_show_surface(
+                surface,
+                tempo=args.tempo,
+                audio=args.audio,
+                wait_for_request=args.surface in {"web", "both"},
+            )
             return 0
 
         if args.command == "daemon":
-            if (args.lan or args.advertise_host) and not args.web:
-                raise ValueError("--lan and --advertise-host require --web")
+            if (args.lan or args.bind_host or args.advertise_host) and not args.web:
+                raise ValueError(
+                    "--lan, --bind-host, and --advertise-host require --web"
+                )
             device = resolve_device(
                 profile_id=args.profile_id,
                 profile_file=args.profile_file,
@@ -725,6 +734,15 @@ def _add_device_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--output", help="MIDI output port name")
 
 
+def _add_experience_surface_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--surface",
+        choices=("midi", "web", "both"),
+        default="midi",
+        help="render on MIDI, browser, or both surfaces; default midi",
+    )
+
+
 def _add_web_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--lan",
@@ -738,8 +756,12 @@ def _add_web_arguments(parser: argparse.ArgumentParser) -> None:
         help="browser surface TCP port; default 8765",
     )
     parser.add_argument(
+        "--bind-host",
+        help="private IPv4 interface that serves phone access",
+    )
+    parser.add_argument(
         "--advertise-host",
-        help="LAN hostname or address encoded in pairing links",
+        help="private LAN hostname or IPv4 address opened by the phone",
     )
     parser.add_argument(
         "--no-open",
@@ -751,34 +773,85 @@ def _add_web_arguments(parser: argparse.ArgumentParser) -> None:
 def _open_web_surface(args: argparse.Namespace) -> WebSurface:
     if not 0 <= args.port <= 65535:
         raise ValueError("web port must be from 0 to 65535")
-    if args.advertise_host and not args.lan:
-        raise ValueError("--advertise-host requires --lan")
+    if (args.bind_host or args.advertise_host) and not args.lan:
+        raise ValueError("--bind-host and --advertise-host require --lan")
+    bind_host = "127.0.0.1"
+    advertised_host: str | None = None
+    if args.lan:
+        bind_host, advertised_host = _lan_hosts(
+            args.bind_host,
+            args.advertise_host,
+        )
     surface = WebSurface(
-        host="0.0.0.0" if args.lan else "127.0.0.1",
+        host=bind_host,
         port=args.port,
     )
     try:
         surface.initialize()
         if args.lan:
-            advertised_host = args.advertise_host or _discover_lan_host()
+            assert advertised_host is not None
             base_url = f"http://{advertised_host}:{surface.server.actual_port}"
             surface.configure_lan(base_url)
             pairing = surface.create_pairing()
-            print(f"Virtual surface: {surface.local_url}")
+            print(f"Local admin:     {surface.admin_url}")
             print(f"Phone/tablet:   {base_url}")
             print(f"Pairing PIN:   {pairing['pin']} (expires in 5 minutes)")
-            print("Trusted LAN only. Do not expose or port-forward this server.")
+            print("Trusted LAN only. Do not expose this server through a router.")
         else:
-            print(f"Virtual surface: {surface.local_url}")
+            print(f"Local admin: {surface.admin_url}")
         if not args.no_open:
             try:
-                webbrowser.open(surface.local_url)
+                webbrowser.open(surface.admin_url)
             except webbrowser.Error:
                 pass
         return surface
     except BaseException:
         surface.close()
         raise
+
+
+def _open_experience_surface(
+    args: argparse.Namespace,
+    *,
+    startup_greeting: str | None,
+    scroll_delay: float,
+) -> tuple[ControlSurface, MidiGridSurface | None]:
+    if args.surface == "midi" and (
+        args.lan or args.bind_host or args.advertise_host
+    ):
+        raise ValueError("LAN browser options require --surface web or both")
+    if args.surface == "web" and any(
+        value is not None
+        for value in (args.profile_id, args.profile_file, args.input, args.output)
+    ):
+        raise ValueError("MIDI device options require --surface midi or both")
+    midi_surface = None
+    web_surface = None
+    if args.surface in {"midi", "both"}:
+        device = resolve_device(
+            profile_id=args.profile_id,
+            profile_file=args.profile_file,
+            input_name=args.input,
+            output_name=args.output,
+        )
+        midi_surface = open_resolved_surface(
+            device,
+            startup_greeting=startup_greeting,
+            scroll_delay=scroll_delay,
+        )
+    try:
+        if args.surface in {"web", "both"}:
+            web_surface = _open_web_surface(args)
+    except BaseException:
+        if midi_surface is not None:
+            midi_surface.close()
+        raise
+    if midi_surface is not None and web_surface is not None:
+        return CompositeSurface((midi_surface, web_surface)), midi_surface
+    surface = midi_surface or web_surface
+    if surface is None:
+        raise AssertionError(f"unhandled surface choice: {args.surface}")
+    return surface, midi_surface
 
 
 def _discover_lan_host() -> str:
@@ -808,7 +881,78 @@ def _discover_lan_host() -> str:
             continue
         if address.is_private and not address.is_loopback and not address.is_link_local:
             return candidate
-    raise ValueError("could not discover a private LAN address; pass --advertise-host")
+    raise ValueError("could not discover a private LAN address; pass --bind-host")
+
+
+def _lan_hosts(
+    bind_host: str | None,
+    advertised_host: str | None,
+) -> tuple[str, str]:
+    """Return separate private listener and browser-facing LAN hosts."""
+
+    bind_address = (
+        _resolve_private_lan_host(bind_host, option="--bind-host")
+        if bind_host is not None
+        else _discover_lan_host()
+    )
+    if advertised_host is None:
+        return bind_address, bind_address
+    _resolve_private_lan_host(advertised_host, option="--advertise-host")
+    return bind_address, advertised_host
+
+
+def _resolve_private_lan_host(value: str, *, option: str) -> str:
+    if any(character.isspace() for character in value) or any(
+        character in value for character in "/@[]:?#"
+    ):
+        raise ValueError(
+            f"{option} must be a bare private IPv4 address or hostname"
+        )
+
+    try:
+        address = ipaddress.ip_address(value)
+    except ValueError:
+        try:
+            resolved = socket.getaddrinfo(
+                value,
+                None,
+                family=socket.AF_INET,
+                type=socket.SOCK_STREAM,
+            )
+        except OSError as exc:
+            raise ValueError(f"could not resolve {option} {value!r}") from exc
+        candidates = tuple(dict.fromkeys(str(item[4][0]) for item in resolved))
+        private_address = next(
+            (
+                candidate
+                for candidate in candidates
+                if _is_private_lan_address(candidate)
+            ),
+            None,
+        )
+        if private_address is None:
+            raise ValueError(f"{option} must resolve to a private LAN address")
+        return private_address
+
+    if not isinstance(address, ipaddress.IPv4Address) or not _is_private_lan_address(
+        str(address)
+    ):
+        raise ValueError(f"{option} must be a private LAN IPv4 address")
+    return str(address)
+
+
+def _is_private_lan_address(value: str) -> bool:
+    try:
+        address = ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    return (
+        isinstance(address, ipaddress.IPv4Address)
+        and address.is_private
+        and not address.is_loopback
+        and not address.is_link_local
+        and not address.is_unspecified
+    )
 
 
 def _add_agent_arguments(parser: argparse.ArgumentParser) -> None:
@@ -924,7 +1068,9 @@ def _print_status(
     selected = payload.get("selected")
     selected_label = "none"
     if isinstance(selected, dict):
-        selected_label = f"{selected.get('backend')}/{selected.get('session_id')}"
+        backend = _safe_display(selected.get("backend"), 24)
+        session_id = _safe_display(selected.get("session_id"), 64)
+        selected_label = f"{backend}/{session_id}"
     print(
         f"Surface profile: {payload.get('profile')} "
         f"(Visual Protocol {payload.get('visual_protocol')})",

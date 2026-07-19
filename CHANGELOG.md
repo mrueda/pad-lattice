@@ -6,6 +6,34 @@ versions follow [PEP 440](https://peps.python.org/pep-0440/).
 
 ## Unreleased
 
+### Added
+
+- The guided multi-agent Demo and **A Spark Becomes a Constellation** Show now
+  run on MIDI, browser, or synchronized `both` surfaces from one shared
+  experience definition.
+- Public and live browser surfaces now include the full-surface Show and
+  optional per-device audio, muted by default.
+- Version 1 Demo and performance manifest schemas, a deterministic asset
+  compiler, and packaged browser WAV assets now keep Python and TypeScript
+  playback aligned without runtime schema validation.
+
+### Changed
+
+- Live Demo and Show playback is nonblocking and immediately yields to a real
+  agent waiting for a reply or approval.
+- Only the token-authenticated local browser administrator may start or stop
+  live experiences; paired browsers may still interact with Demo prompts.
+
+### Security
+
+- Local browser administration now requires a random per-daemon token carried
+  in the URL fragment.
+- LAN mode now adds a listener only on the selected private IPv4 interface,
+  while retaining the separate loopback administrator listener. The bind and
+  browser-facing hosts may differ for an explicit host-to-VM port forward.
+- Linux daemon connections now verify the Unix-socket peer UID in addition to
+  mode `0600`; the security model and private reporting policy are documented.
+
 ### Fixed
 
 - Codex lifecycle hooks are now scoped to sessions launched with

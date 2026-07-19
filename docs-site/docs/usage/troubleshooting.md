@@ -10,7 +10,7 @@ pad-lattice doctor
 ```
 
 It checks discovery, profile matching, daemon reachability, socket permissions,
-and Codex hook installation without opening the controller or changing LEDs.
+and stale global Codex hooks without opening the controller or changing LEDs.
 Use `pad-lattice doctor --json` when attaching diagnostics to an issue; the
 report omits session identities and agent metadata.
 It also abbreviates home and runtime-directory paths.
@@ -25,7 +25,8 @@ pad-lattice web
 
 Automatic browser launch is a convenience, not a runtime requirement. On a
 headless host or when the desktop opener fails, run `pad-lattice web --no-open`
-and open the printed loopback URL yourself.
+and open the printed tokenized loopback administrator URL yourself. Do not
+share that URL.
 
 If port 8765 is occupied, let the operating system choose a free one:
 
@@ -46,19 +47,23 @@ pad-lattice web --lan
 ```
 
 If the printed address belongs to a VPN, container, or unreachable interface,
-advertise the host's reachable Wi-Fi address:
+select the interface explicitly:
 
 ```bash
-pad-lattice web --lan --advertise-host 192.168.1.20
+pad-lattice web --lan --bind-host 192.168.1.20
 ```
+
+Shared-network VMs are normally hidden from other LAN devices. Follow the
+[Parallels Desktop instructions](./connect-browsers.md#running-inside-parallels-desktop)
+to forward one private host port without exposing the whole VM.
 
 Also check the host firewall. Pairing QR links and PINs are one-use and expire
 after five minutes; create another from the local admin page when needed.
 Pairing tokens are deliberately forgotten when the daemon restarts, so a
 previously paired browser must pair again.
 
-Do not solve reachability by forwarding the port through a router. LAN mode is
-unencrypted and intended only for a trusted local network.
+Do not forward the port through a router or expose it beyond the trusted local
+network. LAN mode is unencrypted.
 
 ## No Device Is Detected
 

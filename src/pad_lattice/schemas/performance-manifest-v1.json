@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mrueda.github.io/pad-lattice/schemas/performance-manifest-v1.json",
+  "title": "Pad-Lattice Performance Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "kind", "id", "title", "dimensions",
+    "duration_ms", "acts", "palette", "cues", "audio"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "performance"},
+    "id": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "dimensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["grid", "top", "right"],
+      "properties": {
+        "grid": {"const": [8, 8]},
+        "top": {"const": 8},
+        "right": {"const": 8}
+      }
+    },
+    "duration_ms": {"type": "integer", "minimum": 1},
+    "acts": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "palette": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": {"$ref": "#/$defs/color"}
+    },
+    "cues": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": {"$ref": "#/$defs/cue"}
+    },
+    "audio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset", "mime_type", "duration_ms"],
+      "properties": {
+        "asset": {"type": "string", "minLength": 1},
+        "mime_type": {"const": "audio/wav"},
+        "duration_ms": {"type": "integer", "minimum": 1}
+      }
+    }
+  },
+  "$defs": {
+    "color": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fallback", "rgb"],
+      "properties": {
+        "fallback": {"type": "string", "minLength": 1},
+        "rgb": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {"type": "integer", "minimum": 0, "maximum": 255}
+        }
+      }
+    },
+    "rail": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {"type": "integer", "minimum": 0, "maximum": 4095}
+    },
+    "grid": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {"$ref": "#/$defs/rail"}
+    },
+    "cue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["act", "duration_ms", "caption", "frame"],
+      "properties": {
+        "act": {"type": "integer", "minimum": 0},
+        "duration_ms": {"type": "integer", "minimum": 1},
+        "caption": {"type": ["string", "null"], "minLength": 1},
+        "frame": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["grid", "top", "right"],
+          "properties": {
+            "grid": {"$ref": "#/$defs/grid"},
+            "top": {"$ref": "#/$defs/rail"},
+            "right": {"$ref": "#/$defs/rail"}
+          }
+        }
+      }
+    }
+  }
+}

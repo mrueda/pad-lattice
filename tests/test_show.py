@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import io
 from unittest import TestCase
+from unittest.mock import patch
 
-from pad_lattice.devices.base import ShowColor
+from pad_lattice.devices.base import ExperienceView, ShowColor, SurfaceView
 from pad_lattice.show import (
     OFF,
     SHOW_ACTS,
@@ -18,12 +19,19 @@ from pad_lattice.show import (
 
 class FakeShowSurface:
     profile_id = "test/grid/device"
+    surface_kind = "midi"
+    input_name = "input"
+    output_name = "output"
+    selector_capacity = 8
+    accent_names = ("cyan", "magenta", "lime", "orange", "violet", "teal", "rose", "sky")
+    visual_protocol = 1
 
     def __init__(self, *, fail_initialize: bool = False) -> None:
         self.fail_initialize = fail_initialize
         self.initialized = False
         self.closed = False
         self.frames = []
+        self.experiences = []
 
     def initialize(self) -> None:
         self.initialized = True
@@ -32,6 +40,15 @@ class FakeShowSurface:
 
     def render_show_frame(self, frame) -> None:
         self.frames.append(frame)
+
+    def render(self, view: SurfaceView) -> None:
+        raise AssertionError("Show rendered a semantic frame")
+
+    def set_experience(self, view: ExperienceView) -> None:
+        self.experiences.append(view)
+
+    def poll_events(self):
+        return []
 
     def close(self) -> None:
         self.closed = True
@@ -43,6 +60,16 @@ class FakeSoundtrack:
 
     def close(self) -> None:
         self.closed = True
+
+
+class StepClock:
+    def __init__(self, step: float = 1.0) -> None:
+        self.value = -step
+        self.step = step
+
+    def __call__(self) -> float:
+        self.value += self.step
+        return self.value
 
 
 class ShowTest(TestCase):
@@ -119,50 +146,51 @@ class ShowTest(TestCase):
             )
             self.assertLessEqual(switched, 40)
 
-    def test_runner_plays_every_frame_at_scaled_tempo_and_closes(self) -> None:
+    def test_runner_uses_absolute_timing_and_closes(self) -> None:
         surface = FakeShowSurface()
-        cues = build_constellation_show()[:3]
-        sleeps: list[float] = []
         output = io.StringIO()
 
         completed = run_show_surface(
             surface,
-            cues=cues,
             tempo=2.0,
             output=output,
-            sleep=sleeps.append,
+            clock=StepClock(0.5),
+            sleep=lambda _: None,
         )
 
         self.assertTrue(completed)
         self.assertTrue(surface.initialized)
         self.assertTrue(surface.closed)
-        self.assertEqual(surface.frames, [cue.frame for cue in cues])
-        self.assertEqual(sleeps, [cue.duration / 2 for cue in cues])
+        self.assertGreater(len(surface.frames), 20)
+        self.assertLessEqual(len(surface.frames), len(build_constellation_show()))
+        self.assertEqual(surface.experiences[0].status, "starting")
+        self.assertEqual(surface.experiences[-1].status, "idle")
         self.assertIn("A Spark Becomes a Constellation", output.getvalue())
-        self.assertIn("Show complete.", output.getvalue())
 
     def test_runner_synchronizes_and_closes_optional_soundtrack(self) -> None:
         surface = FakeShowSurface()
-        cues = build_constellation_show()[:3]
         soundtrack = FakeSoundtrack()
         timelines = []
-
-        completed = run_show_surface(
-            surface,
-            cues=cues,
-            tempo=2.0,
-            audio=True,
-            output=io.StringIO(),
-            sleep=lambda _: None,
-            soundtrack_factory=lambda timeline: (
+        with patch(
+            "pad_lattice.experience_runtime.start_constellation_soundtrack",
+            side_effect=lambda timeline: (
                 timelines.append(tuple(timeline)) or soundtrack
             ),
-        )
+        ):
+            completed = run_show_surface(
+                surface,
+                tempo=2.0,
+                audio=True,
+                output=io.StringIO(),
+                clock=StepClock(1.0),
+                sleep=lambda _: None,
+            )
 
         self.assertTrue(completed)
         self.assertTrue(soundtrack.closed)
         self.assertEqual(len(timelines), 1)
         self.assertEqual(timelines[0][0].start, 0.0)
+        cues = build_constellation_show()
         self.assertEqual(timelines[0][0].duration, cues[0].duration / 2)
         self.assertAlmostEqual(
             timelines[0][-1].start + timelines[0][-1].duration,
@@ -171,19 +199,14 @@ class ShowTest(TestCase):
 
     def test_runner_restores_surface_after_interrupt(self) -> None:
         surface = FakeShowSurface()
-        soundtrack = FakeSoundtrack()
-
         completed = run_show_surface(
             surface,
-            cues=build_constellation_show()[:1],
-            audio=True,
             output=io.StringIO(),
+            clock=StepClock(),
             sleep=lambda _: (_ for _ in ()).throw(KeyboardInterrupt()),
-            soundtrack_factory=lambda _: soundtrack,
         )
 
         self.assertFalse(completed)
-        self.assertTrue(soundtrack.closed)
         self.assertTrue(surface.closed)
 
     def test_initialization_failure_still_closes_surface(self) -> None:
@@ -197,14 +220,17 @@ class ShowTest(TestCase):
     def test_soundtrack_failure_still_closes_surface(self) -> None:
         surface = FakeShowSurface()
 
-        with self.assertRaisesRegex(ValueError, "audio failed"):
-            run_show_surface(
-                surface,
-                audio=True,
-                output=io.StringIO(),
-                soundtrack_factory=lambda _: (_ for _ in ()).throw(
-                    ValueError("audio failed")
-                ),
-            )
+        with patch(
+            "pad_lattice.experience_runtime.start_constellation_soundtrack",
+            side_effect=ValueError("audio failed"),
+        ):
+            with self.assertRaisesRegex(ValueError, "audio failed"):
+                run_show_surface(
+                    surface,
+                    audio=True,
+                    output=io.StringIO(),
+                    clock=StepClock(),
+                    sleep=lambda _: None,
+                )
 
         self.assertTrue(surface.closed)
