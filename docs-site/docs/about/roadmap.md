@@ -32,7 +32,8 @@
 - Deterministic browser audio assets and per-device muted sound controls.
 - Live-experience preemption when an agent needs a reply or approval.
 - Optional semantic earcons for agent states, actions, and Scene selection.
-- On-demand GitHub workflows for tests, documentation, TestPyPI, and PyPI.
+- On-demand GitHub workflows for tests and documentation, plus annotated-tag
+  publication to PyPI.
 
 ## Next
 
@@ -40,7 +41,7 @@
   complete passing physical report.
 - Add a supported broader Codex control channel for interactive Stop, Retry,
   and ordinary chat replies.
-- Publish signed releases to TestPyPI and PyPI.
+- Publish the first stable annotated-tag release to PyPI.
 - Add more community-authored controller profiles.
 - Validate Visual Protocol 1 on devices with different layouts and palettes.
 - Gather usability evidence from people using only the virtual surface.

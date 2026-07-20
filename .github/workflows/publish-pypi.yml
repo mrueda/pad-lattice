@@ -1,18 +1,19 @@
 name: Publish to PyPI
 
 on:
-  workflow_dispatch:
-    inputs:
-      release_tag:
-        description: Release tag to publish (for example, v0.1.0)
-        required: true
-        type: string
+  push:
+    tags:
+      - "v*"
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 permissions:
   contents: read
+
+concurrency:
+  group: pypi-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -22,7 +23,9 @@ jobs:
       - name: Check out release tag
         uses: actions/checkout@v5
         with:
-          ref: ${{ inputs.release_tag }}
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -39,16 +42,54 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install ".[release,schema]"
 
-      - name: Check release version
+      - name: Verify annotated tag, version, and changelog
         env:
-          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          version=$(python -c "from pad_lattice import __version__; print(__version__)")
-          tag=${RELEASE_TAG#v}
-          test "$tag" = "$version" || {
-            echo "Release tag $RELEASE_TAG does not match package version $version"
+          test "$(git cat-file -t "refs/tags/$RELEASE_TAG")" = "tag" || {
+            echo "Release tag $RELEASE_TAG must be annotated"
             exit 1
           }
+          python - <<'PY'
+          import os
+          import re
+          from importlib.metadata import version as distribution_version
+          from pathlib import Path
+
+          from pad_lattice import __version__
+
+          tag = os.environ["RELEASE_TAG"]
+          match = re.fullmatch(
+              r"v(?P<version>(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))",
+              tag,
+          )
+          if match is None:
+              raise SystemExit(
+                  f"Release tag {tag!r} must use stable form vX.Y.Z"
+              )
+
+          tag_version = match.group("version")
+          metadata_version = distribution_version("pad-lattice")
+          if tag_version != __version__:
+              raise SystemExit(
+                  f"Release tag {tag} does not match Python version {__version__}"
+              )
+          if metadata_version != __version__:
+              raise SystemExit(
+                  "Distribution metadata version "
+                  f"{metadata_version} does not match Python version {__version__}"
+              )
+
+          headings = (
+              f"## {tag_version} - ",
+              f"## [{tag_version}] - ",
+          )
+          changelog_lines = Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines()
+          if not any(line.startswith(headings) for line in changelog_lines):
+              raise SystemExit(
+                  f"CHANGELOG.md has no dated entry for {tag_version}"
+              )
+          PY
 
       - name: Test, build, and validate distributions
         run: |
