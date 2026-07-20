@@ -52,6 +52,21 @@ export function cueIndexAt(manifest: PerformanceManifest, elapsedMs: number): nu
   return manifest.cues.length - 1;
 }
 
+export function performanceCaptionAt(
+  manifest: PerformanceManifest,
+  cueIndex: number,
+): string {
+  const cue = manifest.cues[cueIndex];
+  if (!cue) throw new Error(`Unknown performance cue ${cueIndex}.`);
+  for (let index = cueIndex; index >= 0; index -= 1) {
+    const candidate = manifest.cues[index];
+    if (!candidate || candidate.act !== cue.act) break;
+    if (candidate.caption) return candidate.caption;
+  }
+  const act = manifest.acts[cue.act] ?? 'The story continues';
+  return act.includes(' - ') ? act.split(' - ', 2)[1] : act;
+}
+
 export function parseDemoManifest(value: unknown): DemoManifest {
   if (!isObject(value) || value.schema_version !== 1 || value.kind !== 'demo') {
     throw new Error('Unsupported Demo manifest.');

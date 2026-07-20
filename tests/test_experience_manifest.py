@@ -42,6 +42,14 @@ class ExperienceManifestTest(TestCase):
         self.assertEqual(demo.schema_version, 1)
         self.assertEqual(len(demo.stages), 6)
         self.assertEqual(demo.stage(demo.initial_stage).id, "select_reviewer")
+        self.assertEqual(demo.stage(demo.initial_stage).guide_target.slot, 1)
+
+        question_index = next(
+            index
+            for index, cue in enumerate(performance.cues)
+            if cue.caption == "A question"
+        )
+        self.assertEqual(performance.caption_at(question_index + 1), "A question")
 
     def test_performance_rejects_bad_dimensions_and_palette_references(self) -> None:
         bad_dimensions = copy.deepcopy(self.performance_data)
@@ -61,6 +69,13 @@ class ExperienceManifestTest(TestCase):
         bad_demo["stages"][0]["transitions"][0]["next_stage"] = "missing"
 
         with self.assertRaisesRegex(ExperienceManifestError, "unknown stage"):
+            load_demo_data(bad_demo, source="bad-demo")
+
+    def test_demo_guide_target_must_match_a_transition(self) -> None:
+        bad_demo = copy.deepcopy(self.demo_data)
+        bad_demo["stages"][0]["guide_target"]["slot"] = 2
+
+        with self.assertRaisesRegex(ExperienceManifestError, "guide target"):
             load_demo_data(bad_demo, source="bad-demo")
 
     @skipUnless(Draft202012Validator is not None, "install pad-lattice[schema]")

@@ -22,6 +22,16 @@ geometry, so knowledge transfers directly between virtual and physical pads:
 - the rightmost matrix column reports the eight visible agents;
 - the remaining 7x8 matrix renders the selected agent.
 
+:::note Show temporarily changes the rails
+
+During Show, the top and right buttons cannot issue actions. They become
+read-only stage lights in an authored 80-light frame. This does not change
+their operational Visual Protocol meanings, which return as soon as Show ends
+or a real agent needs attention. See [Outer Rails During Show](../usage/visual-show.md#outer-rails-during-show)
+for the choreography used by each story phase.
+
+:::
+
 The Launchpad Pro Mk1 has additional left and bottom rails. They are optional
 hardware and remain reserved by this protocol. The virtual surface does not
 add actions to those reserved positions.

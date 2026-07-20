@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">When an AI agent needs you, your desk tells you</title>
+  <desc id="description">A Codex CLI session requests approval on a monitor. A physical MIDI pad and a phone display the same amber approval state. A person presses the green approval control, and one targeted action returns to the selected agent.</desc>
+  <defs>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#18232b" flood-opacity=".18"/>
+    </filter>
+    <filter id="screen-glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#d39a18" flood-opacity=".62"/>
+    </filter>
+    <filter id="green-glow" x="-70%" y="-70%" width="240%" height="240%">
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#35a94a" flood-opacity=".72"/>
+    </filter>
+    <marker id="state-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#00aebb"/>
+    </marker>
+    <marker id="action-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#35a94a"/>
+    </marker>
+    <pattern id="hardware-grid" width="31" height="31" patternUnits="userSpaceOnUse">
+      <rect x="1" y="1" width="24" height="24" rx="4" fill="#171e24" stroke="#35404a" stroke-width="1.5"/>
+    </pattern>
+    <pattern id="phone-grid" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect x="1" y="1" width="5.5" height="5.5" rx="1.2" fill="#182028" stroke="#35404a" stroke-width=".7"/>
+    </pattern>
+    <g id="pointer-hand">
+      <path d="M28 137H88V178H28Z" fill="#3674e8" stroke="#245ebc" stroke-width="3"/>
+      <path d="M50 0C42 0 37 6 37 14V91L23 73C18 66 8 65 2 71C-4 77-3 85 2 92L31 133C37 142 47 147 58 147H84C101 147 114 133 114 116V67C114 59 108 53 100 53C94 53 90 56 87 61V52C87 44 81 38 73 38C67 38 62 42 60 47V14C60 6 57 0 50 0Z" fill="#d6a27f" stroke="#8f654c" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M42 15C44 9 48 7 54 8" fill="none" stroke="#edc2a7" stroke-width="3" stroke-linecap="round"/>
+    </g>
+  </defs>
+
+  <rect width="1200" height="630" fill="#f2f6f8"/>
+  <rect y="500" width="1200" height="130" fill="#d9e3e8"/>
+  <path d="M0 500H1200" stroke="#b9c8cf" stroke-width="2"/>
+
+  <g font-family="Inter, Arial, sans-serif">
+    <text x="54" y="35" fill="#047857" font-size="13" font-weight="800">A REAL PAD-LATTICE WORKFLOW</text>
+    <text x="54" y="72" fill="#17202a" font-size="31" font-weight="800">When an agent needs you, your desk tells you.</text>
+    <text x="54" y="101" fill="#5d6877" font-size="16">Use a MIDI pad, a browser, or both.</text>
+
+    <!-- Codex monitor -->
+    <g filter="url(#soft-shadow)">
+      <rect x="54" y="132" width="548" height="350" rx="8" fill="#26313a"/>
+      <rect x="69" y="147" width="518" height="318" rx="4" fill="#0b1015"/>
+    </g>
+    <circle cx="91" cy="168" r="5" fill="#cf3f42"/>
+    <circle cx="108" cy="168" r="5" fill="#d39a18"/>
+    <circle cx="125" cy="168" r="5" fill="#35a94a"/>
+    <text x="146" y="173" fill="#dce5e9" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" font-weight="700">CODEX CLI / REVIEW</text>
+    <path d="M89 188H567" stroke="#28323a"/>
+
+    <text x="91" y="217" fill="#71808a" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">implementation</text>
+    <text x="91" y="246" fill="#edf2f5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15">Ready to commit the reviewed changes.</text>
+
+    <rect x="89" y="269" width="432" height="112" rx="6" fill="#171e24" stroke="#d39a18" stroke-width="2"/>
+    <rect x="89" y="269" width="7" height="112" rx="3" fill="#d39a18"/>
+    <circle cx="119" cy="299" r="9" fill="#d39a18" filter="url(#screen-glow)"/>
+    <text x="139" y="303" fill="#f1ad72" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" font-weight="700">PERMISSION REQUIRED</text>
+    <text x="117" y="332" fill="#edf2f5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">Run: git commit -m "Prepare release"?</text>
+    <text x="117" y="359" fill="#aeb9c0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">Waiting for your decision...</text>
+
+    <path d="M91 417l8 8 15-18" fill="none" stroke="#55c76a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="126" y="425" fill="#8ee0af" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" font-weight="700">Approved from Pad-Lattice</text>
+    <text x="383" y="425" fill="#71808a" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">Continuing...</text>
+
+    <path d="M278 482v37" stroke="#65727b" stroke-width="18"/>
+    <path d="M222 519H391L378 534H235Z" fill="#26313a"/>
+
+    <!-- State and action loop -->
+    <path d="M604 269H666" fill="none" stroke="#00aebb" stroke-width="3" marker-end="url(#state-arrow)"/>
+    <text x="635" y="253" fill="#176a72" font-size="11" font-weight="800" text-anchor="middle">STATE</text>
+    <path d="M666 335H604" fill="none" stroke="#35a94a" stroke-width="3" marker-end="url(#action-arrow)"/>
+    <text x="635" y="358" fill="#247638" font-size="11" font-weight="800" text-anchor="middle">ONE ACTION</text>
+
+    <!-- Physical MIDI pad -->
+    <g filter="url(#soft-shadow)">
+      <rect x="674" y="151" width="354" height="371" rx="16" fill="#0e1319"/>
+      <rect x="687" y="164" width="328" height="345" rx="10" fill="#151c22" stroke="#303942" stroke-width="2"/>
+    </g>
+    <text x="705" y="188" fill="#8f9ba4" font-size="10" font-weight="800">PHYSICAL MIDI PAD</text>
+
+    <g>
+      <circle cx="715" cy="216" r="12" fill="#35a94a" stroke="#86d893" stroke-width="2" filter="url(#green-glow)"/>
+      <path d="M709 216l4 4 8-9" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="746" cy="216" r="12" fill="#cf3f42" stroke="#ed8587" stroke-width="2"/>
+      <path d="M741 211l10 10m0-10l-10 10" stroke="#ffffff" stroke-width="2.3" stroke-linecap="round"/>
+      <circle cx="777" cy="216" r="12" fill="#171e24" stroke="#35404a"/>
+      <circle cx="808" cy="216" r="12" fill="#171e24" stroke="#35404a"/>
+      <circle cx="839" cy="216" r="12" fill="#171e24" stroke="#35404a"/>
+      <circle cx="870" cy="216" r="12" fill="#171e24" stroke="#35404a"/>
+      <circle cx="901" cy="216" r="12" fill="#171e24" stroke="#35404a"/>
+      <circle cx="932" cy="216" r="12" fill="#171e24" stroke="#35404a"/>
+    </g>
+
+    <rect x="704" y="241" width="248" height="248" fill="url(#hardware-grid)"/>
+    <!-- Amber approval glyph -->
+    <g fill="#d39a18" stroke="#eec35c" stroke-width="1.5" filter="url(#screen-glow)">
+      <rect x="797" y="273" width="24" height="24" rx="4"/>
+      <rect x="797" y="304" width="24" height="24" rx="4"/>
+      <rect x="797" y="335" width="24" height="24" rx="4"/>
+      <rect x="797" y="397" width="24" height="24" rx="4"/>
+    </g>
+    <!-- Compact background agent states -->
+    <rect x="921" y="273" width="24" height="24" rx="4" fill="#3674e8" stroke="#7fb1ef" stroke-width="1.5"/>
+    <rect x="921" y="304" width="24" height="24" rx="4" fill="#d39a18" stroke="#eec35c" stroke-width="1.5"/>
+    <rect x="921" y="335" width="24" height="24" rx="4" fill="#35a94a" stroke="#78d187" stroke-width="1.5"/>
+
+    <!-- Right Agent Scenes -->
+    <g>
+      <circle cx="983" cy="254" r="12" fill="#00aebb" stroke="#62d6df" stroke-width="2"/>
+      <circle cx="983" cy="285" r="15" fill="#c83ec9" stroke="#ffffff" stroke-width="3"/>
+      <circle cx="983" cy="316" r="12" fill="#70b92d" stroke="#a9dc74" stroke-width="2"/>
+      <circle cx="983" cy="347" r="12" fill="#171e24" stroke="#35404a"/>
+      <circle cx="983" cy="378" r="12" fill="#171e24" stroke="#35404a"/>
+      <circle cx="983" cy="409" r="12" fill="#171e24" stroke="#35404a"/>
+      <circle cx="983" cy="440" r="12" fill="#171e24" stroke="#35404a"/>
+      <circle cx="983" cy="471" r="12" fill="#171e24" stroke="#35404a"/>
+    </g>
+    <text x="716" y="502" fill="#84919a" font-size="10">SELECTED SCENE</text>
+    <text x="982" y="502" fill="#c98acb" font-size="10" font-weight="800" text-anchor="end">2 / REVIEW</text>
+
+    <!-- Phone virtual pad -->
+    <g filter="url(#soft-shadow)">
+      <rect x="1051" y="217" width="104" height="218" rx="18" fill="#1c252d"/>
+      <rect x="1062" y="238" width="82" height="168" rx="6" fill="#0b1015" stroke="#3d4851"/>
+    </g>
+    <rect x="1070" y="252" width="64" height="64" fill="url(#phone-grid)"/>
+    <rect x="1094" y="260" width="5.5" height="5.5" rx="1.2" fill="#d39a18"/>
+    <rect x="1094" y="268" width="5.5" height="5.5" rx="1.2" fill="#d39a18"/>
+    <rect x="1094" y="276" width="5.5" height="5.5" rx="1.2" fill="#d39a18"/>
+    <rect x="1094" y="292" width="5.5" height="5.5" rx="1.2" fill="#d39a18"/>
+    <circle cx="1076" cy="328" r="6" fill="#35a94a"/>
+    <circle cx="1092" cy="328" r="6" fill="#cf3f42"/>
+    <circle cx="1127" cy="328" r="7" fill="#c83ec9" stroke="#ffffff" stroke-width="1.5"/>
+    <text x="1103" y="355" fill="#f1f5f7" font-size="8" font-weight="800" text-anchor="middle">REVIEW NEEDS APPROVAL</text>
+    <path d="M1078 373h50" stroke="#35404a"/>
+    <text x="1103" y="391" fill="#8ee0af" font-size="8" font-weight="800" text-anchor="middle">TAP APPROVE</text>
+    <rect x="1085" y="224" width="36" height="4" rx="2" fill="#53626d"/>
+    <circle cx="1103" cy="420" r="5" fill="#53626d"/>
+    <text x="1103" y="457" fill="#536871" font-size="11" font-weight="800" text-anchor="middle">VIRTUAL PAD</text>
+    <path d="M1029 328H1043" stroke="#00aebb" stroke-width="2" stroke-dasharray="4 3"/>
+    <text x="1037" y="316" fill="#176a72" font-size="9" font-weight="800" text-anchor="middle">SYNC</text>
+
+    <!-- Human hand pressing Approve -->
+    <use href="#pointer-hand" transform="translate(677.5 216) scale(.75)"/>
+    <circle cx="715" cy="216" r="18" fill="none" stroke="#b7efc1" stroke-width="3" opacity=".78"/>
+
+    <!-- Three-beat explanation -->
+    <path d="M54 574H1146" stroke="#b9c8cf"/>
+    <circle cx="79" cy="600" r="15" fill="#d39a18"/>
+    <text x="79" y="605" fill="#ffffff" font-size="13" font-weight="800" text-anchor="middle">1</text>
+    <text x="105" y="605" fill="#314c57" font-size="14" font-weight="700">Agent asks</text>
+
+    <circle cx="348" cy="600" r="15" fill="#00aebb"/>
+    <text x="348" y="605" fill="#ffffff" font-size="13" font-weight="800" text-anchor="middle">2</text>
+    <text x="374" y="605" fill="#314c57" font-size="14" font-weight="700">Every surface lights</text>
+
+    <circle cx="683" cy="600" r="15" fill="#35a94a"/>
+    <text x="683" y="605" fill="#ffffff" font-size="13" font-weight="800" text-anchor="middle">3</text>
+    <text x="709" y="605" fill="#314c57" font-size="14" font-weight="700">You decide once</text>
+
+    <text x="1146" y="605" fill="#247638" font-size="13" font-weight="800" text-anchor="end">THE SELECTED AGENT CONTINUES</text>
+  </g>
+</svg>

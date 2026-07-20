@@ -114,6 +114,11 @@ export interface DemoManifest {
 export interface DemoStage {
   id: string;
   prompt: {eyebrow: string; title: string; detail: string};
+  guide_target: {
+    event: 'select' | 'action';
+    slot: number | null;
+    action: ControlAction | null;
+  } | null;
   view: {sessions: SessionView[]; available_actions: ControlAction[]};
   transitions: {
     event: 'select' | 'action';

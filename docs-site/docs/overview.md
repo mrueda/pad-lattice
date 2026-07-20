@@ -1,14 +1,16 @@
 # Overview
 
-Pad-Lattice turns **browsers and MIDI grid controllers into control surfaces
-for AI agents**. A desktop browser, phone, tablet, and Launchpad can all render
-the same selected agent and issue the same currently available actions.
+**Pad-Lattice gives people a tactile, glanceable way to monitor and control AI
+agents.** It repurposes MIDI pad controllers as that physical interface: their
+RGB grids can display agent state and accept deliberate actions. The same
+visual language also runs as a Virtual Pad in the browser, so anyone can use it
+from a phone, tablet, or computer, with or without MIDI hardware.
+
+![A Codex approval request lighting physical and virtual Pad-Lattice surfaces before one human decision returns to the selected agent](/img/human-control-workflow.svg)
+
+[Open the human workflow illustration at full size](/img/human-control-workflow.svg).
 
 The surfaces are different; the language and routing policy are shared.
-
-![A physical Launchpad and virtual browser surfaces controlling several Codex CLI Agent Scenes through one Pad-Lattice daemon](/img/control-surfaces-overview.svg)
-
-[Open the control-surface diagram at full size](/img/control-surfaces-overview.svg).
 
 :::important Visual Protocol 1
 
@@ -103,6 +105,10 @@ Reject rather than arbitrary terminal input.
 - Optional host earcons, per-browser sound, and an authored audiovisual Show.
 
 ## System Boundaries
+
+![A physical Launchpad and virtual browser surfaces controlling several Codex CLI Agent Scenes through one Pad-Lattice daemon](/img/control-surfaces-overview.svg)
+
+[Open the control-surface diagram at full size](/img/control-surfaces-overview.svg).
 
 The deterministic control plane owns sessions, selection, action routing, and
 expiry. A semantic `SurfaceView` is broadcast to one or more surfaces:

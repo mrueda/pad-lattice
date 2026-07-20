@@ -5,6 +5,7 @@ import {
   cueIndexAt,
   parseDemoManifest,
   parsePerformanceManifest,
+  performanceCaptionAt,
   performanceFrame,
 } from './experiences';
 
@@ -28,5 +29,10 @@ describe('shared experience assets', () => {
     expect(frame.top).toHaveLength(8);
     expect(frame.right).toHaveLength(8);
     expect(frame.grid[0][0]).toMatch(/^#[0-9a-f]{6}$/);
+
+    const question = performance.cues.findIndex((cue) => cue.caption === 'A question');
+    expect(performanceCaptionAt(performance, question + 1)).toBe('A question');
+    const idea = performance.cues.findIndex((cue) => cue.act === 1);
+    expect(performanceCaptionAt(performance, idea)).toBe('An Idea');
   });
 });

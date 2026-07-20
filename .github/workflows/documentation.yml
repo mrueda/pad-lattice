@@ -55,6 +55,11 @@ jobs:
         run: |
           test -s build/search-index.json
           test -s build/play/index.html
+          test -s build/schemas/socket-protocol-v1.json
+          test -s build/schemas/web-surface-protocol-v1.json
+          test -s build/schemas/device-profile-v1.json
+          test -s build/schemas/demo-manifest-v1.json
+          test -s build/schemas/performance-manifest-v1.json
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

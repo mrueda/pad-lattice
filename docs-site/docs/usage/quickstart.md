@@ -3,7 +3,7 @@
 ## Try It Now
 
 Open the [virtual pad](pathname:///play/) on any modern desktop, phone, or tablet. The
-guided simulation demonstrates three agents, explicit selection, a real-looking
+**Demo** tab guides you through three agents, explicit selection, a real-looking
 approval gate, retry, and shared success. Its sandbox then exposes the complete
 Visual Protocol 1 vocabulary, while Show plays the full audiovisual story.
 
@@ -92,7 +92,7 @@ pad-lattice demo --surface web
 pad-lattice show --surface web
 ```
 
-The tokenized local page opens first. Choose **Demo** or **Show** there to
+The tokenized local page opens first. Choose **Start Demo** or **Start Show** there to
 start. Its Sound control is muted by default and belongs only to that browser.
 Use `--surface both` to keep a Launchpad and every browser synchronized.
 

@@ -139,6 +139,11 @@ select:focus-visible {
   background: #0b0e12;
 }
 
+.performanceWorkspace {
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
 .contextPane {
   display: flex;
   min-width: 0;
@@ -166,6 +171,32 @@ select:focus-visible {
   color: #717e87;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 10px;
+}
+
+.performanceStory {
+  display: flex;
+  min-height: 58px;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  border-bottom: 1px solid #2c353d;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+}
+
+.performanceStory span {
+  color: #6fc5ff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.performanceStory strong {
+  overflow-wrap: anywhere;
+  color: #f3f7f9;
+  font-size: 21px;
+  line-height: 1.2;
 }
 
 .surfaceFooter {
@@ -225,6 +256,13 @@ select:focus-visible {
 .railControl:not(:disabled):active,
 .sceneControl:not(:disabled):active {
   transform: scale(.9);
+}
+
+.guidedControl {
+  z-index: 1;
+  outline: 2px solid #f4f8fa;
+  outline-offset: 3px;
+  filter: brightness(1.1) saturate(1.08);
 }
 
 .railControl svg {
@@ -302,11 +340,6 @@ select:focus-visible {
   background: #28323a;
 }
 
-.modeSwitch button:disabled {
-  color: #4f5960;
-  cursor: not-allowed;
-}
-
 .narrative > span,
 .pairForm > span,
 .sectionTitle,
@@ -334,6 +367,43 @@ select:focus-visible {
   color: #9aa6ae;
   font-size: 14px;
   line-height: 1.6;
+}
+
+.showNarrative h1 {
+  max-width: 19ch;
+  font-size: 36px;
+}
+
+.showNarrative p {
+  color: #c0c9ce;
+}
+
+.guideCallout {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-left: 3px solid #6fc5ff;
+  padding: 7px 0 7px 14px;
+}
+
+.guideCallout > span {
+  color: #6fc5ff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.guideCallout strong {
+  color: #f1f5f7;
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.guideCallout small {
+  max-width: 48ch;
+  color: #a7b2b9;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .sectionTitle {
@@ -364,6 +434,11 @@ select:focus-visible {
 
 .sessionRow.selected {
   background: #171e24;
+}
+
+.sessionRow.guidedRow {
+  background: #15222b;
+  box-shadow: inset 3px 0 #6fc5ff;
 }
 
 .sessionRow > button {
@@ -741,6 +816,14 @@ select:focus-visible {
     font-size: 8px;
   }
 
+  .performanceStory {
+    min-height: 50px;
+  }
+
+  .performanceStory strong {
+    font-size: 17px;
+  }
+
   .contextPane {
     gap: 24px;
     padding: 24px 18px 36px;
@@ -749,6 +832,10 @@ select:focus-visible {
   .narrative h1,
   .pairForm h1 {
     font-size: 25px;
+  }
+
+  .showNarrative h1 {
+    font-size: 29px;
   }
 
   .sessionRow {

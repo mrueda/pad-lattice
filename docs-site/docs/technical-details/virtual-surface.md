@@ -17,6 +17,12 @@ The exact same compiled application serves public and local modes. A local
 configuration endpoint selects live transport; the public build cannot discover
 or control a daemon.
 
+The public surface presents three modes with distinct roles: **Demo** is the
+guided interaction, **Sandbox** is free protocol exploration, and **Show** is
+authored audiovisual playback. In live mode, **Start Demo** and **Start Show**
+are administrator commands, matching the `pad-lattice demo` and
+`pad-lattice show` CLI experiences.
+
 ## Local Live Control
 
 ```bash

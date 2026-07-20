@@ -12,6 +12,10 @@ import type {ControlAction, FullSurfaceFrame, SurfaceView, VisualFrame} from './
 interface Props {
   frame: VisualFrame;
   performanceFrame?: FullSurfaceFrame | null;
+  performanceAct?: string | null;
+  performanceCaption?: string | null;
+  guidedAction?: ControlAction | null;
+  guidedSlot?: number | null;
   view: SurfaceView;
   disabled?: boolean;
   onAction: (action: ControlAction) => void;
@@ -39,6 +43,10 @@ const topControls: TopControl[] = [
 export function VirtualSurface({
   frame,
   performanceFrame = null,
+  performanceAct = null,
+  performanceCaption = null,
+  guidedAction = null,
+  guidedSlot = null,
   view,
   disabled = false,
   onAction,
@@ -46,11 +54,20 @@ export function VirtualSurface({
 }: Props) {
   const performance = performanceFrame !== null;
   return (
-    <div className="virtualSurface" aria-label="Pad-Lattice virtual control surface">
-      <div className="surfaceCaption">
-        <span>ACTIONS</span>
-        <span>VISUAL PROTOCOL 1</span>
-      </div>
+    <div
+      className={`virtualSurface ${performance ? 'performanceSurface' : ''}`}
+      aria-label="Pad-Lattice virtual control surface">
+      {performance ? (
+        <div className="performanceStory">
+          <span>{performanceAct ?? 'VISUAL SHOW'}</span>
+          <strong>{performanceCaption ?? 'The story continues'}</strong>
+        </div>
+      ) : (
+        <div className="surfaceCaption">
+          <span>ACTIONS</span>
+          <span>VISUAL PROTOCOL 1</span>
+        </div>
+      )}
       <div className="surfaceTop">
         <div className="topRail">
           {topControls.map((control, index) => {
@@ -64,7 +81,7 @@ export function VirtualSurface({
             const Icon = control.icon;
             return (
               <button
-                className="railControl"
+                className={`railControl ${guidedAction === control.action ? 'guidedControl' : ''}`}
                 disabled={!enabled}
                 key={index}
                 onClick={() => control.action && onAction(control.action)}
@@ -107,7 +124,7 @@ export function VirtualSurface({
             const session = view.sessions.find((item) => item.slot === slot);
             return (
               <button
-                className="sceneControl"
+                className={`sceneControl ${guidedSlot === slot ? 'guidedControl' : ''}`}
                 disabled={performance || disabled || token === 'off'}
                 key={slot}
                 onClick={() => onSelect(slot)}

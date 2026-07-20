@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 680" role="img" aria-labelledby="title description">
+  <title id="title">Pad-Lattice experience asset compiler</title>
+  <desc id="description">The visual story and score are authored once in Python. The deterministic experience asset compiler validates and compiles them into a compact Performance Manifest and WAV assets. The Python MIDI runtime and TypeScript browser runtime consume the same files. The interactive Demo remains a separate human-authored manifest that enters the same runtimes.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#607d8b"/>
+    </marker>
+    <marker id="cyan-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#008fa0"/>
+    </marker>
+    <linearGradient id="compiler" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#174e62"/>
+      <stop offset="1" stop-color="#286e7c"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="680" fill="#ffffff"/>
+  <g font-family="Arial, sans-serif">
+    <text x="24" y="34" fill="#173f4d" font-size="24" font-weight="700">THE EXPERIENCE ASSET COMPILER</text>
+    <text x="24" y="58" fill="#60747d" font-size="14">Author expressively once. Compile deterministically. Play the same experience everywhere.</text>
+
+    <text x="24" y="93" fill="#49616c" font-size="12" font-weight="700">1  AUTHORING SOURCES</text>
+    <rect x="24" y="108" width="228" height="328" rx="6" fill="#f4f8fa" stroke="#9db2bb" stroke-width="2"/>
+
+    <rect x="42" y="129" width="192" height="126" rx="6" fill="#eefbfc" stroke="#00aebb"/>
+    <circle cx="64" cy="153" r="9" fill="#00aebb"/>
+    <text x="82" y="158" fill="#174e62" font-size="14" font-weight="700">VISUAL STORY</text>
+    <text x="60" y="183" fill="#314c57" font-family="monospace" font-size="13">show.py</text>
+    <text x="60" y="207" fill="#536871" font-size="12">80-light frames</text>
+    <text x="60" y="227" fill="#536871" font-size="12">captions + durations</text>
+    <text x="60" y="247" fill="#536871" font-size="12">RGB + semantic fallback</text>
+
+    <rect x="42" y="272" width="192" height="126" rx="6" fill="#fcf5fc" stroke="#c83ec9"/>
+    <circle cx="64" cy="296" r="9" fill="#c83ec9"/>
+    <text x="82" y="301" fill="#713373" font-size="14" font-weight="700">SCORE + VOICE</text>
+    <text x="60" y="326" fill="#314c57" font-family="monospace" font-size="13">audio.py</text>
+    <text x="60" y="350" fill="#536871" font-size="12">named story beats</text>
+    <text x="60" y="370" fill="#536871" font-size="12">music + synthesized voice</text>
+    <text x="60" y="390" fill="#536871" font-size="12">daemon earcon bank</text>
+
+    <rect x="42" y="410" width="192" height="14" rx="4" fill="#ffffff" stroke="#b8cbd2"/>
+    <rect x="50" y="414" width="38" height="6" rx="3" fill="#00aebb"/>
+    <rect x="94" y="414" width="38" height="6" rx="3" fill="#c83ec9"/>
+    <rect x="138" y="414" width="38" height="6" rx="3" fill="#f0b429"/>
+    <rect x="182" y="414" width="38" height="6" rx="3" fill="#70b92d"/>
+
+    <path d="M252 272H286" fill="none" stroke="#607d8b" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+    <text x="298" y="93" fill="#49616c" font-size="12" font-weight="700">2  COMPILE</text>
+    <rect x="298" y="108" width="268" height="328" rx="6" fill="url(#compiler)" stroke="#174e62" stroke-width="2"/>
+    <text x="432" y="143" fill="#ffffff" font-size="17" font-weight="700" text-anchor="middle">EXPERIENCE ASSET</text>
+    <text x="432" y="166" fill="#ffffff" font-size="17" font-weight="700" text-anchor="middle">COMPILER</text>
+    <text x="432" y="190" fill="#bdebf0" font-family="monospace" font-size="11" text-anchor="middle">experience_compiler.py</text>
+
+    <rect x="319" y="211" width="226" height="37" rx="5" fill="#ffffff" fill-opacity="0.96"/>
+    <circle cx="338" cy="229" r="7" fill="#00aebb"/>
+    <text x="354" y="234" fill="#314c57" font-size="12" font-weight="700">Normalize all 80 lights</text>
+
+    <rect x="319" y="258" width="226" height="37" rx="5" fill="#ffffff" fill-opacity="0.96"/>
+    <circle cx="338" cy="276" r="7" fill="#c83ec9"/>
+    <text x="354" y="281" fill="#314c57" font-size="12" font-weight="700">Compact the RGB palette</text>
+
+    <rect x="319" y="305" width="226" height="37" rx="5" fill="#ffffff" fill-opacity="0.96"/>
+    <circle cx="338" cy="323" r="7" fill="#f0b429"/>
+    <text x="354" y="328" fill="#314c57" font-size="12" font-weight="700">Synthesize deterministic WAVs</text>
+
+    <rect x="319" y="352" width="226" height="58" rx="5" fill="#eaf8ed" stroke="#70b92d"/>
+    <path d="M333 377L341 385L356 366" fill="none" stroke="#317b3f" stroke-width="3"/>
+    <text x="369" y="375" fill="#276749" font-size="12" font-weight="700">Parse before writing</text>
+    <text x="369" y="395" fill="#4f6d57" font-size="11">typed structural check</text>
+
+    <path d="M566 272H600" fill="none" stroke="#607d8b" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+    <text x="612" y="93" fill="#49616c" font-size="12" font-weight="700">3  VERSIONED ASSETS</text>
+    <rect x="612" y="108" width="250" height="328" rx="6" fill="#fffaf0" stroke="#d39a18" stroke-width="2"/>
+    <rect x="632" y="129" width="210" height="73" rx="6" fill="#ffffff" stroke="#e0b758"/>
+    <path d="M650 144H683L695 156V188H650Z" fill="#fff4d6" stroke="#d39a18"/>
+    <path d="M683 144V157H695" fill="none" stroke="#d39a18"/>
+    <text x="708" y="159" fill="#895f08" font-size="12" font-weight="700">PERFORMANCE</text>
+    <text x="708" y="177" fill="#895f08" font-size="12" font-weight="700">MANIFEST 1</text>
+    <text x="708" y="193" fill="#60747d" font-size="10">schema contract</text>
+
+    <rect x="632" y="216" width="210" height="54" rx="6" fill="#ffffff" stroke="#b8cbd2"/>
+    <text x="648" y="239" fill="#314c57" font-family="monospace" font-size="12" font-weight="700">constellation-v1.json</text>
+    <text x="648" y="257" fill="#60747d" font-size="11">palette + frames + timing</text>
+
+    <rect x="632" y="282" width="210" height="86" rx="6" fill="#ffffff" stroke="#b8cbd2"/>
+    <text x="648" y="305" fill="#314c57" font-family="monospace" font-size="12" font-weight="700">audio/*.wav</text>
+    <path d="M649 331C657 307 665 353 673 325C681 303 689 351 697 325C705 307 713 343 721 325C729 311 737 339 745 325C753 315 761 335 769 325C777 319 785 331 793 325C801 321 809 329 817 325" fill="none" stroke="#c83ec9" stroke-width="2"/>
+    <text x="648" y="356" fill="#60747d" font-size="11">score + voice + earcons</text>
+
+    <rect x="632" y="382" width="210" height="34" rx="5" fill="#fff4d6"/>
+    <text x="737" y="403" fill="#895f08" font-size="11" font-weight="700" text-anchor="middle">COMMITTED - NEVER HAND-EDITED</text>
+
+    <path d="M862 272H896" fill="none" stroke="#008fa0" stroke-width="3" marker-end="url(#cyan-arrow)"/>
+
+    <text x="908" y="93" fill="#49616c" font-size="12" font-weight="700">4  SAME ASSETS, EVERY SURFACE</text>
+    <rect x="908" y="108" width="268" height="147" rx="6" fill="#eefbfc" stroke="#00aebb" stroke-width="2"/>
+    <text x="930" y="137" fill="#174e62" font-size="15" font-weight="700">PYTHON RUNTIME</text>
+    <text x="930" y="158" fill="#60747d" font-family="monospace" font-size="11">experience_runtime.py</text>
+    <rect x="930" y="178" width="101" height="54" rx="5" fill="#121a20" stroke="#30434d"/>
+    <g fill="#00aebb">
+      <circle cx="946" cy="194" r="5"/><circle cx="963" cy="194" r="5"/><circle cx="980" cy="194" r="5"/><circle cx="997" cy="194" r="5"/><circle cx="1014" cy="194" r="5"/>
+      <circle cx="946" cy="211" r="5"/><circle cx="963" cy="211" r="5"/><circle cx="980" cy="211" r="5"/><circle cx="997" cy="211" r="5"/><circle cx="1014" cy="211" r="5"/>
+    </g>
+    <text x="1047" y="199" fill="#314c57" font-size="12" font-weight="700">MIDI pads</text>
+    <text x="1047" y="219" fill="#536871" font-size="11">+ host audio</text>
+
+    <rect x="908" y="269" width="268" height="167" rx="6" fill="#fcf5fc" stroke="#c83ec9" stroke-width="2"/>
+    <text x="930" y="298" fill="#713373" font-size="15" font-weight="700">TYPESCRIPT RUNTIME</text>
+    <text x="930" y="319" fill="#60747d" font-family="monospace" font-size="11">virtual surface</text>
+    <rect x="930" y="339" width="106" height="72" rx="5" fill="#121a20" stroke="#30434d"/>
+    <rect x="940" y="349" width="86" height="49" rx="3" fill="#f4f8fa"/>
+    <g fill="#c83ec9">
+      <rect x="947" y="356" width="8" height="8" rx="2"/><rect x="959" y="356" width="8" height="8" rx="2"/><rect x="971" y="356" width="8" height="8" rx="2"/><rect x="983" y="356" width="8" height="8" rx="2"/><rect x="995" y="356" width="8" height="8" rx="2"/>
+      <rect x="947" y="368" width="8" height="8" rx="2"/><rect x="959" y="368" width="8" height="8" rx="2"/><rect x="971" y="368" width="8" height="8" rx="2"/><rect x="983" y="368" width="8" height="8" rx="2"/><rect x="995" y="368" width="8" height="8" rx="2"/>
+      <rect x="947" y="380" width="8" height="8" rx="2"/><rect x="959" y="380" width="8" height="8" rx="2"/><rect x="971" y="380" width="8" height="8" rx="2"/><rect x="983" y="380" width="8" height="8" rx="2"/><rect x="995" y="380" width="8" height="8" rx="2"/>
+    </g>
+    <text x="1052" y="363" fill="#314c57" font-size="12" font-weight="700">Phone</text>
+    <text x="1052" y="383" fill="#314c57" font-size="12" font-weight="700">Tablet</text>
+    <text x="1052" y="403" fill="#314c57" font-size="12" font-weight="700">Laptop</text>
+    <text x="1052" y="421" fill="#536871" font-size="11">+ browser audio</text>
+
+    <text x="24" y="475" fill="#49616c" font-size="12" font-weight="700">INTERACTIVE DEMO: A DELIBERATE SECOND AUTHORING PATH</text>
+    <rect x="24" y="490" width="1152" height="82" rx="6" fill="#f5f8fa" stroke="#b8cbd2"/>
+    <rect x="44" y="508" width="194" height="46" rx="5" fill="#ffffff" stroke="#5e91b5"/>
+    <text x="141" y="527" fill="#315f82" font-family="monospace" font-size="12" font-weight="700" text-anchor="middle">demo-v1.json</text>
+    <text x="141" y="544" fill="#60747d" font-size="10" text-anchor="middle">human-authored stage graph</text>
+    <path d="M238 531H294" fill="none" stroke="#607d8b" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="306" y="508" width="214" height="46" rx="5" fill="#eef5fb" stroke="#5e91b5"/>
+    <text x="413" y="527" fill="#315f82" font-size="12" font-weight="700" text-anchor="middle">DEMO MANIFEST 1</text>
+    <text x="413" y="544" fill="#60747d" font-size="10" text-anchor="middle">schema + typed parser</text>
+    <path d="M520 531H594" fill="none" stroke="#607d8b" stroke-width="2" marker-end="url(#arrow)"/>
+    <rect x="606" y="508" width="550" height="46" rx="5" fill="#ffffff" stroke="#9db2bb"/>
+    <text x="881" y="527" fill="#314c57" font-size="12" font-weight="700" text-anchor="middle">THE SAME PYTHON + TYPESCRIPT EXPERIENCE RUNTIMES</text>
+    <text x="881" y="544" fill="#60747d" font-size="10" text-anchor="middle">semantic stages and user actions, rather than pre-rendered Show frames</text>
+
+    <rect x="24" y="598" width="1152" height="58" rx="6" fill="#173f4d"/>
+    <text x="48" y="623" fill="#9ee4eb" font-family="monospace" font-size="12" font-weight="700">--write</text>
+    <text x="110" y="623" fill="#ffffff" font-size="12">regenerates assets</text>
+    <text x="308" y="623" fill="#f7ca62" font-family="monospace" font-size="12" font-weight="700">--check</text>
+    <text x="370" y="623" fill="#ffffff" font-size="12">compiles in a temporary directory and byte-compares</text>
+    <text x="48" y="644" fill="#c9d8de" font-size="11">Runtime rule:</text>
+    <text x="126" y="644" fill="#ffffff" font-size="11" font-weight="700">playback never imports or executes the authoring functions.</text>
+  </g>
+</svg>

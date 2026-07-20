@@ -16,17 +16,19 @@ import {
 } from 'lucide-react';
 import {
   createDemoState,
-  demoComplete,
+  demoGuidance,
   demoPrompt,
   demoReducer,
   demoSurfaceView,
   stateLabels,
   validDemoState,
+  type DemoGuidance,
 } from './demo';
 import {useAudioOutput} from './audio';
 import {
   cueIndexAt,
   loadExperienceAssets,
+  performanceCaptionAt,
   performanceFrame,
   type ExperienceAssets,
 } from './experiences';
@@ -74,7 +76,7 @@ function DemoApp() {
 
 function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
   const [demo, dispatch] = useReducer(demoReducer, assets.demo, createDemoState);
-  const [mode, setMode] = useState<'guided' | 'sandbox' | 'show'>('guided');
+  const [mode, setMode] = useState<'demo' | 'sandbox' | 'show'>('demo');
   const [showStatus, setShowStatus] = useState<'idle' | 'starting' | 'playing'>('idle');
   const [showElapsed, setShowElapsed] = useState(0);
   const showStartRef = useRef(0);
@@ -82,8 +84,12 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
   const view = demoSurfaceView(demo);
   const frame = useMemo(() => compileVisualFrame(view), [view]);
   const prompt = demoPrompt(demo);
+  const guidance = mode === 'demo' ? demoGuidance(demo) : null;
   const showCueIndex = cueIndexAt(assets.performance, showElapsed);
   const showCue = assets.performance.cues[showCueIndex];
+  const showAct = assets.performance.acts[showCue.act];
+  const showCaption = performanceCaptionAt(assets.performance, showCueIndex);
+  const showActive = mode === 'show' && showStatus !== 'idle';
   const fullFrame = mode === 'show' && showStatus === 'playing'
     ? performanceFrame(assets.performance, showCueIndex)
     : null;
@@ -120,13 +126,16 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
     }
   }, [assets, audio, mode, showElapsed, showStatus]);
 
-  const chooseMode = (next: 'guided' | 'sandbox' | 'show') => {
+  const chooseMode = (next: 'demo' | 'sandbox' | 'show') => {
     if (next !== 'show') {
       setShowStatus('idle');
       audio.stop();
       dispatch({type: 'mode', mode: next});
     }
     setMode(next);
+  };
+  const resetSimulation = () => {
+    dispatch({type: 'mode', mode: mode === 'sandbox' ? 'sandbox' : 'demo'});
   };
   const startShow = () => {
     const delay = 500;
@@ -142,34 +151,41 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
   return (
     <PageFrame modeLabel="PUBLIC SIMULATION" connected>
       <div className="workspace">
-        <section className="surfaceWorkspace">
+        <section className={`surfaceWorkspace ${mode === 'show' ? 'performanceWorkspace' : ''}`}>
           <VirtualSurface
             frame={frame}
             performanceFrame={fullFrame}
+            performanceAct={showAct}
+            performanceCaption={showCaption}
+            guidedAction={guidance?.action}
+            guidedSlot={guidance?.slot}
             view={view}
             onAction={(action) => dispatch({type: 'action', action})}
             onSelect={(slot) => dispatch({type: 'select', slot})}
           />
         </section>
         <aside className="contextPane">
-          <div className="modeSwitch" aria-label="Demo mode">
+          <div className="modeSwitch" aria-label="Public experience">
             <button
-              className={mode === 'guided' ? 'active' : ''}
-              onClick={() => chooseMode('guided')}>Guided</button>
+              className={mode === 'demo' ? 'active' : ''}
+              onClick={() => chooseMode('demo')}>Demo</button>
             <button
               className={mode === 'sandbox' ? 'active' : ''}
-              disabled={!demoComplete(demo)}
               onClick={() => chooseMode('sandbox')}>Sandbox</button>
             <button
               className={mode === 'show' ? 'active' : ''}
               onClick={() => chooseMode('show')}>Show</button>
           </div>
 
-          <section className="narrative" aria-live="polite">
-            <span>{mode === 'show' ? assets.performance.acts[showCue.act] : prompt.eyebrow}</span>
-            <h1>{mode === 'show' ? assets.performance.title : prompt.title}</h1>
-            <p>{mode === 'show' ? showCue.caption ?? 'The story continues.' : prompt.detail}</p>
+          <section className={`narrative ${mode === 'show' ? 'showNarrative' : ''}`} aria-live="polite">
+            <span>{mode === 'show' ? (showActive ? showAct : 'Visual show') : prompt.eyebrow}</span>
+            <h1>{mode === 'show' ? (showActive ? showCaption : assets.performance.title) : prompt.title}</h1>
+            <p>{mode === 'show'
+              ? (showActive ? assets.performance.title : 'An audiovisual story across the complete pad surface.')
+              : prompt.detail}</p>
           </section>
+
+          {guidance ? <GuidedAction guidance={guidance} /> : null}
 
           {mode === 'show' ? (
             <ExperienceControls
@@ -177,7 +193,6 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
               admin
               audioEnabled={audio.enabled}
               onAudio={audio.toggle}
-              onStartDemo={() => chooseMode('guided')}
               onStartShow={startShow}
               onStop={stopShow}
             />
@@ -185,6 +200,7 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
             <SessionList
               sessions={view.sessions}
               sandbox={demo.mode === 'sandbox'}
+              guidedSlot={guidance?.slot}
               onSelect={(slot) => dispatch({type: 'select', slot})}
               onState={(slot, state) => dispatch({type: 'set_state', slot, state})}
             />
@@ -197,13 +213,12 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
                 Sound {audio.enabled ? 'on' : 'off'}
               </button>
             ) : null}
-            <button className="textButton" onClick={() => {
-              dispatch({type: 'reset'});
-              setMode('guided');
-              stopShow();
-            }}>
-              <RefreshCw aria-hidden="true" /> Reset story
-            </button>
+            {mode !== 'show' ? (
+              <button className="textButton" onClick={resetSimulation}>
+                <RefreshCw aria-hidden="true" />
+                {mode === 'sandbox' ? 'Reset sandbox' : 'Restart demo'}
+              </button>
+            ) : null}
             <a
               className="textButton"
               href="https://mrueda.github.io/pad-lattice/docs/overview"
@@ -247,11 +262,13 @@ function LiveApp() {
       modeLabel="LIVE CODEX"
       connected={live.connection === 'connected'}>
       <div className="workspace">
-        <section className="surfaceWorkspace">
+        <section className={`surfaceWorkspace ${performance ? 'performanceWorkspace' : ''}`}>
           <VirtualSurface
             disabled={live.connection !== 'connected'}
             frame={frame}
             performanceFrame={performance}
+            performanceAct={live.experience?.detail}
+            performanceCaption={live.experience?.caption}
             view={view}
             onAction={live.sendAction}
             onSelect={live.selectSession}
@@ -320,7 +337,7 @@ function ExperienceControls({
   caption = null,
   detail = null,
   onAudio,
-  onStartDemo,
+  onStartDemo = null,
   onStartShow,
   onStop,
 }: {
@@ -331,7 +348,7 @@ function ExperienceControls({
   caption?: string | null;
   detail?: string | null;
   onAudio: () => void;
-  onStartDemo: () => void;
+  onStartDemo?: (() => void) | null;
   onStartShow: () => void;
   onStop: () => void;
 }) {
@@ -340,18 +357,18 @@ function ExperienceControls({
     <section className="experiencePanel" aria-live="polite">
       <div className="sectionTitle"><span>EXPERIENCES</span><span>{active ? 'PLAYING' : 'READY'}</span></div>
       {caption ? <p className="experienceCaption">{caption}</p> : null}
-      {detail ? <p className="experienceDetail">{detail}</p> : null}
-      {blockedReason ? <p className="experienceWarning">{blockedReason}</p> : null}
+        {detail ? <p className="experienceDetail">{detail}</p> : null}
+        {blockedReason ? <p className="experienceWarning">{blockedReason}</p> : null}
       <div className="experienceActions">
+        {admin && !active && onStartDemo ? (
+          <button className="primaryButton" onClick={onStartDemo}>
+            <Play aria-hidden="true" /> Start Demo
+          </button>
+        ) : null}
         {admin && !active ? (
-          <>
-            <button className="primaryButton" onClick={onStartDemo}>
-              <Play aria-hidden="true" /> Demo
-            </button>
-            <button className="primaryButton" onClick={onStartShow}>
-              <Play aria-hidden="true" /> Show
-            </button>
-          </>
+          <button className="primaryButton" onClick={onStartShow}>
+            <Play aria-hidden="true" /> Start Show
+          </button>
         ) : null}
         {admin && active ? (
           <button className="primaryButton danger" onClick={onStop}>
@@ -381,8 +398,8 @@ function publicShowState(
     kind: 'show',
     title: assets.performance.title,
     cue_index: cueIndex,
-    caption: cue.caption,
-    detail: null,
+    caption: performanceCaptionAt(assets.performance, cueIndex),
+    detail: assets.performance.acts[cue.act],
     elapsed_ms: elapsedMs,
     duration_ms: assets.performance.duration_ms,
     tempo: 1,
@@ -430,11 +447,13 @@ function PageFrame({
 function SessionList({
   sessions,
   sandbox = false,
+  guidedSlot = null,
   onSelect,
   onState,
 }: {
   sessions: SessionView[];
   sandbox?: boolean;
+  guidedSlot?: number | null;
   onSelect: (slot: number) => void;
   onState?: (slot: number, state: AgentState) => void;
 }) {
@@ -443,7 +462,9 @@ function SessionList({
       <div className="sectionTitle"><span>AGENT SCENES</span><span>{sessions.length}/8</span></div>
       <div className="sessionList">
         {sessions.map((session) => (
-          <div className={`sessionRow ${session.selected ? 'selected' : ''}`} key={session.slot}>
+          <div
+            className={`sessionRow ${session.selected ? 'selected' : ''} ${guidedSlot === session.slot ? 'guidedRow' : ''}`}
+            key={session.slot}>
             <button onClick={() => onSelect(session.slot)} title={`Select ${session.label}`}>
               <i style={{backgroundColor: tokenColor(`accent:${session.accent}:selected`)}} />
               <span><strong>{session.label}</strong><small>Scene {session.slot + 1}</small></span>
@@ -469,6 +490,16 @@ function SessionList({
           </div>
         ) : null}
       </div>
+    </section>
+  );
+}
+
+function GuidedAction({guidance}: {guidance: DemoGuidance}) {
+  return (
+    <section className="guideCallout" aria-label="Next action">
+      <span>NEXT ACTION</span>
+      <strong>{guidance.title}</strong>
+      <small>{guidance.detail}</small>
     </section>
   );
 }

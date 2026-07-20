@@ -20,6 +20,7 @@ const config: Config = {
     locales: ['en'],
   },
   staticDirectories: ['static', '../src/pad_lattice/web_dist'],
+  plugins: ['./plugins/publish-schemas'],
   presets: [
     [
       'classic',
@@ -48,7 +49,7 @@ const config: Config = {
     ],
   ],
   themeConfig: {
-    image: 'img/pad-lattice-social.svg',
+    image: 'img/pad-lattice-social.png',
     colorMode: {
       respectPrefersColorScheme: true,
     },

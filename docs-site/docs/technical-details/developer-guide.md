@@ -141,10 +141,68 @@ input stack:
 6. A real reply or approval wait stops playback and forces the daemon's
    authoritative `SurfaceView` back onto every surface.
 
-The Show and score are authored in Python once. Run
-`python -m pad_lattice.experience_compiler --write` to regenerate the compact
-manifest and browser WAV bank. CI runs `--check`; do not hand-edit generated
-performance or audio files. `demo-v1.json` is the human-authored Demo graph.
+### Experience Asset Compiler
+
+![The visual story and score pass through the experience asset compiler to produce one performance manifest and audio set used by both Python MIDI and TypeScript browser runtimes](/img/experience-asset-compiler.svg)
+
+The **experience asset compiler** is a deterministic build boundary between
+creative authoring and runtime playback. It lets the Show use expressive
+Python while guaranteeing that physical and virtual surfaces receive the same
+committed frames and audio. Neither runtime imports the authoring functions.
+
+| Role | Source of truth |
+| --- | --- |
+| Visual story, cue geometry, captions, and timing | `show.py` |
+| Score, synthesized voice, and earcon definitions | `audio.py` |
+| Deterministic compilation and asset comparison | `experience_compiler.py` |
+| Generated Show contract | `schemas/performance-manifest-v1.json` |
+| Committed source assets | `web-app/public/experiences/constellation-v1.json` and `audio/` |
+| Typed loading and structural checks | `experience_manifest.py` |
+| Shared Python playback | `experience_runtime.py` |
+| Browser playback | `web-app/src/` using the same manifest and WAV files |
+
+Performance Manifest 1 is compact by design:
+
+| Field | Meaning |
+| --- | --- |
+| `version`, `name`, `rows`, `columns` | Contract identity and surface dimensions. |
+| `palette` | Reusable colors, each with exact RGB and a semantic fallback. |
+| `cues` | Ordered act, caption, duration, and frame records. |
+| `frame.grid` | The 8x8 matrix as palette indexes. |
+| `frame.top`, `frame.right` | The two common eight-light outer rails as palette indexes. |
+| `audio` | Soundtrack asset, duration, reference tempo, and synchronization metadata. |
+
+The published [Performance Manifest Schema 1](https://mrueda.github.io/pad-lattice/schemas/performance-manifest-v1.json)
+is the editor, CI, and conformance contract. The compiler also loads its result
+through the dependency-free typed parser before writing it; live playback uses
+that parser rather than general-purpose JSON Schema validation.
+
+After changing `show.py` or `audio.py`, regenerate and verify the source assets:
+
+```bash
+.venv/bin/python -m pad_lattice.experience_compiler --write
+.venv/bin/python -m pad_lattice.experience_compiler --check
+```
+
+The browser build copies those source assets into the packaged Python web
+bundle. Rebuild it, then verify that its generated copy is identical:
+
+```bash
+cd web-app
+npm run build
+cd ..
+.venv/bin/python -m pad_lattice.experience_compiler \
+  --check --target src/pad_lattice/web_dist/play/experiences
+```
+
+`--check` compiles into a temporary directory and byte-compares every generated
+file. CI runs both checks. Generated performance and audio files must never be
+hand-edited.
+
+`demo-v1.json` is the deliberate exception. It is a human-authored interactive
+stage graph governed by [Demo Manifest Schema 1](https://mrueda.github.io/pad-lattice/schemas/demo-manifest-v1.json),
+not generated Show media. It still enters the same typed Python and TypeScript
+experience runtimes, which prevents a second playback implementation.
 
 ## Session Lease Path
 

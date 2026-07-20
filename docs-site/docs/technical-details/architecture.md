@@ -97,7 +97,8 @@ system-player processes and cannot change routing decisions.
 Python remains the expressive authoring source for the visual story and score,
 but neither runtime executes that authoring code independently. The asset
 compiler produces a compact Version 1 performance manifest, exact RGB frames,
-one synchronized browser soundtrack, and the browser earcon bank. The guided
+one synchronized browser soundtrack, and the browser earcon bank. This
+deterministic build boundary is the **experience asset compiler**. The guided
 Demo is a Version 1 stage graph of semantic views and transitions. The browser
 build copies both manifests and audio into the packaged application.
 
@@ -113,6 +114,9 @@ surface input remain responsive. Any real agent in `waiting_for_reply` or
 `waiting_for_approval` preempts playback and forces an authoritative semantic
 render. Only a loopback administrator may send browser start/stop commands;
 paired clients may answer Demo inputs and receive Show frames.
+
+See [Experience Asset Compiler](./developer-guide.md#experience-asset-compiler)
+for the complete authoring, compilation, validation, and playback path.
 
 ## Protocols and Schemas
 

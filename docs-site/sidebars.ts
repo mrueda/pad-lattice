@@ -52,56 +52,85 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Technical Details',
+      link: {
+        type: 'doc',
+        id: 'technical-details/index',
+      },
       items: [
         {
-          type: 'doc',
-          id: 'technical-details/architecture',
-          label: 'Architecture',
+          type: 'category',
+          label: 'Core Model',
+          collapsed: false,
+          items: [
+            {
+              type: 'doc',
+              id: 'technical-details/architecture',
+              label: 'Architecture',
+            },
+            {
+              type: 'doc',
+              id: 'technical-details/multi-agent-design',
+              label: 'Multi-Agent Design',
+            },
+            {
+              type: 'doc',
+              id: 'technical-details/visual-language',
+              label: 'Visual Protocol',
+            },
+          ],
         },
         {
-          type: 'doc',
-          id: 'technical-details/codex-integration',
-          label: 'Codex Integration',
+          type: 'category',
+          label: 'Integrations & Surfaces',
+          items: [
+            {
+              type: 'doc',
+              id: 'technical-details/codex-integration',
+              label: 'Codex Integration',
+            },
+            {
+              type: 'doc',
+              id: 'technical-details/virtual-surface',
+              label: 'Browser Surface',
+            },
+          ],
         },
         {
-          type: 'doc',
-          id: 'technical-details/virtual-surface',
-          label: 'Browser Surface',
+          type: 'category',
+          label: 'Hardware',
+          items: [
+            {
+              type: 'doc',
+              id: 'technical-details/device-profiles',
+              label: 'Device Profiles',
+            },
+            {
+              type: 'doc',
+              id: 'technical-details/device-testing',
+              label: 'Device Testing',
+            },
+          ],
         },
         {
-          type: 'doc',
-          id: 'technical-details/multi-agent-design',
-          label: 'Multi-Agent Design',
-        },
-        {
-          type: 'doc',
-          id: 'technical-details/visual-language',
-          label: 'Visual Protocol',
-        },
-        {
-          type: 'doc',
-          id: 'technical-details/security-model',
-          label: 'Security Model',
-        },
-        {
-          type: 'doc',
-          id: 'technical-details/production',
-          label: 'Production Operations',
-        },
-        {
-          type: 'doc',
-          id: 'technical-details/device-profiles',
-          label: 'Device Profiles',
-        },
-        {
-          type: 'doc',
-          id: 'technical-details/device-testing',
-          label: 'Device Testing',
-        },
-        {
-          type: 'doc',
-          id: 'technical-details/developer-guide',
-          label: 'Developer Guide',
+          type: 'category',
+          label: 'Operations & Development',
+          items: [
+            {
+              type: 'doc',
+              id: 'technical-details/security-model',
+              label: 'Security Model',
+            },
+            {
+              type: 'doc',
+              id: 'technical-details/production',
+              label: 'Production Operations',
+            },
+            {
+              type: 'doc',
+              id: 'technical-details/developer-guide',
+              label: 'Developer Guide',
+            },
+          ],
         },
       ],
     },

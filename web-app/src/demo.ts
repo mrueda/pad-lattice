@@ -11,7 +11,7 @@ import {
 
 export interface DemoState {
   manifest: DemoManifest;
-  mode: 'guided' | 'sandbox';
+  mode: 'demo' | 'sandbox';
   stage: string;
   sessions: SessionView[];
   frame: number;
@@ -20,17 +20,24 @@ export interface DemoState {
   audioSequence: number;
 }
 
+export interface DemoGuidance {
+  title: string;
+  detail: string;
+  slot: number | null;
+  action: ControlAction | null;
+}
+
 export type DemoEvent =
   | {type: 'select'; slot: number}
   | {type: 'action'; action: ControlAction}
-  | {type: 'mode'; mode: 'guided' | 'sandbox'}
+  | {type: 'mode'; mode: 'demo' | 'sandbox'}
   | {type: 'set_state'; slot: number; state: AgentState}
   | {type: 'reset'};
 
 export function createDemoState(manifest: DemoManifest): DemoState {
   return {
     manifest,
-    mode: 'guided',
+    mode: 'demo',
     stage: manifest.initial_stage,
     sessions: [],
     frame: 0,
@@ -43,7 +50,6 @@ export function createDemoState(manifest: DemoManifest): DemoState {
 export function demoReducer(state: DemoState, event: DemoEvent): DemoState {
   if (event.type === 'reset') return createDemoState(state.manifest);
   if (event.type === 'mode') {
-    if (event.mode === 'sandbox' && !currentStage(state).terminal) return state;
     return event.mode === 'sandbox'
       ? {
           ...state,
@@ -102,8 +108,32 @@ export function demoPrompt(state: DemoState): {eyebrow: string; title: string; d
   return currentStage(state).prompt;
 }
 
-export function demoComplete(state: DemoState): boolean {
-  return state.mode === 'guided' && currentStage(state).terminal;
+export function demoGuidance(state: DemoState): DemoGuidance | null {
+  if (state.mode === 'sandbox') return null;
+  const active = currentStage(state);
+  const target = active.guide_target;
+  if (target === null) return null;
+  if (target.event === 'select' && target.slot !== null) {
+    const session = active.view.sessions.find((item) => item.slot === target.slot);
+    if (!session) return null;
+    return {
+      title: `Select ${session.label} - Scene ${target.slot + 1}`,
+      detail: `Press Scene ${target.slot + 1} on the right, or choose ${session.label} in Agent Scenes.`,
+      slot: target.slot,
+      action: null,
+    };
+  }
+  if (target.event === 'action' && target.action !== null) {
+    const selected = active.view.sessions.find((item) => item.selected);
+    const action = guideActionLabels[target.action];
+    return {
+      title: `${action} ${selected?.label ?? 'selected agent'}`,
+      detail: guideActionDetails[target.action],
+      slot: null,
+      action: target.action,
+    };
+  }
+  return null;
 }
 
 function sandboxReducer(state: DemoState, event: DemoEvent): DemoState {
@@ -198,6 +228,20 @@ export const stateLabels: Record<AgentState, string> = {
   success: 'Success',
   error: 'Error',
   cancelled: 'Cancelled',
+};
+
+const guideActionLabels: Record<ControlAction, string> = {
+  approve: 'Approve',
+  reject: 'Reject',
+  retry: 'Retry',
+  stop: 'Stop',
+};
+
+const guideActionDetails: Record<ControlAction, string> = {
+  approve: 'Press the green Approve check on the top rail.',
+  reject: 'Press the red Reject cross on the top rail.',
+  retry: 'Press the blue Retry arrow on the top rail.',
+  stop: 'Press the red Stop square on the top rail.',
 };
 
 export function validDemoState(value: string): value is AgentState {

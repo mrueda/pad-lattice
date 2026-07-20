@@ -259,6 +259,26 @@
   background: #dc2626;
 }
 
+.workflow {
+  padding: 2rem 1.5rem 4.5rem;
+  border-bottom: 1px solid #d8e0e4;
+  background: #ffffff;
+}
+
+.workflowInner {
+  width: min(1160px, 100%);
+  margin: 0 auto;
+}
+
+.workflowImage {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid #ced9de;
+  border-radius: 8px;
+  box-shadow: 0 18px 42px rgba(17, 24, 39, 0.1);
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -315,6 +335,16 @@
   background: #11161b;
 }
 
+:global(html[data-theme='dark']) .workflow {
+  border-bottom-color: #35414a;
+  background: #151b20;
+}
+
+:global(html[data-theme='dark']) .workflowImage {
+  border-color: #35414a;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+}
+
 :global(html[data-theme='dark']) .copy h1,
 :global(html[data-theme='dark']) .card,
 :global(html[data-theme='dark']) .card h2 {
@@ -361,5 +391,17 @@
 
   .copy h1 {
     font-size: 2.35rem;
+  }
+
+  .workflow {
+    padding: 1rem 1rem 3rem;
+  }
+
+  .workflowInner {
+    width: 100%;
+  }
+
+  .workflowImage {
+    border-radius: 8px;
   }
 }

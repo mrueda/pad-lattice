@@ -60,6 +60,8 @@ const sceneControls = [
 
 export default function Home() {
   const logoUrl = useBaseUrl('/img/pad-lattice-logo.svg');
+  const workflowUrl = useBaseUrl('/img/human-control-workflow.svg');
+  const workflowMobileUrl = useBaseUrl('/img/human-control-workflow-mobile.svg');
 
   return (
     <Layout
@@ -128,6 +130,19 @@ export default function Home() {
                 Open interactive surface
               </Link>
             </div>
+          </div>
+        </section>
+
+        <section className={styles.workflow} aria-label="A real Pad-Lattice workflow">
+          <div className={styles.workflowInner}>
+            <picture>
+              <source media="(max-width: 640px)" srcSet={workflowMobileUrl} />
+              <img
+                className={styles.workflowImage}
+                src={workflowUrl}
+                alt="Codex asks for approval, physical and virtual pads light up, and one human press returns a targeted action"
+              />
+            </picture>
           </div>
         </section>
 

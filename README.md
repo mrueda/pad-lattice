@@ -24,10 +24,18 @@
 
 **📦 GitHub Repository:** <https://github.com/mrueda/pad-lattice>
 
-**Pad-Lattice turns browsers and MIDI grid controllers into control surfaces
-for AI agents.** One local daemon maintains multi-agent state, renders steady
-visual feedback, and routes explicit actions to the selected agent. The same
-surface works on a Launchpad, desktop browser, phone, or tablet.
+**Pad-Lattice gives people a tactile, glanceable way to monitor and control AI
+agents.** It repurposes MIDI pad controllers as that physical interface: their
+RGB grids can display agent state and accept deliberate actions. The same
+visual language also runs as a Virtual Pad in the browser, so anyone can use it
+from a phone, tablet, or computer, with or without MIDI hardware.
+
+<div align="center">
+  <img src="docs-site/static/img/human-control-workflow.svg" width="1200" alt="Codex asks for approval, physical and virtual pads light up, and one human press returns a targeted action">
+</div>
+
+One local daemon maintains multi-agent state, renders steady visual feedback,
+and routes explicit actions to the selected agent.
 
 The shared language is **Visual Protocol 1**: identity accents, state glyphs,
 selection, capability-gated actions, and overflow. Physical MIDI profiles and
@@ -44,7 +52,7 @@ Pad-Lattice is alpha software.
 
 | Surface | Command | Result |
 | --- | --- | --- |
-| Public browser | [Open `/play/`](https://mrueda.github.io/pad-lattice/play/) | Guided Demo, protocol sandbox, and audiovisual Show; no installation. |
+| Public browser | [Open `/play/`](https://mrueda.github.io/pad-lattice/play/) | Demo, protocol sandbox, and audiovisual Show; no installation. |
 | Local browser | `pad-lattice web` | Real Codex control on the same computer. |
 | Phone or tablet | `pad-lattice web --lan` | Real Codex control after one-time pairing on a trusted local network. |
 | Launchpad | `pad-lattice daemon` | Physical MIDI input and RGB state feedback. |

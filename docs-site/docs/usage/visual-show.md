@@ -48,6 +48,34 @@ pad-lattice show --tempo 1.2  # faster
 
 Press `Ctrl-C` at any time. Cleanup still runs.
 
+## Outer Rails During Show
+
+The reference Show surface contains **80 authored lights**: the 64-pad matrix,
+eight top-rail lights, and eight right-rail lights. While Show is playing, the
+two rails stop acting as commands and Agent Scene selectors. Their buttons are
+disabled, and each Show cue supplies their colors directly.
+
+The renderer does not automatically copy matrix colors onto the rails. Their
+choreography changes with the story:
+
+| Story moment | Top and right rail behavior |
+| --- | --- |
+| Most acts | The top rail is an eight-act progress line: earlier acts remain dim and the current act is bright. The right rail reverses that line to frame the matrix. |
+| The Search | A bright top light marks the current matrix column while a bright right light marks its row. Together they follow the moving search point. |
+| The Storm | The rails become a red border around the broken-heart scene. |
+| The Call | Identity colors arrive one by one. The top rail fills forward and the right rail fills in reverse as the community gathers. |
+| Together and Finale | The rails carry the full identity spectrum, then rotate in opposite directions around the constellation. |
+| Final spark | Both rails return to darkness so the single cyan light can close the story. |
+
+The right rail therefore **does mirror the top rail in reverse during some
+chapter frames**, but it is not a general color-mirroring effect. In other
+scenes the rails mark coordinates, frame an emotion, count arrivals, or extend
+motion beyond the matrix.
+
+The Launchpad Pro Mk1 also has left and bottom controls. Those additional
+positions are outside the common 80-light reference surface, remain reserved,
+and are not used by the Show.
+
 ## Cinematic Color
 
 Each authored light carries both an exact RGB value and a semantic palette
@@ -96,6 +124,29 @@ with the application, avoiding a second TypeScript composition. Browser sound
 is per-device, muted by default, and synchronized independently of the host
 `--audio` flag. See [Audio Feedback](./audio-feedback.md) for supported host
 players and the separate daemon earcon vocabulary.
+
+## Compiled Once, Played Everywhere
+
+![The visual story and score pass through the experience asset compiler to produce one performance manifest and audio set used by both Python MIDI and TypeScript browser runtimes](/img/experience-asset-compiler.svg)
+
+Pad-Lattice calls this build boundary the **experience asset compiler**. The
+visual story is authored expressively in Python alongside the original score,
+voice, and earcons. A deterministic compiler then turns those sources into a
+compact Performance Manifest and a WAV asset set.
+
+The physical and virtual surfaces do not recreate the Show independently.
+Both play those same versioned assets, with the same frames, colors, captions,
+timing, and soundtrack. Runtime playback never imports or executes the
+authoring functions. This keeps the creative source flexible while making the
+result portable and reproducible.
+
+[Performance Manifest Schema 1](https://mrueda.github.io/pad-lattice/schemas/performance-manifest-v1.json)
+documents the generated contract. The interactive Demo intentionally follows
+a second path: its stage graph is human-authored as
+[Demo Manifest Schema 1](https://mrueda.github.io/pad-lattice/schemas/demo-manifest-v1.json),
+then consumed by the same Python and TypeScript experience runtimes. See the
+[Experience Asset Compiler](../technical-details/developer-guide.md#experience-asset-compiler)
+section for the sources of truth and regeneration workflow.
 
 ## Visual Safety
 

@@ -34,9 +34,10 @@ test('local admin starts and stops the shared full-surface Show', async ({page})
   await page.goto('/#admin=pad-lattice-e2e-admin');
   await expect(page.getByText('Connected to Codex')).toBeVisible();
 
-  await page.getByRole('button', {name: 'Show'}).click();
+  await page.getByRole('button', {name: 'Start Show'}).click();
   await expect(page.getByText('PLAYING')).toBeVisible();
   await expect(page.getByText('PERFORMANCE')).toBeVisible();
+  await expect(page.locator('.performanceStory strong')).not.toBeEmpty();
   await expect(page.locator('.matrixPad').first()).toHaveCSS(
     'background-color',
     /rgb\(/,
@@ -49,7 +50,7 @@ test('local admin starts and stops the shared full-surface Show', async ({page})
 
 test('live Demo accepts the same scene and action controls', async ({page}) => {
   await page.goto('/#admin=pad-lattice-e2e-admin');
-  await page.getByRole('button', {name: 'Demo'}).click();
+  await page.getByRole('button', {name: 'Start Demo'}).click();
 
   await expect(page.getByText('The Reviewer needs you.')).toBeVisible();
   await page.getByRole('button', {name: 'Select Reviewer'}).first().click();

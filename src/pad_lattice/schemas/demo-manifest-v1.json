@@ -50,10 +50,20 @@
         "audio": {"type": ["string", "null"], "minLength": 1}
       }
     },
+    "guideTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event", "slot", "action"],
+      "properties": {
+        "event": {"enum": ["select", "action"]},
+        "slot": {"type": ["integer", "null"], "minimum": 0, "maximum": 7},
+        "action": {"oneOf": [{"$ref": "#/$defs/action"}, {"type": "null"}]}
+      }
+    },
     "stage": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "prompt", "view", "transitions", "enter_audio", "terminal"],
+      "required": ["id", "prompt", "guide_target", "view", "transitions", "enter_audio", "terminal"],
       "properties": {
         "id": {"type": "string", "minLength": 1},
         "prompt": {
@@ -65,6 +75,9 @@
             "title": {"type": "string", "minLength": 1},
             "detail": {"type": "string", "minLength": 1}
           }
+        },
+        "guide_target": {
+          "oneOf": [{"$ref": "#/$defs/guideTarget"}, {"type": "null"}]
         },
         "view": {
           "type": "object",

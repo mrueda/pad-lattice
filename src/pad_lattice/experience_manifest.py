@@ -42,12 +42,31 @@ class PerformanceManifest:
     duration: float
     audio_asset: str
 
+    def caption_at(self, cue_index: int) -> str:
+        if not 0 <= cue_index < len(self.cues):
+            raise ExperienceManifestError(f"unknown performance cue: {cue_index}")
+        cue = self.cues[cue_index]
+        for candidate in reversed(self.cues[: cue_index + 1]):
+            if candidate.act != cue.act:
+                break
+            if candidate.caption is not None:
+                return candidate.caption
+        _, separator, act_title = cue.act.partition(" - ")
+        return act_title if separator else cue.act
+
 
 @dataclass(frozen=True)
 class DemoPrompt:
     eyebrow: str
     title: str
     detail: str
+
+
+@dataclass(frozen=True)
+class DemoGuideTarget:
+    event_type: str
+    slot: int | None = None
+    action: ControlAction | None = None
 
 
 @dataclass(frozen=True)
@@ -63,6 +82,7 @@ class DemoTransition:
 class DemoStage:
     id: str
     prompt: DemoPrompt
+    guide_target: DemoGuideTarget | None
     view: SurfaceView
     transitions: tuple[DemoTransition, ...]
     enter_audio: str | None = None
@@ -235,6 +255,14 @@ def load_demo_data(data: Any, *, source: str) -> DemoManifest:
             raise ExperienceManifestError(
                 f"{source}.stages[{stage.id}] is nonterminal but has no transitions"
             )
+        if stage.terminal and stage.guide_target is not None:
+            raise ExperienceManifestError(
+                f"{source}.stages[{stage.id}] is terminal but has a guide target"
+            )
+        if not stage.terminal and stage.guide_target is None:
+            raise ExperienceManifestError(
+                f"{source}.stages[{stage.id}] has no guide target"
+            )
         visible_slots = {session.slot for session in stage.view.sessions}
         for transition in stage.transitions:
             if transition.next_stage not in stage_ids:
@@ -255,6 +283,15 @@ def load_demo_data(data: Any, *, source: str) -> DemoManifest:
                 raise ExperienceManifestError(
                     f"{source}.stages[{stage.id}] uses an unavailable action"
                 )
+        if stage.guide_target is not None and not any(
+            transition.event_type == stage.guide_target.event_type
+            and transition.slot == stage.guide_target.slot
+            and transition.action == stage.guide_target.action
+            for transition in stage.transitions
+        ):
+            raise ExperienceManifestError(
+                f"{source}.stages[{stage.id}] guide target is not a transition"
+            )
     reachable = {initial_stage}
     while True:
         discovered = {
@@ -351,7 +388,15 @@ def _demo_stage(value: Any, index: int, source: str) -> DemoStage:
     stage = _object(value, context)
     _exact_keys(
         stage,
-        {"id", "prompt", "view", "transitions", "enter_audio", "terminal"},
+        {
+            "id",
+            "prompt",
+            "guide_target",
+            "view",
+            "transitions",
+            "enter_audio",
+            "terminal",
+        },
         context,
     )
     prompt_data = _object(stage["prompt"], f"{context}.prompt")
@@ -364,6 +409,7 @@ def _demo_stage(value: Any, index: int, source: str) -> DemoStage:
         title=_nonempty_string(prompt_data["title"], f"{context}.prompt.title"),
         detail=_nonempty_string(prompt_data["detail"], f"{context}.prompt.detail"),
     )
+    guide_target = _demo_guide_target(stage["guide_target"], context)
     view_data = _object(stage["view"], f"{context}.view")
     _exact_keys(view_data, {"sessions", "available_actions"}, f"{context}.view")
     sessions = tuple(
@@ -398,6 +444,7 @@ def _demo_stage(value: Any, index: int, source: str) -> DemoStage:
     return DemoStage(
         id=_nonempty_string(stage["id"], f"{context}.id"),
         prompt=prompt,
+        guide_target=guide_target,
         view=SurfaceView(
             selected_state=selected[0].state if selected else None,
             sessions=sessions,
@@ -407,6 +454,28 @@ def _demo_stage(value: Any, index: int, source: str) -> DemoStage:
         enter_audio=enter_audio,
         terminal=stage["terminal"],
     )
+
+
+def _demo_guide_target(value: Any, context: str) -> DemoGuideTarget | None:
+    if value is None:
+        return None
+    target_context = f"{context}.guide_target"
+    target = _object(value, target_context)
+    _exact_keys(target, {"event", "slot", "action"}, target_context)
+    event_type = target["event"]
+    if event_type == "select":
+        slot = _integer(target["slot"], f"{target_context}.slot")
+        if not 0 <= slot < 8 or target["action"] is not None:
+            raise ExperienceManifestError(f"{target_context} has invalid select input")
+        return DemoGuideTarget(event_type="select", slot=slot)
+    if event_type == "action":
+        if target["slot"] is not None:
+            raise ExperienceManifestError(f"{target_context} has invalid action input")
+        return DemoGuideTarget(
+            event_type="action",
+            action=_control_action(target["action"], f"{target_context}.action"),
+        )
+    raise ExperienceManifestError(f"{target_context}.event is unknown")
 
 
 def _demo_session(value: Any, fallback_slot: int, context: str) -> SessionIndicator:
