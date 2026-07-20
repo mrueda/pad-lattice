@@ -31,7 +31,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install ".[release,schema]"
           python -c "from packaging.version import Version; from pad_lattice import __version__; assert Version(__version__).is_prerelease, 'TestPyPI releases must use a pre-release version'"
-          python -m pad_lattice.experience_compiler --check
+          python -m pad_lattice.experience_compiler --check --target web-app/public/experiences
           python -m pad_lattice.experience_compiler --check --target src/pad_lattice/web_dist/play/experiences
           cmp web-app/public/experiences/demo-v1.json src/pad_lattice/web_dist/play/experiences/demo-v1.json
           python -m unittest discover -s tests

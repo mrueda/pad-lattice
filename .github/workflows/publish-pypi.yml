@@ -93,7 +93,7 @@ jobs:
 
       - name: Test, build, and validate distributions
         run: |
-          python -m pad_lattice.experience_compiler --check
+          python -m pad_lattice.experience_compiler --check --target web-app/public/experiences
           python -m pad_lattice.experience_compiler --check --target src/pad_lattice/web_dist/play/experiences
           cmp web-app/public/experiences/demo-v1.json src/pad_lattice/web_dist/play/experiences/demo-v1.json
           python -m unittest discover -s tests

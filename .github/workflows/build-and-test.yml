@@ -74,7 +74,7 @@ jobs:
         run: npm ci
 
       - name: Verify generated experience assets
-        run: python -m pad_lattice.experience_compiler --check
+        run: python -m pad_lattice.experience_compiler --check --target web-app/public/experiences
 
       - name: Check and build virtual surface
         working-directory: web-app
