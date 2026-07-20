@@ -18,33 +18,31 @@
 
 **🚀 Quick Start:** <https://mrueda.github.io/pad-lattice/docs/usage/quickstart>
 
-**🎛️ Device Testing:** <https://mrueda.github.io/pad-lattice/docs/technical-details/device-testing>
-
-**🔒 Security Model:** <https://mrueda.github.io/pad-lattice/docs/technical-details/security-model>
-
-**📦 GitHub Repository:** <https://github.com/mrueda/pad-lattice>
-
 **Pad-Lattice gives people a tactile, glanceable way to monitor and control AI
 agents.** It repurposes MIDI pad controllers as that physical interface: their
 RGB grids can display agent state and accept deliberate actions. The same
 visual language also runs as a Virtual Pad in the browser, so anyone can use it
 from a phone, tablet, or computer, with or without MIDI hardware.
 
+Pad-Lattice grew from [mrueda](https://github.com/mrueda)'s personal need to
+interact more directly with Codex CLI. As a musician and member of the duo [The
+New Assembly](https://www.thenewassembly.com/), he had used a Launchpad Pro
+with Ableton Live and recognized that its mature grid interface could become a
+visual surface for agents. Read the [origin
+story](https://mrueda.github.io/pad-lattice/docs/about/origin-and-development).
+
 <div align="center">
   <img src="docs-site/static/img/human-control-workflow.svg" width="1200" alt="Codex asks for approval, physical and virtual pads light up, and one human press returns a targeted action">
 </div>
 
-One local daemon maintains multi-agent state, renders steady visual feedback,
-and routes explicit actions to the selected agent.
+One local daemon maintains multi-agent state and routes currently available
+actions only to the selected agent. **Visual Protocol 1** gives physical MIDI
+profiles and the Virtual Pad the same identity accents, state glyphs,
+selection, actions, and overflow behavior.
 
-The shared language is **Visual Protocol 1**: identity accents, state glyphs,
-selection, capability-gated actions, and overflow. Physical MIDI profiles and
-the virtual surface implement that protocol without redefining it.
-
-The first real integration is **Codex CLI**. Lifecycle hooks report state and
-can return request-scoped Approve or Reject decisions. `codex-exec` adds a
-targeted Stop action. Prompts and terminal output remain in Codex; Pad-Lattice
-exposes only labels, semantic state, and actions.
+The first integration is **Codex CLI**. Pad-Lattice displays lifecycle state
+and can return targeted Approve, Reject, Retry, and Stop actions while prompts
+and terminal output remain in Codex.
 
 Pad-Lattice is alpha software.
 
@@ -61,7 +59,7 @@ Pad-Lattice is alpha software.
 The public demo is intentionally simulated. Real control always requires the
 local Pad-Lattice process and Codex hooks.
 
-## Installation
+## Install and Start
 
 Install the current GitHub version in an isolated environment:
 
@@ -69,64 +67,26 @@ Install the current GitHub version in an isolated environment:
 pipx install git+https://github.com/mrueda/pad-lattice.git
 ```
 
-The normal installation includes MIDI, browser transport, and QR pairing.
-
-## Quick Start
-
-Start a virtual surface without MIDI hardware:
+Start the browser controller without MIDI hardware:
 
 ```bash
 pad-lattice web
 ```
 
-The command opens a per-daemon tokenized local administrator URL. Treat that
-URL as a credential and do not share it.
-
-Launch an integrated Codex session:
+Then launch an integrated Codex session from another terminal:
 
 ```bash
 pad-lattice codex --label implementation
 ```
 
-The launcher injects Pad-Lattice lifecycle hooks only into its child Codex
-process. On first use, review those commands with `/hooks`. Ordinary `codex`
-sessions do not load Pad-Lattice hooks or show their review prompt.
-
-When Codex requests permission, select its Agent Scene and press the lit
-Approve or Reject control in the browser. The decision is routed only to that
-session and request.
-
-Allow a phone or tablet on the same trusted network:
+To add a physical controller and optional synchronized browsers:
 
 ```bash
-pad-lattice web --lan
-```
-
-The local admin page displays a five-minute, one-use QR code and PIN. Paired
-devices can reconnect until the daemon stops. LAN traffic is not intended for
-public Wi-Fi or port forwarding.
-
-For a physical controller:
-
-```bash
-pad-lattice devices
-pad-lattice demo
 pad-lattice daemon --web --audio-feedback
 ```
 
-`--web` is optional. When present, the Launchpad and every paired browser show
-the same selected session and can issue the same currently available actions.
-
-Resume or add labeled sessions from other terminals:
-
-```bash
-pad-lattice codex --label docs -- resume <SESSION_ID>
-pad-lattice status --watch
-```
-
-See the [Quick Start](https://mrueda.github.io/pad-lattice/docs/usage/quickstart)
-and [Browser Surface](https://mrueda.github.io/pad-lattice/docs/technical-details/virtual-surface)
-guides for complete setup and security details.
+The [Quick Start](https://mrueda.github.io/pad-lattice/docs/usage/quickstart)
+covers hook review, MIDI setup, LAN pairing, and multiple sessions.
 
 ## Supported Hardware
 
@@ -140,79 +100,29 @@ Declarative JSON profiles map Visual Protocol 1 to MIDI ports, programmer
 mode, note layouts, palettes, actions, selectors, and status indicators. New
 controllers do not require changes to Codex integrations.
 
-## Visual Cheat Sheet
+## Documentation
 
-The reference surface is **8x8 plus eight top actions and eight right Agent
-Scenes**. The rightmost matrix column summarizes all visible agents; the other
-7x8 pads render the selected agent.
-
-| Visual | Meaning |
+| Topic | Guide |
 | --- | --- |
-| Blue ellipsis | Running |
-| White `?` | Waiting for reply |
-| Cyan chevron | User typing |
-| Amber `!` | Waiting for approval |
-| Green happy face | Success |
-| Red X | Error |
-| Gray hollow square | Cancelled |
-| Dim three-pad dash | No session selected |
+| Install and connect Codex | [Quick Start](https://mrueda.github.io/pad-lattice/docs/usage/quickstart) |
+| Learn the colors, glyphs, actions, and 8x8 layout | [Visual Protocol](https://mrueda.github.io/pad-lattice/docs/technical-details/visual-language) |
+| Connect phones, tablets, and laptops | [Browser Setup](https://mrueda.github.io/pad-lattice/docs/usage/connect-browsers) |
+| Run the guided Demo or audiovisual Show | [Visual Show](https://mrueda.github.io/pad-lattice/docs/usage/visual-show) |
+| Add or test a MIDI controller | [Device Profiles](https://mrueda.github.io/pad-lattice/docs/technical-details/device-profiles) |
+| Understand or extend the implementation | [Technical Guide](https://mrueda.github.io/pad-lattice/docs/technical-details/) |
+| Review the trust boundary | [Security Model](https://mrueda.github.io/pad-lattice/docs/technical-details/security-model) |
 
-| Top control | Color when available | Action |
-| --- | --- | --- |
-| 1 | Green | Approve |
-| 2 | Red | Reject |
-| 5 | Amber | Session overflow indicator |
-| 7 | Blue | Retry |
-| 8 | Red | Stop |
+Release history is recorded in [CHANGELOG.md](CHANGELOG.md).
 
-Actions remain completely dark unless the selected agent has a live subscriber
-and its state permits that action. Shapes and colors are steady; rapid flashing
-and pulsing are not part of the protocol. See the [full visual
-language](https://mrueda.github.io/pad-lattice/docs/technical-details/visual-language).
+## Development Approach
 
-## Demo and Show
-
-```bash
-pad-lattice demo --audio
-pad-lattice show --audio
-pad-lattice demo --surface web
-pad-lattice show --surface both
-```
-
-The shared guided Demo exercises three agents, Scene selection, approval,
-rejection recovery, and retry. **A Spark Becomes a Constellation** is a
-43-second audiovisual performance across the full 8x8 matrix and outer rails.
-Use `--surface midi`, `web`, or `both`; MIDI remains the default.
-
-For `web` or `both`, the tokenized local administrator page starts and stops
-playback. Paired browsers can answer Demo prompts and watch Show, but cannot
-start either experience. Browser sound is per-device and muted by default;
-`--audio` independently enables computer audio. In a live daemon, any real
-agent waiting for a reply or approval interrupts playback and restores its
-authoritative state.
-
-## Development
-
-```bash
-git clone https://github.com/mrueda/pad-lattice.git
-cd pad-lattice
-python3 -m venv .venv
-.venv/bin/python -m pip install -e .
-.venv/bin/python -m unittest discover -s tests
-
-cd web-app
-npm install
-npm test
-npm run build
-
-cd ../docs-site
-npm install
-npm run typecheck
-npm run build
-```
-
-Release history is in [CHANGELOG.md](CHANGELOG.md). Release instructions are
-in [RELEASING.md](RELEASING.md).
+Pad-Lattice is an independent hobby project developed by
+[mrueda](https://github.com/mrueda) in his free time. It is developed through
+an architecture-led, human-in-the-loop collaboration with Codex CLI (OpenAI,
+GPT-5.6), automated testing, and evaluation on physical and virtual surfaces.
+The [origin and development
+page](https://mrueda.github.io/pad-lattice/docs/about/origin-and-development)
+documents the process.
 
 ## Citation
 
@@ -224,7 +134,7 @@ No formal publication is available yet. For now, cite:
 
 ## Author
 
-Written by Manuel Rueda.
+Created and maintained by [mrueda](https://github.com/mrueda).
 
 ## Copyright and License
 

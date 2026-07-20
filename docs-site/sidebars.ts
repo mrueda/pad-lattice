@@ -156,6 +156,11 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'doc',
+          id: 'about/origin-and-development',
+          label: 'Origin & Development',
+        },
+        {
+          type: 'doc',
           id: 'about/roadmap',
           label: 'Roadmap',
         },
