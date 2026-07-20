@@ -61,11 +61,13 @@ local Pad-Lattice process and Codex hooks.
 
 ## Install and Start
 
-Install the current GitHub version in an isolated environment:
+Install the package in an isolated environment:
 
 ```bash
-pipx install git+https://github.com/mrueda/pad-lattice.git
+pipx install pad-lattice
 ```
+
+This installs the release from PyPI without modifying the system Python.
 
 Start the browser controller without MIDI hardware:
 
@@ -126,6 +128,7 @@ documents the process.
 
 ## Citation
 
+Machine-readable citation metadata is available in [CITATION.cff](CITATION.cff).
 No formal publication is available yet. For now, cite:
 
 > Pad-Lattice: A Visual Protocol for AI Agent Control on MIDI and Virtual Pad

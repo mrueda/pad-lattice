@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use Pad-Lattice, please cite the software."
+title: "Pad-Lattice: A Visual Protocol for AI Agent Control on MIDI and Virtual Pad Surfaces"
+type: software
+authors:
+  - family-names: Rueda
+    given-names: Manuel
+    orcid: "https://orcid.org/0000-0001-9280-058X"
+version: 0.1.0
+repository-code: "https://github.com/mrueda/pad-lattice"
+url: "https://mrueda.github.io/pad-lattice/"
+license: Apache-2.0
+abstract: >-
+  Pad-Lattice turns physical MIDI grid controllers and virtual pads on phones,
+  tablets, and computers into synchronized control surfaces for AI agents
+  through a shared tactile visual language.
+keywords:
+  - AI agents
+  - human-agent interaction
+  - MIDI controllers
+  - control surfaces
+  - visual protocol
+  - tangible user interfaces

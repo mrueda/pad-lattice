@@ -21,20 +21,8 @@ change its source revision.
 
 ## One-time setup
 
-Create the `testpypi` and `pypi` environments under the repository's GitHub
-**Settings > Environments**. Require manual approval for the `pypi`
-environment.
-
-Register a pending GitHub publisher at
-<https://test.pypi.org/manage/account/publishing/> with these values:
-
-| Field | Value |
-| --- | --- |
-| PyPI project name | `pad-lattice` |
-| Owner | `mrueda` |
-| Repository | `pad-lattice` |
-| Workflow | `publish-testpypi.yml` |
-| Environment | `testpypi` |
+Create the `pypi` environment under the repository's GitHub
+**Settings > Environments** and require manual approval.
 
 Register the production publisher at
 <https://pypi.org/manage/account/publishing/>:
@@ -47,36 +35,7 @@ Register the production publisher at
 | Workflow | `publish-pypi.yml` |
 | Environment | `pypi` |
 
-## TestPyPI
-
-Before publishing, move the relevant entries from `Unreleased` in
-`CHANGELOG.md` into a new `## VERSION - YYYY-MM-DD` section and restore an
-empty `Unreleased` section for subsequent work.
-
-Run **Publish to TestPyPI** from the GitHub Actions tab. The workflow tests the
-package, builds its wheel and source archive, validates the metadata, installs
-the wheel in a clean environment, and publishes through the `testpypi`
-environment. The workflow accepts only PEP 440 pre-release versions. The
-current planned alpha is `0.1.0a1`. TestPyPI runs from `main` and does not use
-or create a release tag.
-
-Verify the uploaded package in a clean virtual environment:
-
-```bash
-python3 -m venv /tmp/pad-lattice-testpypi
-/tmp/pad-lattice-testpypi/bin/python -m pip install \
-  --index-url https://test.pypi.org/simple/ \
-  --extra-index-url https://pypi.org/simple/ \
-  pad-lattice==0.1.0a1
-/tmp/pad-lattice-testpypi/bin/pad-lattice --version
-/tmp/pad-lattice-testpypi/bin/pad-lattice profile list
-```
-
-Index versions and distribution files are immutable. Change `__version__` to
-`0.1.0a2`, `0.1.0a3`, and so on before publishing another alpha build with
-different contents.
-
-## Stable PyPI release
+## PyPI release
 
 1. Finalize the canonical Python version and move the release notes from
    `Unreleased` into a dated `CHANGELOG.md` section.

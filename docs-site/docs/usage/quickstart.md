@@ -12,11 +12,14 @@ mode is deliberately simulated.
 
 ## Install
 
-Install the current GitHub version as an isolated command:
+Install Pad-Lattice as an isolated command:
 
 ```bash
-pipx install git+https://github.com/mrueda/pad-lattice.git
+pipx install pad-lattice
 ```
+
+This installs from PyPI without modifying the system Python. Inside an active
+virtual environment, use `python -m pip install pad-lattice` instead.
 
 Confirm the installation:
 
