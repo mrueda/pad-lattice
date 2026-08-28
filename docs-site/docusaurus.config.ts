@@ -3,8 +3,8 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'Pad-Lattice Docs',
-  tagline: 'Physical and virtual pad control for AI agents',
+  title: 'Pad-Lattice',
+  tagline: 'Human-in-the-loop control surfaces for AI agents',
   url: 'https://mrueda.github.io',
   baseUrl: '/pad-lattice/',
   organizationName: 'mrueda',
@@ -30,6 +30,15 @@ const config: Config = {
           routeBasePath: 'docs',
         },
         blog: false,
+        sitemap: {
+          createSitemapItems: async (params) => {
+            const items = await params.defaultCreateSitemapItems(params);
+            const virtualPadUrl = `${params.siteConfig.url}${params.siteConfig.baseUrl}play/`;
+            return items.some((item) => item.url === virtualPadUrl)
+              ? items
+              : [...items, {url: virtualPadUrl}];
+          },
+        },
         theme: {
           customCss: './src/css/custom.css',
         },

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mrueda.github.io/pad-lattice/sitemap.xml

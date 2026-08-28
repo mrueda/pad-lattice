@@ -2,7 +2,7 @@
   <a href="https://github.com/mrueda/pad-lattice">
     <img src="https://raw.githubusercontent.com/mrueda/pad-lattice/main/assets/pad-lattice-logo.svg" width="220" alt="Pad-Lattice logo">
   </a>
-  <p><em>Physical and virtual control surfaces for AI agents</em></p>
+  <p><em>Human-in-the-loop control surfaces for AI agents</em></p>
 </div>
 
 # Pad-Lattice
@@ -18,11 +18,15 @@
 
 **🚀 Quick Start:** <https://mrueda.github.io/pad-lattice/docs/usage/quickstart>
 
-**Pad-Lattice gives people a tactile, glanceable way to monitor and control AI
-agents.** It repurposes MIDI pad controllers as that physical interface: their
-RGB grids can display agent state and accept deliberate actions. The same
-visual language also runs as a Virtual Pad in the browser, so anyone can use it
-from a phone, tablet, or computer, with or without MIDI hardware.
+**Pad-Lattice is a human-in-the-loop control surface for monitoring and
+directing multiple AI agents.** At a glance, it shows which session is working,
+waiting for a reply, requesting approval, completed successfully, or failed.
+When an action is available, illuminated controls route it only to the selected
+agent.
+
+The same tactile visual language runs on physical Novation Launchpad MIDI
+controllers and a Virtual Pad in the browser, so anyone can use it from a
+phone, tablet, or computer, with or without MIDI hardware.
 
 Pad-Lattice grew from [mrueda](https://github.com/mrueda)'s personal need to
 interact more directly with Codex CLI. As a musician and member of the duo [The

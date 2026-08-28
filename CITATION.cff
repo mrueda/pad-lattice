@@ -12,12 +12,16 @@ url: "https://mrueda.github.io/pad-lattice/"
 license: Apache-2.0
 abstract: >-
   Pad-Lattice turns physical MIDI grid controllers and virtual pads on phones,
-  tablets, and computers into synchronized control surfaces for AI agents
-  through a shared tactile visual language.
+  tablets, and computers into synchronized human-in-the-loop control surfaces
+  for monitoring and directing multiple AI agents through a shared tactile
+  visual language.
 keywords:
   - AI agents
+  - agent supervision
+  - human-in-the-loop
   - human-agent interaction
   - MIDI controllers
+  - multi-agent systems
   - control surfaces
   - visual protocol
   - tangible user interfaces

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pad-lattice"
 dynamic = ["version"]
-description = "Physical and virtual pad control surfaces for AI agents."
+description = "Human-in-the-loop control surfaces for monitoring and directing multiple AI agents."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
@@ -14,13 +14,24 @@ authors = [
   { name = "Manuel Rueda" },
 ]
 keywords = [
+  "agent-monitoring",
+  "agent-orchestration",
+  "agent-supervision",
   "ai-agents",
-  "codex",
-  "control-surface",
   "browser",
+  "codex",
+  "codex-cli",
+  "control-surface",
+  "human-agent-interaction",
+  "human-in-the-loop",
   "launchpad",
   "midi",
+  "midi-controller",
+  "multi-agent",
   "novation",
+  "openai",
+  "physical-interface",
+  "virtual-control-surface",
   "visual-protocol",
 ]
 classifiers = [

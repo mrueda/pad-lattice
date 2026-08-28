@@ -65,19 +65,20 @@ export default function Home() {
 
   return (
     <Layout
-      title="Pad-Lattice"
-      description="Physical and virtual pad control surfaces for AI agents">
+      title="Human control surfaces for AI agents"
+      description="Monitor and direct multiple AI agents from Novation Launchpads, browsers, phones, and tablets.">
       <main className={styles.page}>
         <section className={styles.hero}>
           <div className={styles.heroGrid}>
             <div className={styles.copy}>
               <p className={styles.kicker}>Pad-Lattice</p>
-              <h1>Pad controllers for AI agents, physical or virtual.</h1>
+              <h1>Monitor and direct AI agents from a physical or virtual pad.</h1>
               <p className={styles.lede}>
                 <strong>A tactile visual language between people and AI agents.</strong>{' '}
-                Pad-Lattice turns a browser, phone, tablet, or compatible{' '}
-                <strong>Novation Launchpad</strong> into a local control surface
-                that integrates directly with <strong>Codex CLI</strong>.
+                See which session is working, waiting, requesting approval, or
+                finished, then act from a <strong>Novation Launchpad</strong>,
+                browser, phone, or tablet. Pad-Lattice integrates locally with{' '}
+                <strong>Codex CLI</strong>.
               </p>
               <div className={styles.actions}>
                 <Link className="button button--primary button--lg" to="pathname:///play/" target="_self">

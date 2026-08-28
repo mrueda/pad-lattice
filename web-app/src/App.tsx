@@ -435,7 +435,7 @@ function PageFrame({
       </header>
       {children}
       <footer className="appFooter">
-        <span>Physical and virtual control surfaces for AI agents.</span>
+        <span>A tactile visual language between people and AI agents.</span>
         <a href="https://github.com/mrueda/pad-lattice" target="_blank" rel="noreferrer">
           GitHub <ExternalLink aria-hidden="true" />
         </a>

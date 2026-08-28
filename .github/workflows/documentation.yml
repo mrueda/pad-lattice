@@ -54,7 +54,10 @@ jobs:
         working-directory: docs-site
         run: |
           test -s build/search-index.json
+          test -s build/robots.txt
           test -s build/play/index.html
+          grep -q 'pad-lattice/play/' build/sitemap.xml
+          grep -q 'twitter:card' build/play/index.html
           test -s build/schemas/socket-protocol-v1.json
           test -s build/schemas/web-surface-protocol-v1.json
           test -s build/schemas/device-profile-v1.json
