@@ -2,13 +2,13 @@
 
 ## Try It Now
 
-Open the [virtual pad](pathname:///play/) on any modern desktop, phone, or tablet. The
-**Demo** tab guides you through three agents, explicit selection, a real-looking
-approval gate, retry, and shared success. Its sandbox then exposes the complete
-Visual Protocol 1 vocabulary, while Show plays the full audiovisual story.
+Open the [virtual pad](pathname:///play/) on any modern desktop, phone, or
+tablet. **Demo** walks through selecting and approving one of three simulated
+agents. **Sandbox** lets you display every Visual Protocol 1 state, and
+**Show** plays the audiovisual performance.
 
-No account, MIDI hardware, API key, or installation is required. This public
-mode is deliberately simulated.
+No account, MIDI hardware, API key, or installation is required. The public
+pad is a simulation and does not connect to an agent.
 
 ## Install
 

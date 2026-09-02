@@ -14,8 +14,6 @@ phone, tablet, or computer, with or without MIDI hardware.
 
 [Open the human workflow illustration at full size](/img/human-control-workflow.svg).
 
-The surfaces are different; the language and routing policy are shared.
-
 :::important Visual Protocol 1
 
 Color, shape, position, brightness, and motion communicate agent identity,
@@ -49,8 +47,8 @@ MIDI hardware already combines tactile input, RGB feedback, low-latency local
 communication, and mature operating-system support. Pad-Lattice repurposes
 those strengths beyond music instead of requiring custom AI hardware.
 
-The virtual surface broadens access to anyone with a browser. The physical
-surface remains the flagship tactile implementation, and both can run at once:
+The browser provides the control surface without MIDI hardware. A Launchpad
+adds tactile controls and LED feedback, and both surfaces can run at once:
 
 ```bash
 pad-lattice daemon --web

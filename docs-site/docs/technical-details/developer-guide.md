@@ -1,8 +1,7 @@
 # Developer Guide
 
-This page is the shortest path from the product model to the implementation.
-It explains which process owns each responsibility, how data moves in both
-directions, and where a change belongs.
+This guide maps Pad-Lattice's runtime processes and data flow to the modules
+that implement them. Use it to find where a change belongs.
 
 Module paths on this page are relative to `src/pad_lattice/`; test paths are
 relative to `tests/`.

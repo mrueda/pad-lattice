@@ -32,8 +32,6 @@ bridge](https://github.com/mrueda/pad-lattice/commit/ce7c1682613adb92f6ac7db3728
 Further use added multi-agent Scenes, device profiles, virtual surfaces, audio,
 and shared Demo and Show experiences.
 
-Pad-Lattice was developed through repeated cycles of architecture,
-implementation, automated testing, and evaluation on the physical Launchpad or
-a paired browser. Codex CLI (OpenAI, GPT-5.6) assisted with implementation,
-testing, documentation, and design exploration. mrueda set the product
-direction and evaluated the interaction on real devices.
+mrueda designed the interaction and tested each iteration on a Launchpad Pro
+Mk1 and paired browsers. Codex CLI (OpenAI, GPT-5.6) was used during
+implementation, testing, documentation, and design exploration.
