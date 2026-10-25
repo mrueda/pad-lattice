@@ -80,7 +80,7 @@ class CodexSessionTest(TestCase):
             for index, value in enumerate(command[:-1])
             if value == "-c" and command[index + 1].startswith("hooks.")
         ]
-        self.assertEqual(len(overrides), 5)
+        self.assertEqual(len(overrides), 7)
         self.assertTrue(all(HOOK_COMMAND in override for override in overrides))
         self.assertNotIn("stdin", options)
         self.assertNotIn("stdout", options)

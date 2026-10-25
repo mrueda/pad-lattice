@@ -9,6 +9,7 @@ import socket
 import stat
 import struct
 import time
+import threading
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -123,7 +124,7 @@ class PadLatticeDaemon:
         self._announced_states: dict[AgentIdentity, AgentState] = {}
         self._closed = False
 
-    def run(self) -> None:
+    def run(self, stop: threading.Event | None = None) -> None:
         try:
             self._server = self._open_server()
             self._selector.register(
@@ -132,7 +133,7 @@ class PadLatticeDaemon:
                 self._accept_client,
             )
             self.surface.initialize()
-            while True:
+            while stop is None or not stop.is_set():
                 self._render_if_needed()
                 for key, mask in self._selector.select(timeout=self.poll_interval):
                     callback = key.data

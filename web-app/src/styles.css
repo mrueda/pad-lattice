@@ -874,3 +874,34 @@ select:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+:root { --desktop-border: #39414b; color-scheme: dark; }
+.desktopApp { height: 100vh; min-height: 0; overflow: hidden; }
+.desktopApp .appHeader, .desktopApp .appFooter { flex-shrink: 0; }
+.desktopApp .desktopControls { flex-shrink: 0; margin: 0; padding: 12px 24px 18px; max-height: 58vh; overflow: auto; }
+.desktopApp .workspace { min-height: 0; overflow: auto; }
+.desktopApp .surfaceWorkspace { padding: 20px; align-items: flex-start; }
+.desktopApp .virtualSurface { width: min(100%, 500px, calc(100vh - 400px)); }
+.desktopApp .contextPane { padding: 20px 24px; gap: 20px; }
+.desktopControls { margin: 0 0 22px; border-bottom: 1px solid var(--desktop-border); padding: 0 0 20px; }
+.desktopToolbar, .desktopInputGroup, .desktopActions { display: flex; align-items: center; gap: 8px; }
+.desktopToolbar { justify-content: space-between; margin-bottom: 12px; }
+.desktopToolbar h2 { margin: 0; font-size: 18px; }
+.desktopRuntime { font-size: 13px; color: #a5b7c7; }
+.desktopSession { display: grid; grid-template-columns: minmax(220px, 2fr) minmax(130px, 1fr) minmax(170px, 1fr) auto; gap: 14px; align-items: end; }
+.desktopControls label { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: 13px; color: #c9d2db; }
+.desktopControls input, .desktopControls select { width: 100%; min-width: 0; height: 38px; padding: 8px 10px; background: #172029; color: #eef2f5; border: 1px solid #45515d; border-radius: 5px; font: inherit; }
+.desktopControls input:focus, .desktopControls select:focus { outline: 2px solid #41c6cd; outline-offset: 1px; }
+.desktopInputGroup { min-width: 0; }
+.desktopInputGroup input { flex: 1; }
+.desktopControls .primaryButton { min-height: 38px; white-space: nowrap; }
+.desktopControls .textButton svg { width: 18px; height: 18px; flex-shrink: 0; }
+.desktopError, .desktopNotice { margin: 10px 0 0; font-size: 13px; overflow-wrap: anywhere; }
+.desktopError { color: #ffaaa0; }
+.desktopNotice, .desktopControls .muted { color: #aab6c0; }
+.desktopSettings { padding: 20px 0 0; }
+.desktopSettingsColumns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.desktopSettingsColumns section { min-width: 0; }
+.desktopSettingsColumns h3 { font-size: 15px; margin: 0 0 14px; }
+.desktopSettingsColumns label { margin-bottom: 12px; }
+@media (max-width: 980px) { .desktopSession { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 680px) { .desktopSession, .desktopSettingsColumns { grid-template-columns: 1fr; } }

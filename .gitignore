@@ -9,3 +9,10 @@ web-app/playwright-report/
 web-app/test-results/
 web-app/.vite/
 web-app/*.tsbuildinfo
+web-app/src-tauri/target/
+web-app/src-tauri/engine/
+web-app/src-tauri/gen/
+web-app/src-tauri/icons/android/
+web-app/src-tauri/icons/ios/
+web-app/src-tauri/icons/Square*.png
+web-app/src-tauri/icons/StoreLogo.png

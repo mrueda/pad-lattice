@@ -279,6 +279,33 @@ class BrowserSurfaceServer:
         self._thread = None
         self._server = None
 
+    def set_lan(self, host: str | None) -> None:
+        """Change the optional LAN listener without restarting agent sessions."""
+        if host is not None:
+            address = ipaddress.ip_address(host)
+            if address.version != 4 or not address.is_private or address.is_loopback or address.is_unspecified:
+                raise ValueError("Choose this computer's private IPv4 address.")
+        if host == self.host and self._lan_server is not None:
+            return
+        replacement = None
+        if host is not None:
+            replacement = serve(self._handle_connection, host, self.actual_port,
+                                process_request=self._process_request, server_header=None,
+                                compression=None, close_timeout=1, max_size=16 * 1024, max_queue=8)
+        self.revoke_remote()
+        if self._lan_server is not None:
+            self._lan_server.shutdown()
+        if self._lan_thread is not None:
+            self._lan_thread.join(timeout=5)
+        self._lan_server = replacement
+        self._lan_thread = None
+        self.host = host or "127.0.0.1"
+        self._advertised_base_url = f"http://{host}:{self.actual_port}" if host else None
+        if replacement is not None:
+            self._lan_thread = threading.Thread(target=replacement.serve_forever, daemon=True,
+                                                name="pad-lattice-web-lan")
+            self._lan_thread.start()
+
     def _serve(self) -> None:
         try:
             self._server = serve(

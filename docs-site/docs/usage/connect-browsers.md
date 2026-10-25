@@ -62,7 +62,7 @@ On the remote device, either:
 - scan the QR code shown on the local administrator page; or
 - open the printed `Phone/tablet` address and enter the six-digit PIN.
 
-The screen should change to **Connected to Codex**. Each QR code or PIN can be
+The screen should change to **Pad connected**. Each QR code or PIN can be
 used once and expires after five minutes.
 
 ### 4. Start Codex through Pad-Lattice
@@ -98,7 +98,7 @@ For each additional phone, tablet, or laptop:
 
 1. On the local administrator page, choose **New code**.
 2. Scan the new QR code or enter its new PIN on that device.
-3. Wait for **Connected to Codex** before pairing the next device.
+3. Wait for **Pad connected** before pairing the next device.
 
 A code consumed by the first device cannot pair the second one. Generate one
 fresh code per device.
@@ -204,7 +204,7 @@ Wi-Fi. LAN traffic is authenticated but not encrypted.
 
 | Screen | Meaning |
 | --- | --- |
-| **Connected to Codex** | Browser pairing and live synchronization work. |
+| **Pad connected** | Browser pairing and live synchronization work. |
 | **No active agents** | Pairing works; start Codex with `pad-lattice codex`. |
 | An Agent Scene such as `work` | That Codex session is registered. |
 | A lit Approve or Reject action | The selected session has a live permission request. |

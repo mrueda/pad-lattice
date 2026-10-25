@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Pad-Lattice",
+  "version": "0.1.0",
+  "identifier": "com.mrueda.pad-lattice",
+  "build": {
+    "beforeDevCommand": "npm run dev -- --host 127.0.0.1 --port 1420",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://127.0.0.1:1420",
+    "frontendDist": "../../src/pad_lattice/web_dist/play"
+  },
+  "app": {
+    "windows": [{"label": "main", "title": "Pad-Lattice", "width": 1180, "height": 860, "minWidth": 760, "minHeight": 620}],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "resources": {"engine": "engine"},
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "category": "DeveloperTool",
+    "shortDescription": "See and control Codex sessions from a virtual pad or MIDI controller",
+    "copyright": "Copyright 2026 Manuel Rueda",
+    "license": "Apache-2.0"
+  }
+}

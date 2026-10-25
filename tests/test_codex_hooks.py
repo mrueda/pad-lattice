@@ -52,6 +52,7 @@ class CodexHookTest(TestCase):
             "PermissionRequest": AgentState.WAITING_FOR_APPROVAL,
             "PostToolUse": AgentState.RUNNING,
             "Stop": AgentState.SUCCESS,
+            "Interrupt": AgentState.CANCELLED,
         }
 
         for event_name, state in expected.items():
@@ -399,7 +400,8 @@ class CodexHookConfigurationTest(TestCase):
             self.assertTrue(override.startswith(f"hooks.{event_name}="))
             self.assertIn('type="command"', override)
             self.assertIn(json.dumps(command), override)
-            expected_timeout = 65 if event_name == "PermissionRequest" else 5
+            expected_timeout = (65 if event_name == "PermissionRequest" else
+                                1 if event_name in {"SessionEnd", "Interrupt"} else 5)
             self.assertTrue(override.endswith(f"timeout={expected_timeout}}}]}}]"))
 
     def test_rejects_nonpositive_session_approval_timeout(self) -> None:

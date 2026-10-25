@@ -22,6 +22,7 @@ from pad_lattice.protocol import (
     parse_action_event,
     request_message,
     send_message,
+    session_end_message,
     state_message,
     subscribe_actions_message,
 )
@@ -32,6 +33,8 @@ HOOK_EVENTS = (
     "PermissionRequest",
     "PostToolUse",
     "Stop",
+    "Interrupt",
+    "SessionEnd",
 )
 DEFAULT_APPROVAL_TIMEOUT = 60.0
 HOOK_TIMEOUT_MARGIN = 5
@@ -50,6 +53,7 @@ def state_for_codex_hook(event: dict[str, Any]) -> AgentState | None:
         "PermissionRequest": AgentState.WAITING_FOR_APPROVAL,
         "PostToolUse": AgentState.RUNNING,
         "Stop": AgentState.SUCCESS,
+        "Interrupt": AgentState.CANCELLED,
     }.get(event.get("hook_event_name"))
 
 
@@ -78,6 +82,12 @@ def run_codex_hook(
         socket_path = os.environ.get("PAD_LATTICE_SOCKET", socket_path)
         state = state_for_codex_hook(event)
         identity = _event_identity(event)
+        if event.get("hook_event_name") == "SessionEnd" and identity is not None:
+            try:
+                sender(socket_path, session_end_message(identity))
+            except (ConnectionError, OSError, ProtocolError):
+                pass
+            return 0
         if state is not None and identity is not None:
             assignment = _report_state(
                 socket_path,
@@ -224,7 +234,7 @@ def resolve_hook_command(
     if approval_timeout <= 0:
         raise ValueError("approval_timeout must be positive")
 
-    invocation = argv0 or sys.argv[0]
+    invocation = argv0 or (sys.executable if getattr(sys, "frozen", False) else sys.argv[0])
     candidate = Path(invocation).expanduser()
     if candidate.is_file():
         executable = candidate.resolve()
@@ -265,7 +275,7 @@ def codex_hook_config_overrides(
         timeout = (
             math.ceil(approval_timeout) + HOOK_TIMEOUT_MARGIN
             if event_name == "PermissionRequest"
-            else 5
+            else 1 if event_name in {"Interrupt", "SessionEnd"} else 5
         )
         overrides.append(
             f"hooks.{event_name}="

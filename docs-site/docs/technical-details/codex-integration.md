@@ -12,7 +12,7 @@ Start Codex through the Pad-Lattice launcher:
 pad-lattice codex --label implementation
 ```
 
-The launcher passes five lifecycle handlers to that child Codex process using
+The launcher passes seven lifecycle handlers to that child Codex process using
 session configuration. It does **not** modify `~/.codex/hooks.json`, so ordinary
 `codex` sessions neither run Pad-Lattice hooks nor ask users to review them.
 Run `/hooks` in the first Pad-Lattice-launched session to review and explicitly
@@ -25,6 +25,8 @@ trust the commands. A materially changed definition requires another review.
 | `PermissionRequest` | `waiting_for_approval`; wait for a surface decision |
 | `PostToolUse` | `running` |
 | `Stop` | `success`, then `waiting_for_reply` |
+| `Interrupt` | `cancelled` |
+| `SessionEnd` | Remove the session |
 
 The hook forwards `session_id` as the stable agent identity. Working directory,
 model, and label are display metadata, never identity keys. Simultaneous

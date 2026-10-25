@@ -52,6 +52,10 @@ Pad-Lattice is alpha software.
 
 ## Choose a Surface
 
+A [desktop preview](https://mrueda.github.io/pad-lattice/docs/usage/desktop) is
+being prepared for Linux and macOS. It bundles Python and adds a session
+launcher, MIDI settings, and phone pairing around the same virtual pad.
+
 | Surface | Command | Result |
 | --- | --- | --- |
 | Public browser | [Open `/play/`](https://mrueda.github.io/pad-lattice/play/) | Demo, protocol sandbox, and audiovisual Show; no installation. |

@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
+import {surfaceSocket, type SurfaceSocket} from './desktop';
 import type {
   AuthenticatedMessage,
   ControlAction,
@@ -46,7 +47,7 @@ export function useLiveSurface(): LiveSurfaceState {
   const [admin, setAdmin] = useState(false);
   const [lanEnabled, setLanEnabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const socketRef = useRef<WebSocket | null>(null);
+  const socketRef = useRef<SurfaceSocket | null>(null);
   const retryRef = useRef<number | null>(null);
   const credentialRef = useRef<string | null>(initialCredential());
   const authenticatedRef = useRef(false);
@@ -65,7 +66,7 @@ export function useLiveSurface(): LiveSurfaceState {
     authenticatedRef.current = false;
     authenticationRejectedRef.current = false;
     const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const socket = new WebSocket(`${scheme}://${window.location.host}/ws`);
+    const socket = surfaceSocket(`${scheme}://${window.location.host}/ws`);
     socketRef.current = socket;
     socket.onopen = () => {
       const credentialValue = credentialRef.current;

@@ -11,6 +11,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Use',
       items: [
+        {type: 'doc', id: 'usage/desktop', label: 'Desktop App'},
         {
           type: 'doc',
           id: 'usage/quickstart',
@@ -83,6 +84,7 @@ const sidebars: SidebarsConfig = {
           type: 'category',
           label: 'Integrations & Surfaces',
           items: [
+            {type: 'doc', id: 'technical-details/desktop', label: 'Desktop App'},
             {
               type: 'doc',
               id: 'technical-details/codex-integration',

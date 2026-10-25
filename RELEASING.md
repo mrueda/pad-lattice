@@ -19,7 +19,20 @@ credential and publish them.
 Never reuse a published version, move a published tag, or recreate a tag to
 change its source revision.
 
-## One-time setup
+## Desktop preview builds
+
+**Build desktop installers** is manually dispatched with `main` for an
+unreleased preview or an existing annotated version tag for a release build.
+It builds Linux x64/ARM64 and macOS Intel/Apple Silicon packages, verifies the
+bundled engine and native window, and uploads installers with SHA-256 checksums
+and their source revision as workflow artifacts. It does not publish a GitHub
+Release or trigger PyPI. Public installer hosting and signing/notarization must
+be settled before advertising a desktop release.
+
+All desktop metadata must match `src/pad_lattice/__init__.py`; run
+`python scripts/check_desktop_versions.py` before building.
+
+## One-time PyPI setup
 
 Create the `pypi` environment under the repository's GitHub
 **Settings > Environments** and require manual approval.

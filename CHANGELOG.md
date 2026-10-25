@@ -6,6 +6,17 @@ versions follow [PEP 440](https://peps.python.org/pep-0440/).
 
 ## Unreleased
 
+### Added
+
+- Desktop preview for Linux and macOS with bundled Python, the shared virtual
+  pad, native-terminal session launching, MIDI selection, and phone pairing.
+- Manual desktop installer builds and packaged-engine/native-window checks.
+
+### Changed
+
+- Updated the Codex integration for CLI 0.164.0, including interruption and
+  session-end hooks, executable discovery, and desktop compatibility checks.
+
 ## 0.1.0 - 2026-07-20
 
 ### Added

@@ -43,12 +43,15 @@ import type {
   VisualFrame,
 } from './types';
 import {VirtualSurface} from './VirtualSurface';
+import {isDesktop, openProjectLink} from './desktop';
+import {DesktopControls} from './DesktopControls';
 
 type AppMode = 'loading' | 'demo' | 'live';
 
 export default function App() {
   const [mode, setMode] = useState<AppMode>('loading');
   useEffect(() => {
+    if (isDesktop()) { setMode('live'); return; }
     fetch('./config.json', {cache: 'no-store'})
       .then((response) => response.json())
       .then((config: {mode?: string; protocol?: number}) => {
@@ -261,6 +264,7 @@ function LiveApp() {
     <PageFrame
       modeLabel="LIVE CODEX"
       connected={live.connection === 'connected'}>
+      {isDesktop() ? <DesktopControls /> : null}
       <div className="workspace">
         <section className={`surfaceWorkspace ${performance ? 'performanceWorkspace' : ''}`}>
           <VirtualSurface
@@ -421,12 +425,19 @@ function PageFrame({
   modeLabel: string;
   connected: boolean;
 }) {
+  const [linkError, setLinkError] = useState('');
+  const openLink = (event: React.MouseEvent, destination: 'docs' | 'github') => {
+    if (!isDesktop()) return;
+    event.preventDefault();
+    setLinkError('');
+    void openProjectLink(destination).catch((error: unknown) => setLinkError(String(error)));
+  };
   return (
-    <main className="appPage">
+    <main className={`appPage${isDesktop() ? ' desktopApp' : ''}`}>
       <header className="appHeader">
-        <a className="brand" href="../" target="_top">
+        <a className="brand" href={isDesktop() ? 'https://mrueda.github.io/pad-lattice/' : '../'} target={isDesktop() ? '_blank' : '_top'} onClick={(event) => openLink(event, 'docs')}>
           <img src="./pad-lattice-logo.svg" alt="" />
-          <span><strong>Pad-Lattice</strong><small>Virtual Surface</small></span>
+          <span><strong>Pad-Lattice</strong><small>{isDesktop() ? 'Desktop' : 'Virtual Surface'}</small></span>
         </a>
         <div className="headerStatus">
           <span className={connected ? 'connectionDot connected' : 'connectionDot'} />
@@ -434,9 +445,10 @@ function PageFrame({
         </div>
       </header>
       {children}
+      {linkError ? <p className="desktopError" role="alert">{linkError}</p> : null}
       <footer className="appFooter">
         <span>A tactile visual language between people and AI agents.</span>
-        <a href="https://github.com/mrueda/pad-lattice" target="_blank" rel="noreferrer">
+        <a href="https://github.com/mrueda/pad-lattice" target="_blank" rel="noreferrer" onClick={(event) => openLink(event, 'github')}>
           GitHub <ExternalLink aria-hidden="true" />
         </a>
       </footer>
@@ -510,7 +522,7 @@ function ConnectionSummary({state, error}: {state: string; error: string | null}
     <section className={`connectionSummary ${online ? 'online' : ''}`} aria-live="polite">
       {online ? <Wifi aria-hidden="true" /> : <WifiOff aria-hidden="true" />}
       <span>
-        <strong>{online ? 'Connected to Codex' : state.replace('_', ' ')}</strong>
+        <strong>{online ? 'Pad connected' : state.replace('_', ' ')}</strong>
         <small>{error ?? (online ? 'State and actions are synchronized.' : 'Waiting for the local bridge.')}</small>
       </span>
     </section>

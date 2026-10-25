@@ -26,6 +26,9 @@ Changing that grammar is a protocol decision, not cosmetic restyling.
 
 ## Start Without Hardware
 
+The [desktop preview](./usage/desktop.md) combines the virtual pad, Codex session
+launcher, and device settings in one application with Python bundled.
+
 Open the [public virtual pad](pathname:///play/) to experience a simulated multi-agent
 approval and retry flow, explore every protocol state in the sandbox, or play
 the full-surface audiovisual Show.
