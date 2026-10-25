@@ -1,127 +1,66 @@
 # Quick Start
 
-## Try It Now
+**The desktop app is the recommended way to use Pad-Lattice interactively.**
+It connects to your open Codex CLI conversations and gives them a shared
+visual control surface. No MIDI controller is required.
 
-Open the [virtual pad](pathname:///play/) on any modern desktop, phone, or
-tablet. **Demo** walks through selecting and approving one of three simulated
-agents. **Sandbox** lets you display every Visual Protocol 1 state, and
-**Show** plays the audiovisual performance.
+## 1. Install Desktop
 
-No account, MIDI hardware, API key, or installation is required. The public
-pad is a simulation and does not connect to an agent.
+Follow [Install](./install.md) to get the preview build for Linux or macOS.
+Python and the Pad-Lattice engine are bundled; Codex CLI must already be
+installed and authenticated on the same computer.
 
-## Install
+Desktop is currently a preview, separate from the published PyPI CLI.
 
-Install Pad-Lattice as an isolated command:
+## 2. Connect a Conversation
 
-```bash
-pipx install pad-lattice
-```
+1. Open Codex CLI in your project as you normally do.
+2. Open **Pad-Lattice**. Its local service starts automatically.
+3. Find the chat under **Open Codex conversations** and select **Connect**.
+4. Note its **Scene number and color**. Use the same process for other open chats.
 
-This installs from PyPI without modifying the system Python. Inside an active
-virtual environment, use `python -m pip install pad-lattice` instead.
+You do not need to restart Codex, launch another terminal from Pad-Lattice, or
+install hooks for this connection. Names and working folders come from Codex.
+Use **Refresh chats** if a newly opened conversation is missing.
 
-Confirm the installation:
+## 3. Use the Pad
 
-```bash
-pad-lattice --version
-pad-lattice doctor
-```
+The right-side numbered buttons select conversations. The large symbol shows
+the selected conversation's state. When Codex asks for permission:
 
-The normal package includes physical MIDI support, the local browser bridge,
-and QR pairing.
+1. Read the request in the Codex terminal.
+2. Select that chat's Scene on the pad.
+3. Press the lit green **Approve** or red **Reject** control.
 
-## Control Real Codex in a Browser
+The decision applies only to the selected request. **Stop** is available for a
+known running turn. Ordinary prompts and replies stay in Codex.
 
-Start the virtual surface:
+Use **Maximize pad** to give the pad the window. The selected chat's name stays
+below it; press Escape or **Restore workspace** to return.
+See [Control Codex](./control-codex.md) for the symbols and action limits.
 
-```bash
-pad-lattice web
-```
+## 4. Add a Controller or Another Screen
 
-Pad-Lattice prints and opens a tokenized loopback administrator URL. Leave this
-process running; it is both the agent daemon and local browser bridge. Treat
-that URL as a credential and do not share it.
+- **Launchpad:** connect it over USB, then use **Settings > MIDI controller > Connect**.
+- **Phone or tablet:** use **Settings > Phone and tablet** to enable pairing on
+  your trusted private network. Follow [Connect Screens](./connect-browsers.md).
 
-Launch an integrated session:
+Every connected surface shares the same selected conversation and actions.
+The desktop app manages the service; do not start a second daemon alongside it.
 
-```bash
-pad-lattice codex --label implementation
-```
+## Try It Without Codex
 
-On the first Pad-Lattice-launched session, run `/hooks` to review and trust the
-scoped commands. Prompt, running, approval, and completion states then update
-automatically. Ordinary `codex` sessions do not load these hooks or show their
-review prompt.
+Disconnect real conversations, then choose **Explore > Demo** for guided
+interaction or **Explore > Show** for the audiovisual story. Both work without
+MIDI hardware. **Sound** is optional; **Back to live pad** ends the simulation.
 
-When Codex requests permission, select its Agent Scene and tap the lit Approve
-or Reject control. A decision applies only to the selected session and current
-request. After 60 seconds without a surface decision, Codex restores its normal
-keyboard prompt.
+For a no-installation preview, [try the public pad](pathname:///play/).
+It is a simulation and cannot control your agents.
 
-Continue with [Control Codex](./control-codex.md) for resuming conversations,
-running several agents, and understanding what each surface state means.
+## Prefer the Terminal?
 
-## Phone, Tablet, or Laptop
+The [CLI Setup](./cli.md) remains available from PyPI for terminal-based and
+headless use. It does not require the desktop app.
 
-Expose the virtual surface to the trusted local network:
-
-```bash
-pad-lattice web --lan
-```
-
-The local admin page shows a one-use QR code and six-digit PIN that expire in
-five minutes. Scan the QR or open the printed LAN URL and enter the PIN. The
-paired device can reconnect until the daemon stops.
-
-See [Connect a Phone, Tablet, or Laptop](./connect-browsers.md) for one or more
-devices, network troubleshooting, and Parallels Desktop. LAN mode is for a
-network you trust; never expose it through a router or use it on public Wi-Fi.
-
-## Physical Launchpad
-
-Discover attached hardware and run the supported-device demo:
-
-```bash
-pad-lattice ports
-pad-lattice devices
-pad-lattice demo
-```
-
-Demo and Show can also run without MIDI:
-
-```bash
-pad-lattice demo --surface web
-pad-lattice show --surface web
-```
-
-The tokenized local page opens first. Choose **Start Demo** or **Start Show** there to
-start. Its Sound control is muted by default and belongs only to that browser.
-Use `--surface both` to keep a Launchpad and every browser synchronized.
-
-Run normal physical control by itself:
-
-```bash
-pad-lattice daemon --no-greeting
-```
-
-Mirror the same state and actions in browsers at the same time:
-
-```bash
-pad-lattice daemon --web --no-greeting
-```
-
-Only the daemon owns MIDI ports. Every surface feeds the same selected-session
-action router, so a tap and a physical press have identical semantics.
-
-## Where Next
-
-| I want to... | Continue with... |
-| --- | --- |
-| Resume or run several Codex sessions | [Control Codex](./control-codex.md) |
-| Connect several browser devices | [Connect a Phone, Tablet, or Laptop](./connect-browsers.md) |
-| Learn the colors and symbols | [Visual Protocol](../technical-details/visual-language.md) |
-| Enable sounds | [Audio Feedback](./audio-feedback.md) |
-| Play the audiovisual story | [Visual Show](./visual-show.md) |
-| Test experimental hardware | [Device Testing](../technical-details/device-testing.md) |
-| Work on Pad-Lattice itself | [Developer Guide](../technical-details/developer-guide.md) |
+Continue with [Desktop App](./desktop.md) for preferences and connection
+management, or [Troubleshooting](./troubleshooting.md) if something is missing.

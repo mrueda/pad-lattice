@@ -70,6 +70,11 @@ const config: Config = {
       },
       items: [
         {
+          to: '/docs/usage/install',
+          label: 'Desktop App',
+          position: 'left',
+        },
+        {
           href: 'pathname:///play/',
           label: 'Try the Pad',
           position: 'left',
@@ -86,16 +91,7 @@ const config: Config = {
           label: 'Quick Start',
           position: 'left',
         },
-        {
-          to: '/docs/usage/connect-browsers',
-          label: 'Connect Screens',
-          position: 'left',
-        },
-        {
-          to: '/docs/usage/control-codex',
-          label: 'Control Codex',
-          position: 'left',
-        },
+        {to: '/docs/usage/cli', label: 'CLI', position: 'left'},
         {
           href: 'https://github.com/mrueda/pad-lattice',
           label: 'GitHub',
@@ -109,6 +105,7 @@ const config: Config = {
         {
           title: 'Docs',
           items: [
+            {label: 'Install Desktop', to: '/docs/usage/install'},
             {
               label: 'Virtual Pad',
               href: 'pathname:///play/',

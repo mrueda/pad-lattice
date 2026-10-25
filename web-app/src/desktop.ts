@@ -5,9 +5,9 @@ export async function desktopRequest<T>(method: string, params: object = {}): Pr
   return invoke<T>('desktop_request', {method, params});
 }
 
-export async function choosePath(directory: boolean): Promise<string | null> {
+export async function choosePath(): Promise<string | null> {
   const {invoke} = await import('@tauri-apps/api/core');
-  return invoke<string | null>('choose_path', {directory});
+  return invoke<string | null>('choose_path');
 }
 
 export async function openProjectLink(destination: 'docs' | 'github'): Promise<void> {

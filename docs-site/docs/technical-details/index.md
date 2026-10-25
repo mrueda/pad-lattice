@@ -8,6 +8,7 @@ Choose the path that matches the work in front of you.
 
 | Goal | Read in this order |
 | --- | --- |
+| Understand Desktop and live chat connections | [Desktop Architecture](./desktop.md) -> [Multi-Agent Design](./multi-agent-design.md) -> [Security Model](./security-model.md) |
 | Understand the complete system | [Architecture](./architecture.md) -> [Multi-Agent Design](./multi-agent-design.md) -> [Visual Protocol](./visual-language.md) |
 | Integrate an agent | [Architecture](./architecture.md) -> [Codex Integration](./codex-integration.md) -> [Socket Protocol](../reference/socket-protocol.md) |
 | Understand the virtual controller | [Browser Surface](./virtual-surface.md) -> [Security Model](./security-model.md) |
@@ -22,8 +23,8 @@ plane, explicit agent identity, targeted actions, and a versioned visual
 language.
 
 **Integrations & Surfaces** follows information across the system boundary:
-Codex lifecycle events enter through a scoped adapter, while authenticated
-browsers render and return semantic surface events.
+Codex events arrive through desktop app-server attachments or CLI adapters,
+while desktop and authenticated browser surfaces render state and return actions.
 
 **Hardware** covers the data-driven controller layer. Device profiles map the
 common visual contract to MIDI addresses and colors; the testing guide proves

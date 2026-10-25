@@ -234,7 +234,7 @@ def resolve_hook_command(
     if approval_timeout <= 0:
         raise ValueError("approval_timeout must be positive")
 
-    invocation = argv0 or (sys.executable if getattr(sys, "frozen", False) else sys.argv[0])
+    invocation = argv0 or sys.argv[0]
     candidate = Path(invocation).expanduser()
     if candidate.is_file():
         executable = candidate.resolve()

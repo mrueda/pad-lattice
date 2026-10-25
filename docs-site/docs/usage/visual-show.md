@@ -1,8 +1,18 @@
 # Visual Show
 
-`pad-lattice show` turns a physical or virtual surface into a small stage. The reference
+Show turns a physical or virtual surface into a small stage. The reference
 performance, **A Spark Becomes a Constellation**, is an emotional visual story
 rather than a tour of Pad-Lattice features.
+
+## Play in Desktop
+
+Disconnect real conversations, then choose **Explore > Show**. Enable **Sound**
+for the score. A Launchpad connected through Settings and paired browser surfaces
+follow the same performance. Use **Back to live pad** to stop and return.
+
+No hardware is needed. You can also [try Show in the public pad](pathname:///play/).
+
+## Play from the CLI
 
 ```bash
 pad-lattice show --surface midi --audio
@@ -17,8 +27,8 @@ administrator page and wait for that page to choose **Show**. A normal live
 administrator page without stopping the daemon.
 
 Every connected surface receives the same cue. Paired browsers can watch but
-cannot start or stop playback. A real agent waiting for a reply or approval
-preempts Show and restores operational state immediately.
+cannot start or stop playback. Any connected real agent blocks Show; connecting
+one during playback restores operational state immediately.
 
 ## The Story
 

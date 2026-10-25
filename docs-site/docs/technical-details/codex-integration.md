@@ -1,8 +1,17 @@
 # Codex Integration
 
-Pad-Lattice integrates with Codex CLI through two documented event paths.
-Interactive terminals use lifecycle hooks; non-interactive tasks use the
-`codex exec --json` event stream. Neither path requires a graphical UI.
+Pad-Lattice has three Codex CLI integration paths:
+
+| Interface | Connection | Controls |
+| --- | --- | --- |
+| Desktop (recommended for interactive use) | Existing local app-server thread | Single-request Approve/Reject and turn-specific Stop |
+| Python CLI | Scoped lifecycle hooks | PermissionRequest Approve/Reject |
+| Non-interactive CLI | `codex exec --json` stream | Stop the selected task |
+
+Desktop connections need no hooks or terminal restart. See
+[Desktop Architecture](./desktop.md#conversation-lifetime) for discovery,
+attachment, and request routing. The rest of this page covers the independent
+CLI paths, which work without the desktop app.
 
 ## Launch with Scoped Hooks
 
@@ -90,21 +99,20 @@ scrape terminals or inject synthetic keys.
 
 ## Plain Codex Sessions
 
-Plain `codex` and `codex resume` sessions intentionally remain outside
-Pad-Lattice. They do not report state, accept surface decisions, or show a
-Pad-Lattice hook-review prompt. Start or resume through `pad-lattice codex`
-when a session should join the control surface:
+Plain `codex` and `codex resume` sessions do not load Pad-Lattice hooks.
+Desktop can connect them explicitly through the app-server. For CLI-only
+surface control, start or resume through `pad-lattice codex`:
 
 ```bash
 pad-lattice codex --label docs -- resume <SESSION_ID>
 ```
 
-## Interactive Action Boundary
+## Hook Action Boundary
 
 `PermissionRequest` provides a supported decision point for Approve and
 Reject. Interactive Stop, Retry, and ordinary yes/no chat replies are not
-permission decisions and remain unavailable. Supporting those actions
-requires a broader Codex app-server or equivalent control integration.
+permission decisions and remain unavailable through hooks. Desktop's app-server
+connection provides turn-specific Stop, but not Retry or ordinary replies.
 
 Hooks do not expose individual keystrokes, so live `user_typing` state is also
 unavailable.

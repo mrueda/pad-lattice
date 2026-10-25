@@ -9,14 +9,15 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Use',
+      label: 'Get Started',
       items: [
-        {type: 'doc', id: 'usage/desktop', label: 'Desktop App'},
+        {type: 'doc', id: 'usage/install', label: 'Install'},
         {
           type: 'doc',
           id: 'usage/quickstart',
           label: 'Quick Start',
         },
+        {type: 'doc', id: 'usage/desktop', label: 'Desktop App'},
         {
           type: 'doc',
           id: 'usage/connect-browsers',
@@ -33,6 +34,11 @@ const sidebars: SidebarsConfig = {
           label: 'Troubleshooting',
         },
       ],
+    },
+    {
+      type: 'category',
+      label: 'Command Line',
+      items: [{type: 'doc', id: 'usage/cli', label: 'CLI Setup'}],
     },
     {
       type: 'category',

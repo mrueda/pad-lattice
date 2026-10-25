@@ -1,7 +1,48 @@
 # Troubleshooting
 
-Most problems are a socket mismatch, occupied browser port, expired pairing
-code, profile selection, or MIDI ownership.
+Start with the checks for your interface. **Desktop users do not need to
+install the Python CLI or configure hooks** to connect open chats.
+
+## Desktop Does Not Find My Chat
+
+- Codex CLI must be running on the same computer and operating-system account.
+  A Linux VM cannot discover chats on its Mac host.
+- Select **Refresh chats**. The list shows loaded CLI conversations, not saved history.
+- Resume saved chats in Codex first, then connect them in Pad-Lattice.
+- Check **Settings > Codex** if the executable is not detected.
+
+## Desktop Shows a Chat I Closed
+
+Refresh removes ended Pad-Lattice attachments and conversations Codex has
+unloaded. Codex can retain a thread in memory after its terminal closes,
+so the list is not an exact inventory of terminal windows.
+Use **Disconnect** to release a connected Scene without deleting Codex history.
+
+## Desktop Controls Are Dark
+
+Select the correct numbered Scene. Controls light only for supported live
+actions: a single pending approval request or a known running turn.
+Ordinary questions, multiple simultaneous approvals, and special permission
+requests must be handled in Codex. See [Control Codex](./control-codex.md).
+
+## Desktop Connection or Sound Problems
+
+- Close any separately running Pad-Lattice daemon before starting Desktop.
+- **Refresh chats** updates the chat list. **Settings > Reload interface**
+  reloads the window without disconnecting conversations.
+- In **Explore > Demo** or **Explore > Show**, enable **Sound** and check the
+  computer's output device. In a VM, check the guest's audio output too.
+- For MIDI, use **Settings > MIDI controller** to refresh ports and reconnect.
+  The controller must be attached to the same computer or VM, not occupied by a DAW.
+- For phone pairing, follow [Connect Screens](./connect-browsers.md).
+
+## CLI and Hardware Diagnostics
+
+The commands below apply to the independent CLI installation. Do not run a
+second daemon alongside Desktop.
+
+<details>
+<summary>Open CLI troubleshooting</summary>
 
 Start with one read-only report:
 
@@ -190,7 +231,7 @@ pad-lattice end-session --backend codex --session-id SESSION_ID
 ```
 
 Closing a `pad-lattice codex` launcher removes its leased Scene immediately.
-Plain `codex` sessions do not register with Pad-Lattice.
+Plain `codex` sessions do not register automatically; Desktop can connect them explicitly.
 
 ## Approve or Reject Does Nothing
 
@@ -274,3 +315,5 @@ pad-lattice profile test \
 The documentation workflow runs on demand. In the repository Actions tab,
 select **Documentation** and choose **Run workflow**. It builds the site,
 checks the search index, and deploys the Pages artifact.
+
+</details>

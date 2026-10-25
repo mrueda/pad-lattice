@@ -463,7 +463,7 @@ class DaemonTest(TestCase):
         self.assertIsNone(daemon.experience.kind)
         self.assertEqual(
             daemon.surface.experiences[-1].reason,
-            "agent_attention_required",
+            "agents_connected",
         )
         self.assertIs(
             daemon.surface.views[-1].selected_state,
@@ -482,7 +482,29 @@ class DaemonTest(TestCase):
 
         self.assertIsNone(daemon.experience.kind)
         self.assertEqual(daemon.surface.experiences[-1].status, "blocked")
-        self.assertIn("waiting", daemon.surface.experiences[-1].reason)
+        self.assertIn("Disconnect", daemon.surface.experiences[-1].reason)
+
+    def test_connected_agents_block_experiences_in_every_state(self) -> None:
+        for state in AgentState:
+            for kind in ("demo", "show"):
+                with self.subTest(state=state, kind=kind):
+                    daemon = self.daemon()
+                    self.update_agent(daemon, AgentIdentity("codex", "attached"), state)
+                    daemon._handle_surface_event(ExperienceRequested(kind))
+                    self.assertFalse(daemon.experience.active)
+                    self.assertEqual(daemon.surface.experiences[-1].status, "blocked")
+
+    def test_running_agent_preempts_demo_and_disconnect_reenables_it(self) -> None:
+        daemon = self.daemon()
+        daemon._handle_surface_event(ExperienceRequested("demo"))
+        client = Client(FakeSocket())
+        agent = {"backend": "codex", "session_id": "attached"}
+        daemon.handle_message(client, wire({"type": "state", "agent": agent, "state": "running"}))
+        self.assertFalse(daemon.experience.active)
+        self.assertEqual(daemon.surface.experiences[-1].reason, "agents_connected")
+        daemon.handle_message(client, wire({"type": "session_end", "agent": agent}))
+        daemon._handle_surface_event(ExperienceRequested("demo"))
+        self.assertTrue(daemon.experience.active)
 
     def test_daemon_audio_feedback_enables_the_host_show_score(self) -> None:
         daemon = self.daemon(audio_feedback=FakeAudioFeedback())

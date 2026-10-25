@@ -5,16 +5,16 @@ import styles from './index.module.css';
 
 const featureLinks = [
   {
+    label: 'Recommended',
+    title: 'Start with Desktop',
+    text: 'Connect open Codex CLI chats in one app. Python is bundled; no MIDI controller is required. Preview builds for Linux and macOS.',
+    to: '/docs/usage/install',
+  },
+  {
     label: 'No hardware needed',
     title: 'Try the virtual pad',
     text: 'Explore a guided multi-agent story and the complete visual vocabulary directly in your browser.',
     to: 'pathname:///play/',
-  },
-  {
-    label: 'Operation',
-    title: 'Use with Codex',
-    text: 'Connect real Codex CLI sessions to a browser, phone, tablet, Launchpad, or all of them at once.',
-    to: '/docs/usage/control-codex',
   },
   {
     label: 'Everyday setup',
@@ -66,7 +66,7 @@ export default function Home() {
   return (
     <Layout
       title="Human control surfaces for AI agents"
-      description="Monitor and direct multiple AI agents from Novation Launchpads, browsers, phones, and tablets.">
+      description="Connect open Codex CLI conversations with the Pad-Lattice desktop app. Use the virtual pad, a Launchpad, or paired phones and tablets.">
       <main className={styles.page}>
         <section className={styles.hero}>
           <div className={styles.heroGrid}>
@@ -76,16 +76,17 @@ export default function Home() {
               <p className={styles.lede}>
                 <strong>A tactile visual language between people and AI agents.</strong>{' '}
                 See which session is working, waiting, requesting approval, or
-                finished, then act from a <strong>Novation Launchpad</strong>,
-                browser, phone, or tablet. Pad-Lattice integrates locally with{' '}
-                <strong>Codex CLI</strong>.
+                finished. Connect your open <strong>Codex CLI</strong> chats in the{' '}
+                <strong>desktop app</strong>, then act from its pad, a{' '}
+                <strong>Novation Launchpad</strong>, or a paired phone or tablet.
+                No MIDI controller is required.
               </p>
               <div className={styles.actions}>
-                <Link className="button button--primary button--lg" to="pathname:///play/" target="_self">
-                  Try the virtual pad
+                <Link className="button button--primary button--lg" to="/docs/usage/install">
+                  Get Desktop Preview
                 </Link>
-                <Link className="button button--secondary button--lg" to="/docs/usage/quickstart">
-                  Quick start
+                <Link className="button button--secondary button--lg" to="pathname:///play/" target="_self">
+                  Try the simulation
                 </Link>
               </div>
             </div>

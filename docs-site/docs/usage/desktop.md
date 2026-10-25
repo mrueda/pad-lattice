@@ -7,6 +7,9 @@ virtual pad or a connected Launchpad.** Codex continues to run in your terminal.
 Colors identify sessions; symbols show their state. Select a session, then use
 its illuminated Approve or Reject control when a permission request arrives.
 
+**Desktop is the recommended interface for interactive use.**
+Start with [Install](./install.md) and [Quick Start](./quickstart.md).
+
 You do not need a MIDI controller. The desktop pad works on its own, and you can
 also pair a phone or tablet.
 
@@ -28,21 +31,50 @@ authenticated separately.
 
 :::
 
-## Start a Session
+## Find Open Conversations
 
-1. Open **Pad-Lattice**. Its local service starts automatically.
-2. Choose a **Project folder** and give the session a short label, such as
-   `implementation` or `tests`.
-3. Select **Start session**. Codex opens in a terminal.
-4. When Codex asks, open `/hooks` and review the Pad-Lattice handlers.
-5. Start working in Codex. The pad updates as the session runs or needs attention.
+The desktop opens with **Open Codex conversations**: names, working folders,
+short IDs, and status from the local Codex app-server. The list refreshes every
+ten seconds while the window is visible; the refresh button checks immediately.
+It does not open another terminal or restart your conversation.
 
-Repeat these steps for another session. Select its colored Scene button on the
-right before responding. The same selected session appears on all connected
-surfaces. Prompts and ordinary replies stay in the Codex terminal.
+Use the **Connect** plug icon beside a conversation. Pad-Lattice joins that
+conversation and selects its Scene on the pad. **Connected, Scene 1** (or another
+number) identifies its pad slot. Your terminal stays open: no restart, new
+terminal, or hook installation is needed for this connection.
 
-To reopen a conversation, enter its **Resume ID** before selecting **Resume
-session**. Pad-Lattice keeps the integration scoped to the sessions it starts.
+Conversation titles come from Codex. Once connected, use **Maximize pad** beside
+the pad to hide the setup, header, footer, and side panels. The selected
+conversation remains visible below the enlarged pad. Use **Restore workspace** or
+press Escape to return to the full view.
+The desktop hides the WebView's right-click menu. **Settings > Reload interface**
+refreshes the window without restarting the service or disconnecting your
+conversations. **Refresh chats**, beside the conversation list, only updates
+that list.
+
+The pad updates from live Codex events. **Approve** and **Reject** appear for a
+single pending command or file-change approval; review the request in your
+Codex terminal before pressing either. Approval applies to that request only,
+not future requests. **Stop** appears while a known turn is running. Ordinary
+replies, permission-profile changes, identity verification, and other unsupported
+prompts remain in Codex. Retry is not available through this connection.
+
+Use **Disconnect** to release the pad slot without stopping Codex. Closing
+Pad-Lattice also disconnects its attachments. If Codex disconnects, the controls
+and slot disappear. Refresh drops ended connections; connect again when ready.
+
+Discovery covers Codex CLI threads loaded on **this computer**, not saved
+history or conversations running on another host. A VM cannot discover Codex
+on its Mac host. Codex may keep a thread loaded after its terminal
+closes, so this is not an exact list of open terminal windows. An attached
+conversation remains connected until you disconnect it or Codex unloads it.
+
+## Use the Live Pad
+
+Select a session's colored Scene button on the right before responding.
+**Selected conversation** shows its name, state, and available actions.
+All connected surfaces share the same selection. Prompts and ordinary replies
+stay in the Codex terminal.
 
 ## Connect a Launchpad
 
@@ -66,43 +98,31 @@ examples. Pairing is off when the app starts and is revoked when it exits.
 
 ## Try Demo and Show
 
-**Start Demo** walks through simulated agents and their controls. **Start Show**
-plays the audiovisual story. Both work without Codex or MIDI hardware. Enable
-**Sound** to hear audio; it starts muted. A real agent requesting a reply or
-approval takes priority over playback.
+Choose **Explore > Demo** for simulated agents and their controls, or
+**Explore > Show** for the audiovisual story. Both work without Codex or MIDI
+hardware. The header marks these experiences as **Simulation**.
+Use **Back to live pad** to stop playback and return.
 
-## Codex and Terminal Settings
+**Explore is disabled while any real session is connected**, even when idle.
+Connecting a session during playback stops the experience and restores the live
+pad. Enable **Sound** to hear audio; your choice is remembered.
 
-The desktop integration targets Codex CLI **0.164.0**, verified against the
-stable npm release on 25 October 2026. The app checks the installed version and
-whether lifecycle hooks are available. Newer versions are identified as not
-yet tested; this is not a guarantee of future compatibility.
+## Preferences
 
-If Codex is not found, choose its executable under **Settings > Codex and
-terminal**. macOS uses Terminal.app. Linux supports GNOME Terminal, Konsole,
-Xfce Terminal, and xterm. Codex installation, authentication, and updates remain
+Sound, maximized-pad view, MIDI selections, and the Codex executable path save
+automatically in the app's standard settings folder, not in your project.
+There is no Save button. Connections and network pairing are not restored
+automatically, and credentials are not stored in preferences.
+
+The desktop integration is tested with Codex CLI **0.164.0**. Newer versions
+are identified as not yet tested. If Codex is not found, choose its executable
+under **Settings > Codex**. Installation, authentication, and updates remain
 under your control.
+
+The [Python CLI](./control-codex.md) works independently of the desktop app and remains
+available from PyPI.
 
 Minimize the window to leave Pad-Lattice running. Closing the app stops its
 service and releases the MIDI controller. Your Codex terminals remain open;
 surface controls are unavailable until Pad-Lattice is running again. Stop a
 separately launched Pad-Lattice daemon before opening the desktop app.
-
-## Build From Source
-
-Install Python 3.12, Node.js 24, Rust 1.90, and the
-[Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform.
-From the repository root:
-
-```bash
-python -m venv .venv
-.venv/bin/python -m pip install -e '.[desktop-build]'
-npm --prefix web-app ci
-npm --prefix web-app run build
-.venv/bin/python scripts/build_desktop_engine.py
-npm --prefix web-app run desktop
-```
-
-For installers, use `npm --prefix web-app run desktop:build` after bundling the
-engine. Linux ARM64 is included for development on ARM virtual machines.
-Native Windows support requires additional backend work.

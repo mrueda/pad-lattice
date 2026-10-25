@@ -9,7 +9,7 @@ test.afterEach(async ({page}) => {
 
 test('receives live state, sends an action, and exposes local pairing', async ({page}, testInfo) => {
   await page.goto('/#admin=pad-lattice-e2e-admin');
-  await expect(page.getByText('LIVE CODEX')).toBeVisible();
+  await expect(page.getByText('CODEX CLI', {exact: true})).toBeVisible();
   await expect(page.getByText('Pad connected')).toBeVisible();
   await expect(page.getByRole('button', {name: /Reviewer Scene/})).toBeVisible();
   await expect(page.getByAltText('One-time device pairing QR code')).toBeVisible();
@@ -31,7 +31,7 @@ test('receives live state, sends an action, and exposes local pairing', async ({
 });
 
 test('local admin starts and stops the shared full-surface Show', async ({page}) => {
-  await page.goto('/#admin=pad-lattice-e2e-admin');
+  await page.goto('http://127.0.0.1:4175/#admin=pad-lattice-e2e-admin');
   await expect(page.getByText('Pad connected')).toBeVisible();
 
   await page.getByRole('button', {name: 'Start Show'}).click();
@@ -49,7 +49,7 @@ test('local admin starts and stops the shared full-surface Show', async ({page})
 });
 
 test('live Demo accepts the same scene and action controls', async ({page}) => {
-  await page.goto('/#admin=pad-lattice-e2e-admin');
+  await page.goto('http://127.0.0.1:4175/#admin=pad-lattice-e2e-admin');
   await page.getByRole('button', {name: 'Start Demo'}).click();
 
   await expect(page.getByText('The Reviewer needs you.')).toBeVisible();

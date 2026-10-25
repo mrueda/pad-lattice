@@ -5,7 +5,6 @@ import json
 import os
 from pathlib import Path
 import queue
-import shlex
 import shutil
 import socket
 import subprocess
@@ -16,9 +15,9 @@ from unittest import TestCase, skipUnless
 from unittest.mock import patch
 
 from pad_lattice import PadLatticeClient, AgentIdentity, AgentState, ControlAction
-from pad_lattice.codex_hooks import run_codex_hook, resolve_hook_command, codex_hook_config_overrides
+from pad_lattice.codex_hooks import run_codex_hook, codex_hook_config_overrides
 from pad_lattice.desktop_service import DesktopSurface
-from pad_lattice.desktop_tools import launch_session, inspect_codex
+from pad_lattice.desktop_tools import inspect_codex
 
 
 class EngineHarness:
@@ -104,6 +103,8 @@ class DesktopServiceTest(TestCase):
 
     def test_no_arbitrary_desktop_methods_or_public_binding(self):
         with self.assertRaises(ValueError):
+            self.engine.request("launch_session")
+        with self.assertRaises(ValueError):
             self.engine.request("exec", {"command": "anything"})
         with self.assertRaises(ValueError):
             self.engine.request("lan", {"host": "0.0.0.0"})
@@ -111,10 +112,21 @@ class DesktopServiceTest(TestCase):
             self.engine.request("surface", {"protocol": 1, "type": "launch_session"})
 
     def test_settings_persist_with_private_permissions(self):
-        self.engine.request("settings", {"codex": "/some path/codex", "terminal": "xterm"})
+        self.engine.request("settings", {"codex": "/some path/codex", "audio_enabled": True})
         settings = self.root / "settings/settings.json"
         self.assertEqual(json.loads(settings.read_text())["codex"], "/some path/codex")
         self.assertEqual(settings.stat().st_mode & 0o777, 0o600)
+        self.engine.request("settings", {"pad_focused": True})
+        values = self.engine.request("settings")
+        self.assertEqual(values, {"codex": "/some path/codex", "audio_enabled": True, "pad_focused": True})
+        for invalid in ({"audio_enabled": "yes"}, {"pad_focused": 1}, {"terminal": "xterm"}, {"token": "secret"}):
+            with self.assertRaises(ValueError):
+                self.engine.request("settings", invalid)
+        self.assertEqual(self.engine.request("settings"), values)
+        self.engine.close()
+        self.engine = EngineHarness([sys.executable, "-m", "pad_lattice.desktop_entry"], self.root)
+        self.addCleanup(self.engine.close)
+        self.assertEqual(self.engine.request("settings"), values)
 
     def test_demo_works_without_codex_or_midi(self):
         self.engine.request("surface", {"protocol": 1, "type": "start_experience", "kind": "demo"})
@@ -149,29 +161,6 @@ class DesktopToolsTest(TestCase):
         self.assertEqual(sent[0]["type"], "session_end")
         self.assertEqual(sent[0]["agent"]["session_id"], "closed-session")
 
-    def test_frozen_hook_uses_real_executable_not_extracted_script(self):
-        with TemporaryDirectory(prefix="pad space ") as directory:
-            executable = Path(directory) / "pad-lattice-engine"
-            executable.touch()
-            with patch.object(sys, "frozen", True, create=True), patch.object(sys, "executable", str(executable)):
-                command = shlex.split(resolve_hook_command("/tmp/pad.sock"))
-            self.assertEqual(command[:2], [str(executable), "codex-hook"])
-
-    def test_terminal_arguments_are_quoted_and_have_no_user_shell_code(self):
-        with TemporaryDirectory() as directory:
-            root = Path(directory)
-            project = root / "project ' $(touch bad)"
-            project.mkdir()
-            with patch("pad_lattice.desktop_tools.inspect_codex", return_value={"available": True, "path": "/bin/codex", "version": "0.164.0"}), \
-                 patch("pad_lattice.desktop_tools.terminal_choices", return_value=["xterm"]), \
-                 patch("pad_lattice.desktop_tools.subprocess.Popen") as spawn:
-                launch_session({"cwd": str(project), "label": "build; echo bad"}, "/tmp/pad.sock", root / "scripts")
-            script = Path(spawn.call_args.args[0][-1])
-            command = shlex.split(script.read_text().splitlines()[-1])
-            self.assertIn(str(project), command)
-            self.assertIn("build; echo bad", command)
-            self.assertNotIn("shell", spawn.call_args.kwargs)
-
     def test_midi_failure_leaves_browser_surface_available(self):
         with TemporaryDirectory() as directory:
             surface = DesktopSurface(Path(directory), "/tmp/pad.sock", lambda _: None, threading.Event())
@@ -198,7 +187,7 @@ class DesktopToolsTest(TestCase):
 
 @skipUnless(os.environ.get("PAD_LATTICE_TEST_ENGINE"), "Set PAD_LATTICE_TEST_ENGINE for packaged tests")
 class FrozenDesktopTest(TestCase):
-    def test_relocated_engine_and_hook(self):
+    def test_relocated_engine(self):
         with TemporaryDirectory(prefix="pl frozen ") as directory:
             root = Path(directory)
             original = Path(os.environ["PAD_LATTICE_TEST_ENGINE"]).resolve()
@@ -206,11 +195,10 @@ class FrozenDesktopTest(TestCase):
             executable = root / "engine" / original.name
             engine = EngineHarness([str(executable)], root)
             try:
-                result = subprocess.run([str(executable), "codex-hook", "--socket", engine.socket],
-                    input=json.dumps({"hook_event_name": "UserPromptSubmit", "session_id": "packaged"}),
-                    capture_output=True, text=True, timeout=5, cwd=root)
-                self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""))
-                status = PadLatticeClient(engine.socket).status()
-                self.assertIn("packaged", json.dumps(status))
+                snapshot = engine.request("snapshot")
+                self.assertTrue(snapshot["messages"][0]["admin"])
+                for removed in ("session", "codex-hook"):
+                    result = subprocess.run([str(executable), removed], capture_output=True, timeout=5, cwd=root)
+                    self.assertNotEqual(result.returncode, 0)
             finally:
                 engine.close()

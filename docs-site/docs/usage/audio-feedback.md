@@ -12,7 +12,17 @@ uses an available local WAV player.
 
 :::
 
-## Enable It
+## Desktop and Browser Sound
+
+In Desktop, choose **Explore > Demo** or **Explore > Show**, then enable
+**Sound**. Disconnect real conversations before exploring. Desktop remembers
+your sound preference; each paired browser has its own toggle and starts muted.
+
+Desktop uses bundled WAV assets and the computer's audio output. This does not
+enable CLI daemon earcons for live chats. The host commands below are a separate,
+optional CLI feature.
+
+## CLI Audio
 
 Start normal multi-agent operation with audio feedback:
 

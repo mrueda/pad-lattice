@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import signal
+import argparse
 import threading
 import time
 from pathlib import Path
@@ -20,17 +21,21 @@ from pad_lattice.web_surface import WebSurface
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--port', type=int, default=4174)
+    parser.add_argument('--empty', action='store_true')
+    args = parser.parse_args()
     stopped = threading.Event()
     signal.signal(signal.SIGINT, lambda signum, frame: stopped.set())
     signal.signal(signal.SIGTERM, lambda signum, frame: stopped.set())
     root = Path(__file__).resolve().parents[1]
     surface = WebSurface(
-        port=4174,
+        port=args.port,
         asset_root=root / "src" / "pad_lattice" / "web_dist" / "play",
         admin_token="pad-lattice-e2e-admin",
     )
     surface.initialize()
-    surface.configure_lan("http://192.168.1.10:4174")
+    surface.configure_lan(f"http://192.168.1.10:{args.port}")
     surface.create_pairing()
     experience = ExperienceController(surface)
     state = AgentState.WAITING_FOR_APPROVAL
@@ -62,8 +67,8 @@ def main() -> int:
                 )
                 surface.render(
                     SurfaceView(
-                        state,
-                        sessions=(
+                        None if args.empty else state,
+                        sessions=() if args.empty else (
                             SessionIndicator(
                                 slot=0,
                                 state=state,
@@ -72,7 +77,7 @@ def main() -> int:
                                 label="Reviewer",
                             ),
                         ),
-                        available_actions=actions,
+                        available_actions=frozenset() if args.empty else actions,
                     )
                 )
             stopped.wait(0.03)

@@ -11,11 +11,15 @@ import subprocess
 import sys
 import threading
 import time
+import tempfile
 from typing import Any
 
 from pad_lattice import __version__
+from pad_lattice.codex_discovery import discover_conversations
+from pad_lattice.codex_attachment import AttachmentManager
+from pad_lattice.client import PadLatticeClient
 from pad_lattice.daemon_runtime import PadLatticeDaemon
-from pad_lattice.desktop_tools import inspect_codex, launch_session, terminal_choices
+from pad_lattice.desktop_tools import inspect_codex
 from pad_lattice.devices.base import (ActionPressed, SessionSelected, ExperienceRequested,
                                      ExperienceStopRequested, SurfaceView, ExperienceView)
 from pad_lattice.devices.factory import resolve_device, open_resolved_surface
@@ -28,6 +32,13 @@ from pad_lattice.web_protocol import (parse_web_command, ActionCommand, SelectSe
 from pad_lattice.web_surface import WebSurface
 
 MAX_REQUEST = 64 * 1024
+PREFERENCE_TYPES = {"codex": str, "midi_profile": str, "midi_input": str,
+                    "midi_output": str, "pad_focused": bool, "audio_enabled": bool}
+
+
+def valid_preference(key, value):
+    return key in PREFERENCE_TYPES and type(value) is PREFERENCE_TYPES[key] and (
+        not isinstance(value, str) or len(value) <= 4096)
 
 
 class DesktopSurface(WebSurface):
@@ -40,6 +51,8 @@ class DesktopSurface(WebSurface):
         self.requests: queue.Queue = queue.Queue(maxsize=64)
         self.workers = ThreadPoolExecutor(max_workers=1, thread_name_prefix="desktop-tools")
         self.tool_pending = False
+        self.discovery_future = None
+        self.attachments = AttachmentManager(socket_path)
         self.midi = None
         self.midi_error = None
         self.last_view = SurfaceView(None)
@@ -106,7 +119,7 @@ class DesktopSurface(WebSurface):
         try:
             value = json.loads((self.settings_dir / "settings.json").read_text())
             if isinstance(value, dict):
-                return {key: value[key] for key in ("codex", "terminal") if isinstance(value.get(key), str)}
+                return {key: item for key, item in value.items() if valid_preference(key, item)}
         except (OSError, ValueError):
             pass
         return {}
@@ -118,7 +131,7 @@ class DesktopSurface(WebSurface):
         except (OSError, RuntimeError) as exc:
             inputs, outputs, error = [], [], str(exc)
         profiles = [{"id": p.id, "status": p.status} for p in ProfileCatalog.load().profiles]
-        return {"version": __version__, "settings": self.settings(), "terminals": terminal_choices(),
+        return {"version": __version__, "settings": self.settings(),
                 "inputs": inputs, "outputs": outputs, "profiles": profiles,
                 "midi": self.midi.profile_id if self.midi else None,
                 "midi_error": self.midi_error or error, "lan_host": self.server.host,
@@ -130,14 +143,21 @@ class DesktopSurface(WebSurface):
         if method == "status":
             return self.status()
         if method == "settings":
-            values = {key: params.get(key, "") for key in ("codex", "terminal")}
-            if any(not isinstance(value, str) or len(value) > 4096 for value in values.values()):
+            if any(not valid_preference(key, value) for key, value in params.items()):
                 raise ValueError("Invalid settings")
+            values = self.settings() | params
+            if not params:
+                return values
             target = self.settings_dir / "settings.json"
-            temporary = target.with_suffix(".tmp")
-            temporary.write_text(json.dumps(values), encoding="utf-8")
-            temporary.chmod(0o600)
-            temporary.replace(target)
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=self.settings_dir,
+                                             prefix="settings-", suffix=".tmp", delete=False) as stream:
+                temporary = Path(stream.name)
+                try:
+                    json.dump(values, stream)
+                    stream.flush()
+                    temporary.replace(target)
+                finally:
+                    temporary.unlink(missing_ok=True)
             return values
         if method == "lan":
             self.server.set_lan(params.get("host") or None)
@@ -190,6 +210,27 @@ class DesktopSurface(WebSurface):
         except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
             self.emit({"id": request["id"], "error": str(exc)})
 
+    def discover(self):
+        result = discover_conversations()
+        self.attachments.discard_disconnected()
+        attachments = self.attachments.snapshot()
+        sessions = {item["session_id"]: item for item in PadLatticeClient(self.socket_path).status()["sessions"]
+                    if item["backend"] == "codex"}
+        listed = {item["id"] for item in result["conversations"]}
+        for thread_id, attachment in attachments.items():
+            if thread_id not in listed:
+                session = sessions.get(thread_id, {})
+                result["conversations"].append({"id": thread_id, "name": session.get("label", thread_id),
+                                              "cwd": session.get("metadata", {}).get("cwd", ""), "state": "unknown"})
+        for item in result["conversations"]:
+            attachment = attachments.get(item["id"], {})
+            session = sessions.get(item["id"], {})
+            item.update(connected=bool(attachment.get("connected")),
+                        managed=item["id"] in attachments, error=attachment.get("error"),
+                        launcher=bool(session) and item["id"] not in attachments,
+                        slot=session.get("slot"), accent=session.get("accent"))
+        return result
+
     def poll_events(self):
         for _ in range(16):
             try:
@@ -197,7 +238,13 @@ class DesktopSurface(WebSurface):
             except queue.Empty:
                 break
             method, params = request["method"], request["params"]
-            if method in {"inspect_codex", "launch_session"}:
+            if method == "list_conversations":
+                if self.discovery_future is None or self.discovery_future.done():
+                    self.discovery_future = self.workers.submit(self.discover)
+                self.discovery_future.add_done_callback(
+                    lambda future, request=request: self.respond(request, future.result))
+                continue
+            if method in {"inspect_codex", "attach_conversation", "detach_conversation"}:
                 if self.tool_pending:
                     self.emit({"id": request["id"], "error": "A session operation is already running."})
                     continue
@@ -205,9 +252,12 @@ class DesktopSurface(WebSurface):
                 def task(request=request, method=method, params=params):
                     try:
                         options = self.settings() | params
-                        self.respond(request, lambda: inspect_codex(options.get("codex", ""))
-                                     if method == "inspect_codex" else launch_session(
-                                         options, self.socket_path, self.settings_dir / "launchers"))
+                        if method == "attach_conversation":
+                            self.respond(request, lambda: self.attachments.attach(params.get("thread_id")))
+                        elif method == "detach_conversation":
+                            self.respond(request, lambda: self.attachments.detach(params.get("thread_id")))
+                        else:
+                            self.respond(request, lambda: inspect_codex(options.get("codex", "")))
                     finally:
                         self.tool_pending = False
                 self.workers.submit(task)
@@ -227,6 +277,7 @@ class DesktopSurface(WebSurface):
 
     def close(self):
         self.stop.set()
+        self.attachments.close()
         self.disconnect_midi()
         self.workers.shutdown(wait=False, cancel_futures=True)
         super().close()

@@ -57,14 +57,10 @@ async fn desktop_request(
 }
 
 #[tauri::command]
-async fn choose_path(app: tauri::AppHandle, directory: bool) -> Result<Option<String>, String> {
+async fn choose_path(app: tauri::AppHandle) -> Result<Option<String>, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let picker = app.dialog().file();
-        let selected = if directory {
-            picker.blocking_pick_folder()
-        } else {
-            picker.blocking_pick_file()
-        };
+        let selected = picker.blocking_pick_file();
         selected
             .map(|path| {
                 path.into_path()

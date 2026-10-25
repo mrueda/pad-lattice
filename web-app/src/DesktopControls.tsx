@@ -1,11 +1,11 @@
 import {useCallback, useEffect, useState} from 'react';
-import {FolderOpen, Play, Settings, RefreshCw, Plug, Unplug, Wifi, Save, X} from 'lucide-react';
+import {FolderOpen, Settings, RefreshCw, RotateCw, Plug, Unplug, Wifi, X} from 'lucide-react';
 import {choosePath, desktopRequest} from './desktop';
+import {OpenConversations} from './OpenConversations';
 
 interface Status {
   version: string;
-  settings: {codex?: string; terminal?: string};
-  terminals: string[];
+  settings: {codex?: string; midi_profile?: string; midi_input?: string; midi_output?: string};
   inputs: string[];
   outputs: string[];
   profiles: Array<{id: string; status: string}>;
@@ -20,14 +20,9 @@ export function DesktopControls() {
   const [status, setStatus] = useState<Status | null>(null);
   const [codex, setCodex] = useState<Codex | null>(null);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [cwd, setCwd] = useState('');
-  const [label, setLabel] = useState('');
-  const [resume, setResume] = useState('');
   const [codexPath, setCodexPath] = useState('');
-  const [terminal, setTerminal] = useState('');
   const [profile, setProfile] = useState('');
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
@@ -40,7 +35,9 @@ export function DesktopControls() {
   useEffect(() => {
     refresh().then((next) => {
       setCodexPath(next.settings.codex ?? '');
-      setTerminal(next.settings.terminal ?? '');
+      setProfile(next.settings.midi_profile ?? '');
+      setInput(next.settings.midi_input ?? '');
+      setOutput(next.settings.midi_output ?? '');
       if (next.lan_host !== '127.0.0.1') setLan(next.lan_host);
       return desktopRequest<Codex>('inspect_codex');
     }).then(setCodex).catch((reason) => setError(String(reason)));
@@ -56,51 +53,39 @@ export function DesktopControls() {
     return () => { disposed = true; cleanup?.(); };
   }, [refresh]);
   const run = async (work: () => Promise<unknown>) => {
-    setBusy(true); setError(''); setNotice('');
+    setBusy(true); setError('');
     try { await work(); } catch (reason) { setError(String(reason)); } finally { setBusy(false); }
+  };
+  const savePreferences = async (values: Record<string, string>, inspect = false) => {
+    try {
+      await desktopRequest('settings', values);
+      if (inspect) setCodex(await desktopRequest<Codex>('inspect_codex'));
+    } catch (reason) { setError(`Could not save preferences: ${String(reason)}`); }
   };
   return (
     <section className="desktopControls">
       <div className="desktopToolbar">
-        <span className="desktopRuntime">{codex?.available ? `Codex ${codex.version}` : 'Codex setup required'}</span>
+        <div className="desktopConnections">
+          <span className="desktopRuntime">{codex?.available ? `Codex CLI ${codex.version}` : 'Codex CLI setup required'}</span>
+          <span><Plug aria-hidden="true" />MIDI: {status?.midi ? 'connected' : 'not connected'}</span>
+          <span><Wifi aria-hidden="true" />Phone pairing: {status && status.lan_host !== '127.0.0.1' ? 'enabled' : 'off'}</span>
+        </div>
         <button className="textButton" title="Settings" aria-label="Settings" onClick={() => setSettingsOpen(!settingsOpen)}><Settings /></button>
       </div>
-      <form className="desktopSession" onSubmit={(event) => {
-        event.preventDefault();
-        void run(async () => {
-          await desktopRequest('launch_session', {cwd, label, resume});
-          setNotice('Terminal opened. Review Pad-Lattice hooks with /hooks when Codex asks.');
-        });
-      }}>
-        <label className="projectField">Project folder
-          <div className="desktopInputGroup"><input value={cwd} onChange={(e) => setCwd(e.target.value)} placeholder="Choose a project" required />
-            <button type="button" className="textButton" title="Choose project folder" aria-label="Choose project folder" onClick={() => void run(async () => {
-              const path = await choosePath(true); if (path) { setCwd(path); if (!label) setLabel(path.split('/').filter(Boolean).pop() ?? 'work'); }
-            })}><FolderOpen /></button></div>
-        </label>
-        <label>Session label<input value={label} onChange={(e) => setLabel(e.target.value)} maxLength={64} placeholder="implementation" required /></label>
-        <label>Resume ID <span className="muted">(optional)</span><input value={resume} onChange={(e) => setResume(e.target.value)} placeholder="New session" /></label>
-        <button className="primaryButton" type="submit" disabled={busy || !codex?.available}><Play />{resume ? 'Resume session' : 'Start session'}</button>
-      </form>
+      <OpenConversations />
       {error || codex?.error ? <p className="desktopError" role="alert">{error || codex?.error}</p> : null}
-      {notice ? <p className="desktopNotice" role="status">{notice}</p> : null}
       {codex?.available && !codex.tested ? <p className="desktopNotice">Installed Codex {codex.version}. Integration tested with {codex.tested_version}.</p> : null}
       {settingsOpen ? <div className="desktopSettings">
         <div className="desktopToolbar"><h2>Settings</h2><button className="textButton" title="Close settings" aria-label="Close settings" onClick={() => setSettingsOpen(false)}><X /></button></div>
         <div className="desktopSettingsColumns">
-          <section><h3>Codex and terminal</h3>
-            <label>Codex executable<div className="desktopInputGroup"><input value={codexPath} placeholder="Automatic detection" onChange={(e) => setCodexPath(e.target.value)} />
-              <button className="textButton" title="Choose Codex executable" aria-label="Choose Codex executable" onClick={() => void run(async () => {const path = await choosePath(false); if (path) setCodexPath(path);})}><FolderOpen /></button></div></label>
-            <label>Terminal<select value={terminal} onChange={(e) => setTerminal(e.target.value)}><option value="">Automatic detection</option>{status?.terminals.map((name) => <option key={name}>{name}</option>)}</select></label>
-            <button className="textButton" disabled={busy} onClick={() => void run(async () => {
-              await desktopRequest('settings', {codex: codexPath, terminal});
-              setCodex(await desktopRequest<Codex>('inspect_codex')); await refresh(); setNotice('Settings saved.');
-            })}><Save /> Save</button>
+          <section><h3>Codex</h3>
+            <label>Codex executable<div className="desktopInputGroup"><input value={codexPath} placeholder="Automatic detection" onChange={(e) => setCodexPath(e.target.value)} onBlur={() => void savePreferences({codex: codexPath}, true)} />
+              <button className="textButton" title="Choose Codex executable" aria-label="Choose Codex executable" onClick={() => void run(async () => {const path = await choosePath(); if (path) {setCodexPath(path); await savePreferences({codex: path}, true);}})}><FolderOpen /></button></div></label>
           </section>
           <section><h3>MIDI controller</h3>
-            <label>Profile<select value={profile} onChange={(e) => setProfile(e.target.value)}><option value="">Automatic detection</option>{status?.profiles.map((p) => <option key={p.id} value={p.id}>{p.id}{p.status === 'experimental' ? ' (experimental)' : ''}</option>)}</select></label>
-            <label>Input<select value={input} onChange={(e) => setInput(e.target.value)}><option value="">Automatic detection</option>{status?.inputs.map((p) => <option key={p}>{p}</option>)}</select></label>
-            <label>Output<select value={output} onChange={(e) => setOutput(e.target.value)}><option value="">Automatic detection</option>{status?.outputs.map((p) => <option key={p}>{p}</option>)}</select></label>
+            <label>Profile<select value={profile} onChange={(e) => {setProfile(e.target.value); void savePreferences({midi_profile: e.target.value});}}><option value="">Automatic detection</option>{status?.profiles.map((p) => <option key={p.id} value={p.id}>{p.id}{p.status === 'experimental' ? ' (experimental)' : ''}</option>)}</select></label>
+            <label>Input<select value={input} onChange={(e) => {setInput(e.target.value); void savePreferences({midi_input: e.target.value});}}><option value="">Automatic detection</option>{input && !status?.inputs.includes(input) ? <option value={input}>{input} (unavailable)</option> : null}{status?.inputs.map((p) => <option key={p}>{p}</option>)}</select></label>
+            <label>Output<select value={output} onChange={(e) => {setOutput(e.target.value); void savePreferences({midi_output: e.target.value});}}><option value="">Automatic detection</option>{output && !status?.outputs.includes(output) ? <option value={output}>{output} (unavailable)</option> : null}{status?.outputs.map((p) => <option key={p}>{p}</option>)}</select></label>
             <div className="desktopActions"><button className="textButton" title="Refresh devices" aria-label="Refresh devices" disabled={busy} onClick={() => void run(refresh)}><RefreshCw /></button>
               <button className="textButton" disabled={busy} onClick={() => void run(async () => {await desktopRequest(status?.midi ? 'disconnect_midi' : 'connect_midi', {profile, input, output}); await refresh();})}>{status?.midi ? <Unplug /> : <Plug />}{status?.midi ? 'Disconnect' : 'Connect'}</button></div>
             <p className="desktopNotice">{status?.midi ?? 'No MIDI controller connected'}</p>
@@ -112,6 +97,8 @@ export function DesktopControls() {
             {status?.lan_host !== '127.0.0.1' && status ? <><p className="desktopNotice">{`http://${status.lan_host}:${status.port}`}</p><button className="textButton" disabled={busy} onClick={() => void run(async () => {await desktopRequest('lan', {host: null}); await refresh();})}>Disable pairing</button></> : null}
           </section>
         </div>
+        <button className="textButton" title="Reload the interface without disconnecting conversations"
+          onClick={() => window.location.reload()}><RotateCw aria-hidden="true" /> Reload interface</button>
       </div> : null}
     </section>
   );

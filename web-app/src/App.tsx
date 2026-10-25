@@ -11,8 +11,13 @@ import {
   Wifi,
   WifiOff,
   Square,
+  Check,
+  X,
   Volume2,
   VolumeX,
+  Maximize2,
+  Minimize2,
+  ArrowLeft,
 } from 'lucide-react';
 import {
   createDemoState,
@@ -45,6 +50,8 @@ import type {
 import {VirtualSurface} from './VirtualSurface';
 import {isDesktop, openProjectLink} from './desktop';
 import {DesktopControls} from './DesktopControls';
+import {ExploreMenu} from './ExploreMenu';
+import {useDesktopPreference} from './useDesktopPreference';
 
 type AppMode = 'loading' | 'demo' | 'live';
 
@@ -153,6 +160,7 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
 
   return (
     <PageFrame modeLabel="PUBLIC SIMULATION" connected>
+      {audio.error ? <p className="desktopError" role="alert">{audio.error}</p> : null}
       <div className="workspace">
         <section className={`surfaceWorkspace ${mode === 'show' ? 'performanceWorkspace' : ''}`}>
           <VirtualSurface
@@ -239,8 +247,29 @@ function LiveApp() {
   const live = useLiveSurface();
   const audio = useAudioOutput();
   const [pin, setPin] = useState('');
+  const [desktopExperience, setDesktopExperience] = useState<'demo' | 'show' | null>(null);
+  const padPreference = useDesktopPreference('pad_focused');
+  const setPadFocused = padPreference.save;
+  const desktop = isDesktop();
+  useEffect(() => {
+    if (!desktop) return;
+    const suppressMenu = (event: MouseEvent) => event.preventDefault();
+    document.addEventListener('contextmenu', suppressMenu);
+    return () => document.removeEventListener('contextmenu', suppressMenu);
+  }, [desktop]);
+  const exploring = !desktop || desktopExperience !== null;
   const empty = emptySurface();
   const view = live.surface?.view ?? empty.view;
+  const demoActive = live.experience?.kind === 'demo'
+    && ['starting', 'playing'].includes(live.experience.status);
+  const agentsConnected = !demoActive && view.sessions.length > 0;
+  const padFocused = desktop && agentsConnected && padPreference.value;
+  useEffect(() => {
+    if (!padFocused) return;
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setPadFocused(false); };
+    window.addEventListener('keydown', escape);
+    return () => window.removeEventListener('keydown', escape);
+  }, [padFocused, setPadFocused]);
   const frame = live.surface?.visual_frame ?? empty.frame;
   const performance = live.experience?.kind === 'show'
     && ['starting', 'playing'].includes(live.experience.status)
@@ -256,16 +285,42 @@ function LiveApp() {
       );
     }
   }, [audio, live.experience]);
+  useEffect(() => {
+    if (agentsConnected || live.experience?.status === 'blocked'
+        || live.experience?.reason === 'agents_connected') setDesktopExperience(null);
+    else if (live.experience?.kind && ['starting', 'playing'].includes(live.experience.status)) {
+      setDesktopExperience(live.experience.kind);
+    }
+  }, [agentsConnected, live.experience?.status, live.experience?.reason, live.experience?.kind]);
   const submitPin = (event: FormEvent) => {
     event.preventDefault();
     if (/^\d{6}$/.test(pin.replace(/\s/g, ''))) live.pair(pin);
   };
+  const startDesktopExperience = (kind: 'demo' | 'show') => {
+    if (agentsConnected || live.connection !== 'connected') return;
+    live.stopExperience();
+    setDesktopExperience(kind);
+    live.startExperience(kind);
+  };
   return (
     <PageFrame
-      modeLabel="LIVE CODEX"
+      modeLabel={desktop && exploring ? 'SIMULATION' : 'CODEX CLI'}
+      padOnly={padFocused}
+      headerActions={desktop ? <ExploreMenu disabled={agentsConnected || live.connection !== 'connected'} onStart={startDesktopExperience} /> : undefined}
       connected={live.connection === 'connected'}>
-      {isDesktop() ? <DesktopControls /> : null}
-      <div className="workspace">
+      {desktop ? <div className="desktopSetup" hidden={padFocused}><DesktopControls /></div> : null}
+      {audio.error ? <p className="desktopError" role="alert">{audio.error}</p> : null}
+      {padPreference.error ? <p className="desktopError" role="alert">{padPreference.error}</p> : null}
+      {desktop && (exploring || agentsConnected) ? <div className="desktopViews">
+        {exploring ? <div className="simulationBar"><span>SIMULATION: {desktopExperience === 'show' ? 'SHOW' : 'DEMO'}</span>
+          <button className="textButton" onClick={() => {live.stopExperience(); setDesktopExperience(null);}}><ArrowLeft /> Back to live pad</button></div> : null}
+        <div className="desktopViewActions">
+        {agentsConnected ? <button className="textButton padFocusButton" title={padFocused ? 'Restore workspace' : 'Maximize pad'}
+          aria-label={padFocused ? 'Restore workspace' : 'Maximize pad'} aria-pressed={padFocused}
+          onClick={() => setPadFocused(!padFocused)}>{padFocused ? <Minimize2 /> : <Maximize2 />}</button> : null}
+        </div>
+      </div> : null}
+      <div className={`workspace ${padFocused ? 'padFocusWorkspace' : ''}`} id={desktop ? 'desktop-workspace' : undefined}>
         <section className={`surfaceWorkspace ${performance ? 'performanceWorkspace' : ''}`}>
           <VirtualSurface
             disabled={live.connection !== 'connected'}
@@ -281,10 +336,11 @@ function LiveApp() {
         <aside className="contextPane">
           <ConnectionSummary state={live.connection} error={live.error} />
 
-          {live.connection === 'connected' ? (
+          {live.connection === 'connected' && exploring ? (
             <ExperienceControls
               active={live.experience?.status === 'playing' || live.experience?.status === 'starting'}
               admin={live.admin}
+              canStart={!agentsConnected}
               audioEnabled={audio.enabled}
               blockedReason={live.experience?.status === 'blocked' ? live.experience.reason : null}
               caption={live.experience?.caption}
@@ -317,7 +373,11 @@ function LiveApp() {
           ) : null}
 
           {live.connection === 'connected' ? (
-            <SessionList sessions={view.sessions} onSelect={live.selectSession} />
+            <>
+              {desktop && !exploring ? <SelectedConversation view={view} onAction={live.sendAction} /> : null}
+              <SessionList sessions={view.sessions} onSelect={live.selectSession}
+                title={desktop ? (exploring && live.experience?.kind === 'demo' ? 'Demo sessions' : 'Codex conversations') : undefined} />
+            </>
           ) : null}
 
           {live.admin && live.lanEnabled ? (
@@ -333,9 +393,31 @@ function LiveApp() {
   );
 }
 
+function SelectedConversation({view, onAction}: {view: SurfaceView; onAction: (action: ControlAction) => void}) {
+  const selected = view.sessions.find(session => session.selected);
+  const actions = [
+    {action: 'approve' as const, label: 'Approve', Icon: Check},
+    {action: 'reject' as const, label: 'Reject', Icon: X},
+    {action: 'stop' as const, label: 'Stop', Icon: Square},
+    {action: 'retry' as const, label: 'Retry', Icon: RefreshCw},
+  ];
+  return <section className="selectedConversation" aria-label="Selected Codex conversation" aria-live="polite">
+    <div className="sectionTitle"><span>SELECTED CONVERSATION</span></div>
+    {selected ? <>
+      <h2><i style={{backgroundColor: tokenColor(`accent:${selected.accent}:selected`)}} />{selected.label}</h2>
+      <p>{stateLabels[selected.state]}</p>
+      <div className="conversationActions">
+        {actions.filter(({action}) => view.available_actions.includes(action)).map(({action, label, Icon}) =>
+          <button key={action} className={`textButton action-${action}`} onClick={() => onAction(action)}><Icon />{label}</button>)}
+      </div>
+    </> : <h2>No Codex conversation connected</h2>}
+  </section>;
+}
+
 function ExperienceControls({
   active,
   admin,
+  canStart = true,
   audioEnabled,
   blockedReason = null,
   caption = null,
@@ -347,6 +429,7 @@ function ExperienceControls({
 }: {
   active: boolean;
   admin: boolean;
+  canStart?: boolean;
   audioEnabled: boolean;
   blockedReason?: string | null;
   caption?: string | null;
@@ -365,12 +448,12 @@ function ExperienceControls({
         {blockedReason ? <p className="experienceWarning">{blockedReason}</p> : null}
       <div className="experienceActions">
         {admin && !active && onStartDemo ? (
-          <button className="primaryButton" onClick={onStartDemo}>
+          <button className="primaryButton" disabled={!canStart} onClick={onStartDemo}>
             <Play aria-hidden="true" /> Start Demo
           </button>
         ) : null}
         {admin && !active ? (
-          <button className="primaryButton" onClick={onStartShow}>
+          <button className="primaryButton" disabled={!canStart} onClick={onStartShow}>
             <Play aria-hidden="true" /> Start Show
           </button>
         ) : null}
@@ -420,10 +503,14 @@ function PageFrame({
   children,
   modeLabel,
   connected,
+  padOnly = false,
+  headerActions,
 }: {
   children: React.ReactNode;
   modeLabel: string;
   connected: boolean;
+  padOnly?: boolean;
+  headerActions?: React.ReactNode;
 }) {
   const [linkError, setLinkError] = useState('');
   const openLink = (event: React.MouseEvent, destination: 'docs' | 'github') => {
@@ -433,13 +520,14 @@ function PageFrame({
     void openProjectLink(destination).catch((error: unknown) => setLinkError(String(error)));
   };
   return (
-    <main className={`appPage${isDesktop() ? ' desktopApp' : ''}`}>
+    <main className={`appPage${isDesktop() ? ' desktopApp' : ''}${padOnly ? ' padOnly' : ''}`}>
       <header className="appHeader">
         <a className="brand" href={isDesktop() ? 'https://mrueda.github.io/pad-lattice/' : '../'} target={isDesktop() ? '_blank' : '_top'} onClick={(event) => openLink(event, 'docs')}>
           <img src="./pad-lattice-logo.svg" alt="" />
           <span><strong>Pad-Lattice</strong><small>{isDesktop() ? 'Desktop' : 'Virtual Surface'}</small></span>
         </a>
         <div className="headerStatus">
+          {headerActions}
           <span className={connected ? 'connectionDot connected' : 'connectionDot'} />
           <span>{modeLabel}</span>
         </div>
@@ -458,12 +546,14 @@ function PageFrame({
 
 function SessionList({
   sessions,
+  title = 'AGENT SCENES',
   sandbox = false,
   guidedSlot = null,
   onSelect,
   onState,
 }: {
   sessions: SessionView[];
+  title?: string;
   sandbox?: boolean;
   guidedSlot?: number | null;
   onSelect: (slot: number) => void;
@@ -471,7 +561,7 @@ function SessionList({
 }) {
   return (
     <section className="sessionSection">
-      <div className="sectionTitle"><span>AGENT SCENES</span><span>{sessions.length}/8</span></div>
+      <div className="sectionTitle"><span>{title}</span><span>{sessions.length}/8</span></div>
       <div className="sessionList">
         {sessions.map((session) => (
           <div

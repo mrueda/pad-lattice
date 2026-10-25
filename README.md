@@ -12,6 +12,8 @@
 [![Python](https://img.shields.io/badge/python-%3E%3D3.10-blue)](https://github.com/mrueda/pad-lattice/blob/main/pyproject.toml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/mrueda/pad-lattice/blob/main/LICENSE)
 
+**🖥️ Desktop app:** <https://mrueda.github.io/pad-lattice/docs/usage/install>
+
 **🎛️ Try the virtual pad:** <https://mrueda.github.io/pad-lattice/play/>
 
 **📘 Documentation:** <https://mrueda.github.io/pad-lattice/>
@@ -25,8 +27,8 @@ When an action is available, illuminated controls route it only to the selected
 agent.
 
 The same tactile visual language runs on physical Novation Launchpad MIDI
-controllers and a Virtual Pad in the browser, so anyone can use it from a
-phone, tablet, or computer, with or without MIDI hardware.
+controllers, the desktop app, and browser surfaces on phones, tablets, or
+computers. **No MIDI controller is required.**
 
 Pad-Lattice grew from [mrueda](https://github.com/mrueda)'s personal need to
 interact more directly with Codex CLI. As a musician and member of the duo [The
@@ -39,64 +41,31 @@ story](https://mrueda.github.io/pad-lattice/docs/about/origin-and-development).
   <img src="docs-site/static/img/human-control-workflow.svg" width="1200" alt="Codex asks for approval, physical and virtual pads light up, and one human press returns a targeted action">
 </div>
 
-One local daemon maintains multi-agent state and routes currently available
-actions only to the selected agent. **Visual Protocol 1** gives physical MIDI
-profiles and the Virtual Pad the same identity accents, state glyphs,
-selection, actions, and overflow behavior.
+The first integration is **Codex CLI**. Connect an open conversation, select
+its colored Scene, and use the available controls to approve or reject a
+permission request or stop a running turn. Prompts and replies stay in Codex.
 
-The first integration is **Codex CLI**. Pad-Lattice displays lifecycle state
-and can return targeted Approve, Reject, Retry, and Stop actions while prompts
-and terminal output remain in Codex.
+## Get Started
 
-Pad-Lattice is alpha software.
+**Desktop is recommended for interactive use.** It bundles Python, starts the
+local service, and connects to existing Codex CLI chats without restarting
+them or installing hooks. Add a Launchpad or pair a phone through Settings.
 
-## Choose a Surface
+1. [Install the desktop preview](https://mrueda.github.io/pad-lattice/docs/usage/install) for Linux or macOS.
+2. Open Pad-Lattice and select **Connect** beside an open Codex conversation.
+3. Select its Scene and respond when an action lights up.
 
-A [desktop preview](https://mrueda.github.io/pad-lattice/docs/usage/desktop) is
-being prepared for Linux and macOS. It bundles Python and adds a session
-launcher, MIDI settings, and phone pairing around the same virtual pad.
+Pad-Lattice is alpha software. Desktop installers are currently available
+through successful preview workflow runs, not a published desktop release.
+Codex CLI must be installed and authenticated separately on the same computer.
 
-| Surface | Command | Result |
-| --- | --- | --- |
-| Public browser | [Open `/play/`](https://mrueda.github.io/pad-lattice/play/) | Demo, protocol sandbox, and audiovisual Show; no installation. |
-| Local browser | `pad-lattice web` | Real Codex control on the same computer. |
-| Phone or tablet | `pad-lattice web --lan` | Real Codex control after one-time pairing on a trusted local network. |
-| Launchpad | `pad-lattice daemon` | Physical MIDI input and RGB state feedback. |
-| Launchpad plus browsers | `pad-lattice daemon --web` | Synchronized physical and virtual surfaces on one control plane. |
+**The Python CLI remains available from PyPI** for terminal workflows,
+automation, and headless use. It works independently of the desktop app:
+`pipx install pad-lattice`. See [CLI Setup](https://mrueda.github.io/pad-lattice/docs/usage/cli).
 
-The public demo is intentionally simulated. Real control always requires the
-local Pad-Lattice process and Codex hooks.
-
-## Install and Start
-
-Install the package in an isolated environment:
-
-```bash
-pipx install pad-lattice
-```
-
-This installs the release from PyPI without modifying the system Python.
-
-Start the browser controller without MIDI hardware:
-
-```bash
-pad-lattice web
-```
-
-Then launch an integrated Codex session from another terminal:
-
-```bash
-pad-lattice codex --label implementation
-```
-
-To add a physical controller and optional synchronized browsers:
-
-```bash
-pad-lattice daemon --web --audio-feedback
-```
-
-The [Quick Start](https://mrueda.github.io/pad-lattice/docs/usage/quickstart)
-covers hook review, MIDI setup, LAN pairing, and multiple sessions.
+**Just exploring?** [Try the public pad](https://mrueda.github.io/pad-lattice/play/)
+without installing anything. Its Demo, Sandbox, and Show are simulations;
+real control runs through your local Pad-Lattice app or CLI service.
 
 ## Supported Hardware
 
@@ -114,7 +83,7 @@ controllers do not require changes to Codex integrations.
 
 | Topic | Guide |
 | --- | --- |
-| Install and connect Codex | [Quick Start](https://mrueda.github.io/pad-lattice/docs/usage/quickstart) |
+| Connect your first conversation | [Quick Start](https://mrueda.github.io/pad-lattice/docs/usage/quickstart) |
 | Learn the colors, glyphs, actions, and 8x8 layout | [Visual Protocol](https://mrueda.github.io/pad-lattice/docs/technical-details/visual-language) |
 | Connect phones, tablets, and laptops | [Browser Setup](https://mrueda.github.io/pad-lattice/docs/usage/connect-browsers) |
 | Run the guided Demo or audiovisual Show | [Visual Show](https://mrueda.github.io/pad-lattice/docs/usage/visual-show) |

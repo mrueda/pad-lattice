@@ -23,7 +23,12 @@ const pending = new Map();
 let sequence = 0;
 let page;
 let connected = false;
-let sessionCount = 0;
+const conversations = [
+  {id: 'film-build', name: 'Implementation'},
+  {id: 'film-review', name: 'Review'},
+  {id: 'film-tests', name: 'Tests'},
+];
+const attached = new Map();
 let approved = false;
 let browser;
 const subscribers = [];
@@ -100,10 +105,22 @@ try {
     if (command === 'choose_path') return '/projects/website';
     if (command !== 'desktop_request') throw Error(command);
     if (args.method === 'inspect_codex') return {available: true, version: '0.164.0', tested: true, tested_version: '0.164.0'};
-    if (args.method === 'launch_session') {
-      const sessions = ['film-build', 'film-review', 'film-tests'];
-      await state(sessions[sessionCount++], 'running', args.params.label);
-      return {launched: true};
+    if (args.method === 'list_conversations') {
+      const snapshot = await rpc('snapshot');
+      const sessions = snapshot.messages.find(message => message.type === 'surface').view.sessions;
+      return {available: true, conversations: conversations.map(item => {
+        const session = sessions.find(session => session.slot === attached.get(item.id));
+        return {...item, cwd: '/projects/website', state: session?.state === 'waiting_for_approval' ? 'approval' : 'running',
+          connected: attached.has(item.id), managed: attached.has(item.id), slot: attached.get(item.id), accent: session?.accent};
+      })};
+    }
+    if (args.method === 'attach_conversation') {
+      const item = conversations.find(item => item.id === args.params.thread_id);
+      if (!item) throw Error('Unknown simulated conversation');
+      const slot = attached.size;
+      await state(item.id, 'running', item.name);
+      attached.set(item.id, slot);
+      return {slot};
     }
     if (args.method === 'connect_midi') connected = true;
     if (args.method === 'disconnect_midi') connected = false;
@@ -135,8 +152,7 @@ try {
     html, body {background:#edf2f5!important; overflow:hidden; color-scheme:light;}
     .desktopApp {position:fixed; left:26px; top:135px; width:1030px; height:800px; border:1px solid #8d9aa5; border-radius:8px; box-shadow:0 8px 30px #19354322; color-scheme:dark;}
     .desktopApp .workspace {grid-template-columns:minmax(0,1.2fr) minmax(290px,.8fr);}
-    .desktopApp .virtualSurface {width:min(100%,400px);}
-    .desktopApp .desktopSession {grid-template-columns:2fr 1fr 1fr auto; gap:10px;}
+    .desktopApp .virtualSurface {width:min(100%,270px);}
     .desktopApp .contextPane {padding:20px;}
     .desktopApp .desktopNotice {font-size:12px;}
     #filmCaption {position:fixed;left:30px;top:26px;color:#152735;font:600 30px/1.25 system-ui; margin:0; max-width:1220px;}
@@ -157,7 +173,7 @@ try {
     .filmPress {outline:4px solid white!important;outline-offset:3px;}
   `});
   await page.evaluate(() => {
-    for (const [id, tag, text] of [['filmCaption','h1','Open Pad-Lattice. Start your Codex sessions.'], ['filmDetail','p','One app for the on-screen pad, MIDI controller, and phone pairing.'], ['filmLabel','p','SIMULATED CODEX SESSIONS + ILLUSTRATED MIDI CONTROLLER'], ['controllerLabel','p','Optional: connect a Launchpad'], ['controller','div',''], ['cable','div','']]) {
+    for (const [id, tag, text] of [['filmCaption','h1','Connect your open Codex conversations.'], ['filmDetail','p','One app for the on-screen pad, MIDI controller, and phone pairing.'], ['filmLabel','p','SIMULATED CODEX SESSIONS + ILLUSTRATED MIDI CONTROLLER'], ['controllerLabel','p','Optional: connect a Launchpad'], ['controller','div',''], ['cable','div','']]) {
       const element = document.createElement(tag); element.id = id; element.textContent = text; document.body.append(element);
     }
     const source = document.querySelector('.desktopApp .virtualSurface');
@@ -176,12 +192,9 @@ try {
     document.querySelector('#filmDetail').textContent = detail;
   }, {title, detail});
   await pause(2200);
-  await page.getByRole('button', {name: 'Choose project folder', exact: true}).click();
-  await page.getByLabel('Session label').fill('Implementation');
-  await page.getByRole('button', {name: 'Start session', exact: true}).click();
-  for (const label of ['Review', 'Tests']) {
-    await page.getByLabel('Session label').fill(label);
-    await page.getByRole('button', {name: 'Start session', exact: true}).click();
+  for (const label of ['Implementation', 'Review', 'Tests']) {
+    await page.getByRole('button', {name: `Connect ${label}`, exact: true}).click();
+    await page.getByRole('button', {name: `Disconnect ${label}`, exact: true}).waitFor();
     await pause(500);
   }
   await caption('Keep several sessions in view.', 'Each session has a color. The large symbol shows the selected session.');
@@ -194,9 +207,11 @@ try {
   await pause(3000);
   await state('film-review', 'waiting_for_approval', 'Review');
   await approval();
+  await page.getByRole('button', {name: 'Refresh chats', exact: true}).click();
   await caption('Review needs your approval.', 'Select its colored Scene button on the right.');
   await pause(2600);
   await page.locator('#controller .sceneControl').nth(1).click();
+  await page.locator('.selectedConversation').getByRole('button', {name: 'Approve', exact: true}).waitFor();
   await pause(800);
   await page.screenshot({path: path.join(output, 'desktop-workflow-poster.png')});
   await caption('Press the green control to approve.', 'The decision goes only to the selected request.');
@@ -204,6 +219,7 @@ try {
   await page.locator('#controller .railControl').first().click();
   await pause(1800);
   if (!approved) throw Error('The controller approval did not reach the selected subscriber');
+  await page.locator('.selectedConversation').getByRole('button', {name: 'Approve', exact: true}).waitFor({state: 'hidden'});
   await caption('That session continues. The others keep working.', 'Colors identify sessions; symbols show running, waiting, approval, and completion.');
   await pause(3200);
   await caption('No MIDI controller? Use the pad on screen.', 'Pad-Lattice also pairs with a phone or tablet on your local network.');

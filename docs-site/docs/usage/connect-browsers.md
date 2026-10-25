@@ -21,7 +21,7 @@ You need:
 
 - Pad-Lattice installed on the computer that runs Codex;
 - the computer and remote devices on the same **trusted private network**;
-- one terminal window for Pad-Lattice and another for Codex;
+- the Pad-Lattice desktop app (or the independent CLI service);
 - a modern browser such as Chrome, Chromium, Firefox, or Safari.
 
 Avoid public or guest Wi-Fi. Some guest networks prevent devices from seeing
@@ -29,65 +29,54 @@ one another.
 
 ## Connect the First Device
 
-### 1. Start Pad-Lattice
+### 1. Open Desktop Settings
 
-On the computer that runs Codex:
+On the computer running Codex, open **Pad-Lattice > Settings > Phone and tablet**.
+Enter this computer's private IPv4 address and choose **Enable pairing**.
+Use the address of the trusted local network, not a public internet address.
+
+The app displays the browser address, including its port. Keep the app open.
+In a VM, read the [Parallels section](#running-inside-parallels-desktop) first.
+
+### 2. Create a Pairing Code
+
+Choose **Pair device** beside the pad. Pad-Lattice displays a QR code and a
+six-digit PIN. Each code works once and expires after five minutes.
+
+### 3. Open the Pad on the Other Device
+
+Scan the QR code, or open the address shown in Settings and enter the PIN.
+The screen should change to **Pad connected**.
+
+### 4. Connect a Codex Conversation
+
+In the desktop app, select **Connect** beside an open Codex chat.
+Its Scene appears on every paired surface. A phone does not discover or launch
+Codex itself; it controls the conversations connected on the host computer.
+
+<details>
+<summary>Alternative: pair browsers from the CLI</summary>
+
+With the desktop app closed, run:
 
 ```bash
 pad-lattice web --lan
 ```
 
-Leave this terminal open. Pad-Lattice prints three useful items:
+Leave the process running. It opens a local administrator page and prints the
+remote address and PIN. Treat the tokenized local administrator URL as a
+credential; never share it.
 
-```text
-Local admin:   http://127.0.0.1:8765/#admin=...
-Phone/tablet:  http://192.168.1.20:8765
-Pairing PIN:   123456 (expires in 5 minutes)
-```
-
-The exact address and PIN will be different on your computer.
-
-### 2. Keep the local page open
-
-Pad-Lattice opens its administrator page on the Codex computer. This page
-shows a QR code and can create or revoke pairing codes.
-
-Do not share the `Local admin` URL. It contains the administrator credential
-for this daemon.
-
-### 3. Pair the phone, tablet, or laptop
-
-On the remote device, either:
-
-- scan the QR code shown on the local administrator page; or
-- open the printed `Phone/tablet` address and enter the six-digit PIN.
-
-The screen should change to **Pad connected**. Each QR code or PIN can be
-used once and expires after five minutes.
-
-### 4. Start Codex through Pad-Lattice
-
-In another terminal on the Codex computer:
+Start or resume an integrated Codex session in another terminal:
 
 ```bash
 pad-lattice codex --label work
 ```
 
-The `work` Agent Scene appears on every connected surface. On the first launch,
-use `/hooks` inside Codex to review and trust the scoped Pad-Lattice hooks.
+Review `/hooks` on the first integrated session. See [CLI Setup](./cli.md)
+for the complete independent workflow.
 
-:::tip Resuming an existing conversation
-
-Use the normal Codex session ID after `resume`:
-
-```bash
-pad-lattice codex --label work -- resume <SESSION_ID>
-```
-
-An already-running plain `codex` process cannot be attached afterwards. Resume
-it through `pad-lattice codex` instead.
-
-:::
+</details>
 
 ## Add More Browsers
 
@@ -96,7 +85,7 @@ connections** at the same time.
 
 For each additional phone, tablet, or laptop:
 
-1. On the local administrator page, choose **New code**.
+1. In the desktop app or local administrator page, choose **New code**.
 2. Scan the new QR code or enter its new PIN on that device.
 3. Wait for **Pad connected** before pairing the next device.
 
@@ -109,21 +98,13 @@ paired device; there is one shared selection and one shared action target.
 
 ## Share Demo and Show
 
-The local administrator page can start **Demo** or **Show** while the normal
-live daemon is running. The same experience appears on every connected
-browser and, with `pad-lattice daemon --web`, on the Launchpad too.
+Choose **Explore > Demo** or **Explore > Show** in the desktop app.
+The same experience appears on connected browsers and the connected Launchpad.
 
-- Only the tokenized local administrator page can start or stop an experience.
-- Paired phones, tablets, and laptops can answer Demo Scene/action prompts.
-- Show is synchronized and read-only on paired devices.
-- Sound is independent on each browser and starts muted; one device's toggle
-  does not affect another device or the host `--audio-feedback` setting.
-- A real agent waiting for a reply or approval immediately interrupts Demo or
-  Show and restores the live agent display.
-
-This ownership rule prevents a paired remote from replacing operational state
-with a performance, while still allowing several people to experience the
-surface together.
+- Disconnect real agent sessions first. Connecting one stops playback and restores the live pad.
+- Only the desktop app or local CLI administrator page can start or stop playback.
+- Paired devices can answer Demo prompts; Show is read-only.
+- Each browser has its own **Sound** toggle, initially muted.
 
 Pairings last only while the daemon is running. **Revoke remote** disconnects
 every remote browser at once. Per-device revocation is not currently available,
@@ -136,7 +117,10 @@ normally prevents phones and other computers from reaching the VM. Parallels
 Desktop Pro can forward one TCP port from the Mac to Pad-Lattice without
 putting the whole VM in bridged mode.
 
-The example below uses port `8001`.
+The example below uses the **CLI alternative** with a fixed port, `8001`.
+Close the desktop app before using it. The desktop preview does not yet expose
+fixed-port or advertised-host settings; use it directly on the LAN or use this
+CLI setup for explicit VM port forwarding.
 
 ### 1. Find both private addresses
 
@@ -205,7 +189,7 @@ Wi-Fi. LAN traffic is authenticated but not encrypted.
 | Screen | Meaning |
 | --- | --- |
 | **Pad connected** | Browser pairing and live synchronization work. |
-| **No active agents** | Pairing works; start Codex with `pad-lattice codex`. |
+| **No active agents** | Pairing works; connect a chat in Desktop (or launch one through the CLI integration). |
 | An Agent Scene such as `work` | That Codex session is registered. |
 | A lit Approve or Reject action | The selected session has a live permission request. |
 | Dark actions | No compatible action is available for the selected session. |
@@ -217,7 +201,7 @@ Wi-Fi. LAN traffic is authenticated but not encrypted.
 | The page does not open | Confirm both devices use the same private Wi-Fi; temporarily disconnect VPNs and check the computer firewall. |
 | A VM address opens only inside the VM | Use the [Parallels forwarding setup](#running-inside-parallels-desktop) or bridged networking. |
 | The PIN is rejected | Create a new code; codes are one-use and expire after five minutes. |
-| The browser connects but shows no agents | Launch or resume Codex with `pad-lattice codex`, not plain `codex`. |
+| The browser connects but shows no agents | Select **Connect** beside a chat in Desktop; CLI users should use `pad-lattice codex`. |
 | The second device cannot use the first PIN | Generate a separate code for every device. |
 | A previously paired browser stopped reconnecting | The daemon restarted; pair it again. |
 

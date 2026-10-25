@@ -2,6 +2,9 @@
 
 ## Implemented
 
+- Desktop preview with bundled Python, open-chat discovery and explicit connection,
+  targeted Approve/Reject and Stop, MIDI settings, and phone pairing.
+- Desktop-first onboarding, maximized pad, automatic preferences, and separate Explore experiences.
 - Local daemon with exclusive agent IPC and enabled-surface ownership.
 - Responsive virtual surface for desktop, phone, and tablet.
 - Public, installation-free guided simulation and visual-protocol sandbox.
@@ -10,7 +13,7 @@
 - Simultaneous browser and MIDI control through one composite surface.
 - Interactive Codex lifecycle state hooks.
 - Request-scoped interactive Codex Approve and Reject actions.
-- Native-terminal Codex launcher with labels, titles, leases, and immediate cleanup.
+- Independent CLI launcher with labels, titles, leases, and immediate cleanup.
 - Non-interactive `codex-exec` adapter with targeted Stop.
 - Multi-agent registry keyed by backend and session ID.
 - Visual Protocol 1 with steady, shape-plus-color state glyphs.
@@ -30,7 +33,7 @@
 - Full-surface **A Spark Becomes a Constellation** audiovisual performance.
 - Shared manifest-driven Demo and Show playback on MIDI, browser, or both.
 - Deterministic browser audio assets and per-device muted sound controls.
-- Live-experience preemption when an agent needs a reply or approval.
+- Live-experience preemption whenever a real agent connects.
 - Optional semantic earcons for agent states, actions, and Scene selection.
 - On-demand GitHub workflows for tests and documentation, plus annotated-tag
   publication to PyPI.
@@ -39,9 +42,8 @@
 
 - Recruit Mini Mk3 and Pro Mk3 testers and promote each profile after a
   complete passing physical report.
-- Add a supported broader Codex control channel for interactive Stop, Retry,
-  and ordinary chat replies.
-- Publish the first stable annotated-tag release to PyPI.
+- Complete desktop release acceptance, installer signing/notarization, and publication.
+- Evaluate supported control points for Retry and ordinary chat replies.
 - Add more community-authored controller profiles.
 - Validate Visual Protocol 1 on devices with different layouts and palettes.
 - Gather usability evidence from people using only the virtual surface.

@@ -8,6 +8,7 @@ Codex permission request. Treat every enabled surface as an authorized operator.
 
 | Boundary | Protection | Trust assumption |
 | --- | --- | --- |
+| Desktop attachment | Explicit Connect, same-user Codex socket, request-scoped decisions and turn-specific Stop. | The local user and bundled engine are trusted; no hook review is required for this path. |
 | Codex lifecycle hooks | Hooks are scoped to `pad-lattice codex`; Codex requires review of each exact definition. Pad-Lattice never bypasses hook trust. | The reviewed Pad-Lattice executable and its installation path are trusted. |
 | Local Unix socket | The socket is mode `0600`. Linux also rejects peers whose kernel-reported UID differs from the daemon UID. | Other processes running as the same OS user are trusted. |
 | Local browser | Every daemon generates a random 256-bit administrator token. The startup URL carries it in the fragment, which is not sent in the HTTP request. | The tokenized local URL and browser profile are private to the operator. |
@@ -38,7 +39,8 @@ sandbox and approval policy.
 
 ## Browser Defenses
 
-The live bridge binds to loopback by default. `--lan` adds a second listener on
+The live bridge binds to loopback by default. Desktop pairing settings or CLI
+`--lan` add a second listener on
 only the selected private IPv4 interface rather than every interface. A NATed
 VM may advertise a different private address when its host forwards the same
 TCP port to that listener. The server also provides:
@@ -61,7 +63,7 @@ These controls follow the main recommendations in the
 
 :::warning LAN mode is not encrypted
 
-`pad-lattice web --lan` uses HTTP and WebSocket traffic. A hostile network can
+Desktop LAN pairing and `pad-lattice web --lan` use HTTP and WebSocket traffic. A hostile network can
 observe or tamper with credentials and actions. Use it only on a trusted private
 network. A host-to-VM forward must remain inside that trusted LAN; do not
 forward it through a router or expose it to the internet. Use loopback mode
@@ -73,7 +75,7 @@ when this condition is not satisfied.
   integration, including Approve. Revoke remote access when the device is no
   longer under your control.
 - A paired browser can answer built-in Demo prompts but cannot start or stop
-  Demo or Show. Real reply and approval waits preempt either experience.
+  Demo or Show. Any connected real agent prevents or stops either experience.
 - The local administrator URL is a bearer credential. Do not paste it into
   chat, logs, screenshots, or shared shell history.
 - A malicious process under the same OS account is outside the isolation
@@ -89,13 +91,13 @@ when this condition is not satisfied.
 
 ## Operator Checklist
 
-1. Install Pad-Lattice in an isolated environment such as `pipx`.
-2. Start integrated sessions with `pad-lattice codex` and review `/hooks`.
+1. Install Desktop from the official build artifacts, or the CLI in an isolated environment.
+2. Connect only intended chats in Desktop. For CLI hooks, review `/hooks` when using `pad-lattice codex`.
 3. Keep the default loopback browser unless phone or tablet access is required.
-4. Use `--lan` only on a trusted private network and never expose its port
+4. Enable phone pairing or use `--lan` only on a trusted private network and never expose its port
    beyond that LAN.
 5. Pair only devices you control and use **Revoke remote access** afterward.
-6. Confirm the selected Scene and terminal title before approving a request.
+6. Confirm the selected Scene, chat name, and request in Codex before approving.
 7. Use only trusted device profiles and MIDI ports.
 8. Keep Pad-Lattice and its dependencies current.
 

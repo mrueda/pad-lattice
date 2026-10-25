@@ -7,8 +7,8 @@ When an action is available, illuminated controls route it only to the selected
 agent.
 
 The same tactile visual language runs on physical Novation Launchpad MIDI
-controllers and a Virtual Pad in the browser, so anyone can use it from a
-phone, tablet, or computer, with or without MIDI hardware.
+controllers, the desktop app, and browser surfaces on phones, tablets, or
+computers. **No MIDI controller is required.**
 
 ![A Codex approval request lighting physical and virtual Pad-Lattice surfaces before one human decision returns to the selected agent](/img/human-control-workflow.svg)
 
@@ -24,38 +24,37 @@ Changing that grammar is a protocol decision, not cosmetic restyling.
 
 :::
 
-## Start Without Hardware
+## Start with Desktop
 
-The [desktop preview](./usage/desktop.md) combines the virtual pad, Codex session
-launcher, and device settings in one application with Python bundled.
+**The desktop app is recommended for interactive use.** It bundles Python and
+starts the local Pad-Lattice service. Open your Codex CLI chats as usual, then
+select **Connect** beside each conversation in Pad-Lattice. No restart or hook
+installation is needed for this connection.
 
-Open the [public virtual pad](pathname:///play/) to experience a simulated multi-agent
-approval and retry flow, explore every protocol state in the sandbox, or play
-the full-surface audiovisual Show.
+[Install the desktop preview](./usage/install.md), then follow
+[Quick Start](./usage/quickstart.md). Preview builds target Linux and macOS;
+Codex CLI must be installed and authenticated separately on the same computer.
 
-The public page is a simulation and never connects to a local agent. To control
-real Codex CLI sessions, install Pad-Lattice and run:
+The on-screen pad works by itself. Add a Launchpad through **Settings > MIDI
+controller**, or [pair a phone or tablet](./usage/connect-browsers.md).
+Every connected surface shows the same selection and available actions.
 
-```bash
-pad-lattice web
-```
+Prefer terminals or a headless setup? The [Python CLI](./usage/cli.md)
+works independently and uses the same control engine.
 
-Use `pad-lattice web --lan` to pair a phone or tablet on the same trusted local
-network. See [Connect a Phone, Tablet, or Laptop](./usage/connect-browsers.md) for a
-step-by-step guide, including multiple devices and Parallels Desktop.
+## Explore Before Installing
+
+Open the [public virtual pad](pathname:///play/) for the guided Demo, free
+Sandbox, or audiovisual Show. This page is a simulation, not a connection to
+your local agents. The desktop app also offers **Explore > Demo** and
+**Explore > Show** when no real conversations are connected.
 
 ## Why MIDI Still Matters
 
-MIDI hardware already combines tactile input, RGB feedback, low-latency local
-communication, and mature operating-system support. Pad-Lattice repurposes
-those strengths beyond music instead of requiring custom AI hardware.
-
-The browser provides the control surface without MIDI hardware. A Launchpad
-adds tactile controls and LED feedback, and both surfaces can run at once:
-
-```bash
-pad-lattice daemon --web
-```
+MIDI controllers already combine tactile input, RGB feedback, and low-latency
+local communication. Pad-Lattice repurposes those strengths beyond music.
+The desktop and browser pads make the same visual language available without
+buying hardware; a Launchpad adds physical buttons and LEDs.
 
 ## What It Supervises
 
@@ -76,9 +75,9 @@ semantic states, selection, and action availability only.
 | I want to... | Start here |
 | --- | --- |
 | Experience the idea immediately | [Try the virtual pad](pathname:///play/). |
-| Control Codex without MIDI hardware | [Control Codex](./usage/control-codex.md). |
+| Connect open Codex chats | [Quick Start](./usage/quickstart.md). |
 | Pair phones, tablets, or laptops | [Connect a Phone, Tablet, or Laptop](./usage/connect-browsers.md). |
-| Use a Launchpad | [Quick Start](./usage/quickstart.md#physical-launchpad). |
+| Use a Launchpad | [Desktop MIDI setup](./usage/desktop.md#connect-a-launchpad). |
 | Run several real Codex sessions | [Control Codex](./usage/control-codex.md#run-several-agents) and [Multi-Agent Design](./technical-details/multi-agent-design.md). |
 | Understand the visual grammar | [Visual Protocol](./technical-details/visual-language.md). |
 | Test another MIDI controller | [Device Testing](./technical-details/device-testing.md). |
@@ -88,8 +87,8 @@ semantic states, selection, and action availability only.
 
 Pad-Lattice is alpha software. Real browser control and the Novation Launchpad
 Pro Mk1 implement the same protocol. Mini Mk3 and Pro Mk3 MIDI profiles remain
-experimental. Interactive Codex currently exposes request-scoped Approve and
-Reject rather than arbitrary terminal input.
+experimental. Desktop connections expose request-scoped Approve/Reject and turn-specific
+Stop, not arbitrary terminal input.
 
 :::
 
@@ -97,14 +96,15 @@ Reject rather than arbitrary terminal input.
 
 - Public guided simulation and free protocol sandbox.
 - Shared Demo and audiovisual Show on MIDI, browser, or both surfaces.
-- Local browser control of real Codex CLI sessions.
+- Desktop discovery and connection to existing Codex CLI chats.
+- Local and paired browser control of real sessions.
 - Ephemeral QR/PIN pairing for phones and tablets on a trusted LAN.
 - Simultaneous MIDI and browser surfaces on one deterministic control plane.
 - Steady shape-plus-color state glyphs and eight persistent identity accents.
 - Multi-agent selection, compact background status, protected approvals, and overflow.
 - Request-scoped actions that are capability-gated and never broadcast.
 - Interactive Codex lifecycle hooks and Approve/Reject permission decisions.
-- Native-terminal labeled launcher with leases and immediate Scene cleanup.
+- Independent Python CLI with scoped hooks and leased session cleanup.
 - Non-interactive `codex-exec` adapter with targeted Stop.
 - Supported Launchpad Pro Mk1 and community-testable device profiles.
 - Optional host earcons, per-browser sound, and an authored audiovisual Show.

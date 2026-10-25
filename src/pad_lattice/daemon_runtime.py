@@ -431,10 +431,10 @@ class PadLatticeDaemon:
     def _handle_surface_event(self, event: SurfaceEvent) -> None:
         now = time.monotonic()
         if isinstance(event, ExperienceRequested):
-            if self._agent_attention_required():
+            if self.control.sessions:
                 self.experience.block(
                     event.kind,
-                    "An agent is waiting for approval or a reply.",
+                    "Disconnect all agent sessions before starting Demo or Show.",
                 )
                 return
             self.experience.start(
@@ -505,16 +505,9 @@ class PadLatticeDaemon:
         self._rendered_revision = self.control.revision
         self._next_activity_render = now + RUNNING_ACTIVITY_INTERVAL
 
-    def _agent_attention_required(self) -> bool:
-        return any(
-            session.state
-            in {AgentState.WAITING_FOR_REPLY, AgentState.WAITING_FOR_APPROVAL}
-            for session in self.control.sessions
-        )
-
     def _preempt_experience_if_needed(self) -> None:
-        if self.experience.active and self._agent_attention_required():
-            self.experience.stop(reason="agent_attention_required")
+        if self.experience.active and self.control.sessions:
+            self.experience.stop(reason="agents_connected")
             self._rendered_revision = -1
 
     def _announce_state(self, session: AgentSession) -> None:

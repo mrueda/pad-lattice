@@ -28,7 +28,9 @@ pub fn allowed_method(method: &str) -> bool {
             | "status"
             | "settings"
             | "inspect_codex"
-            | "launch_session"
+            | "list_conversations"
+            | "attach_conversation"
+            | "detach_conversation"
             | "lan"
             | "connect_midi"
             | "disconnect_midi"
@@ -185,7 +187,10 @@ mod tests {
     use super::*;
     #[test]
     fn rejects_arbitrary_process_and_filesystem_commands() {
-        assert!(allowed_method("launch_session"));
+        assert!(!allowed_method("launch_session"));
+        assert!(allowed_method("list_conversations"));
+        assert!(allowed_method("attach_conversation"));
+        assert!(allowed_method("detach_conversation"));
         for method in ["exec", "shell", "read_file", "write_file", ""] {
             assert!(!allowed_method(method));
         }

@@ -880,20 +880,31 @@ select:focus-visible {
 .desktopApp .desktopControls { flex-shrink: 0; margin: 0; padding: 12px 24px 18px; max-height: 58vh; overflow: auto; }
 .desktopApp .workspace { min-height: 0; overflow: auto; }
 .desktopApp .surfaceWorkspace { padding: 20px; align-items: flex-start; }
-.desktopApp .virtualSurface { width: min(100%, 500px, calc(100vh - 400px)); }
+.desktopApp .virtualSurface { width: min(100%, 500px, calc(100vh - 440px)); }
 .desktopApp .contextPane { padding: 20px 24px; gap: 20px; }
 .desktopControls { margin: 0 0 22px; border-bottom: 1px solid var(--desktop-border); padding: 0 0 20px; }
 .desktopToolbar, .desktopInputGroup, .desktopActions { display: flex; align-items: center; gap: 8px; }
 .desktopToolbar { justify-content: space-between; margin-bottom: 12px; }
 .desktopToolbar h2 { margin: 0; font-size: 18px; }
+.openConversations .desktopToolbar { margin-bottom: 6px; }
+.openConversations .desktopToolbar h2 { font-size: 15px; }
+.openConversationList { margin: 0; padding: 0; list-style: none; max-height: 158px; overflow: auto; }
+.openConversationList li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--desktop-border); }
+.openConversationList li > svg { flex-shrink: 0; width: 20px; color: #aab6c0; }
+.openConversationIdentity { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 12px; flex: 1; min-width: 0; }
+.openConversationIdentity strong { grid-column: 1 / -1; font-size: 14px; }
+.openConversationIdentity strong, .openConversationIdentity span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.openConversationIdentity span, .openConversationIdentity code { font-size: 12px; color: #aab6c0; }
+.openConversationStatus { display: grid; gap: 4px; text-align: right; font-size: 13px; flex-shrink: 0; }
+.openConversationStatus small { color: #aab6c0; font-size: 11px; }
+.openConversationStatus small.desktopError { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ff808a; }
 .desktopRuntime { font-size: 13px; color: #a5b7c7; }
-.desktopSession { display: grid; grid-template-columns: minmax(220px, 2fr) minmax(130px, 1fr) minmax(170px, 1fr) auto; gap: 14px; align-items: end; }
 .desktopControls label { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: 13px; color: #c9d2db; }
 .desktopControls input, .desktopControls select { width: 100%; min-width: 0; height: 38px; padding: 8px 10px; background: #172029; color: #eef2f5; border: 1px solid #45515d; border-radius: 5px; font: inherit; }
 .desktopControls input:focus, .desktopControls select:focus { outline: 2px solid #41c6cd; outline-offset: 1px; }
 .desktopInputGroup { min-width: 0; }
 .desktopInputGroup input { flex: 1; }
-.desktopControls .primaryButton { min-height: 38px; white-space: nowrap; }
+.desktopControls .primaryButton { min-height: 38px; max-width: 210px; white-space: normal; }
 .desktopControls .textButton svg { width: 18px; height: 18px; flex-shrink: 0; }
 .desktopError, .desktopNotice { margin: 10px 0 0; font-size: 13px; overflow-wrap: anywhere; }
 .desktopError { color: #ffaaa0; }
@@ -903,5 +914,39 @@ select:focus-visible {
 .desktopSettingsColumns section { min-width: 0; }
 .desktopSettingsColumns h3 { font-size: 15px; margin: 0 0 14px; }
 .desktopSettingsColumns label { margin-bottom: 12px; }
-@media (max-width: 980px) { .desktopSession { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 680px) { .desktopSession, .desktopSettingsColumns { grid-template-columns: 1fr; } }
+.desktopConnections { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 12px; color: #aab6c0; }
+.desktopConnections span { display: inline-flex; align-items: center; gap: 6px; }
+.desktopConnections svg { width: 14px; height: 14px; }
+.desktopViews { display: flex; gap: 24px; padding: 0 24px; border-bottom: 1px solid var(--desktop-border); flex-shrink: 0; }
+.desktopViews button { background: transparent; color: #aab6c0; border: 0; border-bottom: 3px solid transparent; padding: 12px 0; font: inherit; font-size: 14px; cursor: pointer; }
+.desktopViews button:focus-visible { outline: 2px solid #42d4bd; outline-offset: 2px; }
+.desktopViews button:disabled { opacity: 0.4; cursor: not-allowed; }
+.desktopSetup { flex-shrink: 0; }
+.desktopViews { align-items: center; justify-content: flex-end; }
+.simulationBar { display: flex; align-items: center; justify-content: space-between; flex: 1; gap: 16px; }
+.simulationBar > span { color: #e9bf65; font-size: 12px; font-weight: 700; }
+.exploreMenu { position: relative; z-index: 30; }
+.exploreMenu > button { font-size: 13px; }
+.exploreChoices { position: absolute; top: calc(100% + 8px); right: 0; width: 160px; padding: 5px; background: #171d22; border: 1px solid #45515d; border-radius: 6px; box-shadow: 0 8px 24px #0006; }
+.exploreChoices button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px; border: 0; background: transparent; color: #eef2f5; font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.exploreChoices button:hover, .exploreChoices button:focus-visible { background: #303b43; outline: none; }
+.exploreChoices svg { width: 18px; height: 18px; }
+.desktopViews .padFocusButton { width: 40px; height: 44px; padding: 8px; flex-shrink: 0; }
+.desktopViewActions { display: flex; flex-shrink: 0; gap: 8px; }
+.padOnly .appHeader, .padOnly .appFooter { display: none; }
+.padOnly .desktopViews { justify-content: flex-end; padding: 0 8px; border: 0; }
+.desktopApp .padFocusWorkspace { grid-template-columns: minmax(0, 1fr); }
+.padFocusWorkspace .contextPane { display: none; }
+.desktopApp .padFocusWorkspace .surfaceWorkspace { align-items: center; padding: 8px; border: 0; }
+.desktopApp .padFocusWorkspace .virtualSurface { width: min(100%, calc(100dvh - 120px)); padding: 0; border: 0; background: transparent; box-shadow: none; }
+.openConversationScene { display: grid; place-items: center; width: 28px; height: 28px; flex-shrink: 0; border: 1px solid currentColor; border-radius: 50%; font-size: 13px; font-weight: 700; }
+.padFocusWorkspace .surfaceCaption:not(.surfaceFooter) { display: none; }
+.selectedConversation { border-bottom: 1px solid var(--desktop-border); padding-bottom: 18px; }
+.selectedConversation h2 { display: flex; align-items: center; gap: 10px; margin: 12px 0 6px; font-size: 18px; overflow-wrap: anywhere; }
+.selectedConversation h2 i { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.selectedConversation p { margin: 0; font-size: 14px; color: #c9d2db; }
+.conversationActions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.conversationActions:empty { display: none; }
+.conversationActions .action-approve { color: #7ce69a; }
+.conversationActions .action-reject, .conversationActions .action-stop { color: #ffaaa0; }
+@media (max-width: 680px) { .desktopSettingsColumns { grid-template-columns: 1fr; } }

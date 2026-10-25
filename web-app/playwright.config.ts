@@ -31,5 +31,10 @@ export default defineConfig({
       url: 'http://127.0.0.1:4174',
       reuseExistingServer: !process.env.CI,
     },
+    {
+      command: `${python} ../tests/live_web_harness.py --port 4175 --empty`,
+      url: 'http://127.0.0.1:4175',
+      reuseExistingServer: !process.env.CI,
+    },
   ],
 });

@@ -3,50 +3,17 @@
 Pad-Lattice shows what Codex is doing and gives you physical or browser
 controls for actions that Codex makes available.
 
-## 1. Start a Control Surface
+## Connect Your Chats
 
-Choose the setup you want and leave its terminal open:
+Open **Pad-Lattice**, find your existing chat under **Open Codex conversations**,
+and select **Connect**. Codex continues in its original terminal.
+The [Quick Start](./quickstart.md) covers installation and the first connection.
 
-| I want to use... | Command |
-| --- | --- |
-| A browser on this computer | `pad-lattice web` |
-| A connected Launchpad | `pad-lattice daemon --no-greeting` |
-| A Launchpad and browsers together | `pad-lattice daemon --web --no-greeting` |
-| A phone, tablet, or another laptop | Follow [Connect a Phone, Tablet, or Laptop](./connect-browsers.md). |
+No hooks are needed for desktop attachment. The independent
+[CLI workflow](./cli.md) instead uses `pad-lattice codex` and scoped hook review;
+choose that path when you want to run without the desktop app.
 
-Every enabled surface mirrors the same Agent Scenes and available actions.
-
-## 2. Start Codex Through Pad-Lattice
-
-Open another terminal in your project and run:
-
-```bash
-pad-lattice codex --label work
-```
-
-Use any short label that helps you recognize the session, such as `docs`,
-`tests`, or `review`. The label and its Scene color appear on every surface.
-
-:::important Use the Pad-Lattice launcher
-
-A plain `codex` process does not connect to Pad-Lattice. Start or resume the
-conversation through `pad-lattice codex` whenever you want surface control.
-
-:::
-
-## 3. Review Hooks Once
-
-The first Pad-Lattice-launched Codex session asks you to review its hooks. In
-Codex, enter:
-
-```text
-/hooks
-```
-
-Review and trust the Pad-Lattice definitions. They apply only to Codex sessions
-started by the Pad-Lattice launcher; ordinary Codex sessions remain unchanged.
-
-## 4. Read the Surface
+## Read the Surface
 
 The selected Agent Scene fills the center of the pad. Its shape and color tell
 you the current state:
@@ -73,46 +40,41 @@ When Codex requests permission:
 4. Confirm that the amber request clears.
 
 The decision applies only to that selected, current request. It does not create
-a permanent permission rule. If no surface decision arrives within 60 seconds,
-Codex returns to its normal keyboard prompt.
+a permanent permission rule. Review the request in Codex before deciding.
+A control goes dark when the request is resolved or no supported decision is
+available. The CLI hook path has a separate 60-second surface-decision timeout.
 
 ## Resume an Existing Conversation
 
-Use the Codex session ID you normally resume:
+Resume the conversation in Codex as you normally would, then select
+**Refresh chats > Connect** in Pad-Lattice. The desktop does not start or resume
+Codex processes for you.
 
-```bash
-pad-lattice codex --label work -- resume <SESSION_ID>
-```
-
-You cannot attach hooks to a Codex process that is already running. Exit that
-process and resume it with the command above.
+For the CLI-only setup, use
+`pad-lattice codex --label work -- resume <SESSION_ID>` instead.
 
 ## Run Several Agents
 
-Start each session in its own terminal with a clear label:
-
-```bash
-pad-lattice codex --label implementation
-pad-lattice codex --label docs -- resume <SESSION_ID>
-pad-lattice codex --label review
-```
+Open the Codex chats you need and connect each from the desktop list.
+Names and working folders come from Codex. Match each chat to its Scene number
+and color; new connections use an available slot without renumbering existing ones.
 
 Up to eight sessions remain visible as Agent Scenes. Selecting a Scene on a
 Launchpad, phone, or laptop updates every other connected surface. A background
 agent may change its status, but it never steals selection.
 
-For a text legend in another terminal, run:
-
-```bash
-pad-lattice status --watch
-```
-
 ## Current Limits
 
-Interactive Codex currently exposes request-scoped **Approve** and **Reject**
-to Pad-Lattice. Ordinary chat replies, typing state, interactive Stop, and
-Retry remain in the Codex terminal because current hooks do not provide those
-control points.
+| Action | Desktop connection | CLI hooks |
+| --- | --- | --- |
+| Approve / Reject | One supported pending command or file-change request | Current permission request |
+| Stop | Known running turn | Not exposed by permission hooks |
+| Retry, typing, ordinary replies | Stay in Codex | Stay in Codex |
 
-For hook events, timeout behavior, non-interactive `codex-exec`, and routing
-details, see [Codex Integration](../technical-details/codex-integration.md).
+When several approval requests are pending in the same desktop-connected chat,
+use Codex to resolve them: the pad will not guess which request you mean.
+Special permission changes and identity verification also remain in Codex.
+
+See [Desktop Architecture](../technical-details/desktop.md) for live attachment
+and [Codex Integration](../technical-details/codex-integration.md) for CLI hooks
+and non-interactive tasks.
