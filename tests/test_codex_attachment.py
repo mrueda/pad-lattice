@@ -67,13 +67,15 @@ class LiveConversationTest(TestCase):
 
 class AttachmentIntegrationTest(TestCase):
     def setUp(self):
-        self.temp = TemporaryDirectory(prefix='pl-attach-')
+        # macOS TMPDIR is too long for this nested Unix socket address.
+        self.temp = TemporaryDirectory(prefix='pl-attach-', dir='/tmp')
         self.addCleanup(self.temp.cleanup)
         root = Path(self.temp.name)
         codex_home = root / 'codex-home'
         control_dir = codex_home / 'app-server-control'
         control_dir.mkdir(parents=True)
         control_path = control_dir / 'app-server-control.sock'
+        self.assertLess(len(os.fsencode(control_path)), 104)
         environment = patch.dict(os.environ, {'CODEX_HOME': str(codex_home)})
         environment.start()
         self.addCleanup(environment.stop)
