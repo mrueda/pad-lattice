@@ -15,6 +15,18 @@ behavior, and ownership of the bundled Python process.
 | Runtime helpers | `desktop_tools.py`, `desktop_entry.py` | Inspect the installed Codex version and start the bundled service. |
 | Python bundle | `scripts/build_desktop_engine.py` | Package the interpreter, runtime, profiles, and web/audio assets. |
 
+## Action Coverage
+
+| Action | Desktop connection | CLI hooks |
+| --- | --- | --- |
+| Approve / Reject | One supported pending command or file-change request | Current permission request |
+| Stop | Known running turn | Not exposed by permission hooks |
+| Retry, typing, ordinary replies | Stay in Codex | Stay in Codex |
+
+Resolve multiple simultaneous approvals, special permission changes, and identity
+verification in Codex. The CLI permission-hook path has a 60-second surface-decision
+timeout. See [Codex Integration](./codex-integration.md) for hooks and non-interactive tasks.
+
 ## Process Ownership
 
 Tauri starts one engine with piped stdin/stdout. The engine reports readiness
@@ -27,6 +39,11 @@ The desktop channel carries JSON requests and responses with IDs and streamed
 surface events. It is private to the parent and child processes. Native
 conversation attachment and settings operations are not browser protocol commands.
 The public app and paired devices receive no native shell permissions.
+
+Live `audio_cue` events carry the daemon's cue name and session slot through
+native IPC and browser WebSockets. They are not included in reconnect snapshots.
+The client sound preference applies to live cues, Demo, and Show; muting stops
+active playback. Host CLI audio remains independent.
 
 Desktop audio is fetched from the bundled assets and played through cached
 blob URLs. WebKit's media pipeline cannot play the `tauri://` asset URLs

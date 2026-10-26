@@ -70,8 +70,18 @@ const config: Config = {
       },
       items: [
         {
+          to: '/docs/usage/control-codex',
+          label: 'How It Works',
+          position: 'left',
+        },
+        {
+          to: '/docs/usage/device-catalog',
+          label: 'Device Catalog',
+          position: 'left',
+        },
+        {
           to: '/docs/usage/install',
-          label: 'Desktop App',
+          label: 'Install',
           position: 'left',
         },
         {
@@ -87,16 +97,11 @@ const config: Config = {
           label: 'Docs',
         },
         {
-          to: '/docs/usage/quickstart',
-          label: 'Quick Start',
-          position: 'left',
-        },
-        {to: '/docs/usage/cli', label: 'CLI', position: 'left'},
-        {
           href: 'https://github.com/mrueda/pad-lattice',
           label: 'GitHub',
           position: 'right',
         },
+        {to: '/docs/help/faq', label: 'Help', position: 'right'},
       ],
     },
     footer: {
@@ -105,6 +110,7 @@ const config: Config = {
         {
           title: 'Docs',
           items: [
+            {label: 'FAQ', to: '/docs/help/faq'},
             {label: 'Install Desktop', to: '/docs/usage/install'},
             {
               label: 'Virtual Pad',
@@ -119,11 +125,11 @@ const config: Config = {
               to: '/docs/usage/quickstart',
             },
             {
-              label: 'Phones, Tablets & Laptops',
-              to: '/docs/usage/connect-browsers',
+              label: 'Device Catalog',
+              to: '/docs/usage/device-catalog',
             },
             {
-              label: 'Control Codex',
+              label: 'How It Works',
               to: '/docs/usage/control-codex',
             },
             {

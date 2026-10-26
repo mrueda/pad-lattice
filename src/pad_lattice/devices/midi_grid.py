@@ -152,6 +152,10 @@ class MidiGridSurface:
                 self._set_address(address, self._resolve_color(color.fallback))
         self._showing = True
 
+    def emit_audio(self, cue: str, slot: int | None) -> None:
+        # MIDI grid hardware has no audio output; the host handles sound.
+        pass
+
     def set_experience(self, view: ExperienceView) -> None:
         """MIDI rendering is fully described by semantic or Show frames."""
 

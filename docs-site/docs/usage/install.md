@@ -4,20 +4,11 @@
 independent alternative for terminal workflows and automation. Both use the
 same Pad-Lattice engine; neither requires a MIDI controller.
 
-## Desktop Preview
+## Desktop App
 
 Desktop bundles Python and the local service. You do not need Python, Node.js,
 or Rust to run an installer. **Codex CLI is installed and authenticated
 separately**, on the same computer as Pad-Lattice.
-
-:::note Preview availability
-
-Desktop installers are currently build artifacts, not a published desktop
-release. The PyPI release does not include the desktop app.
-Use a successful build from the official repository; if none is available,
-use the CLI or the developer source-build instructions linked below.
-
-:::
 
 ### Choose a Build
 
@@ -45,8 +36,7 @@ supported. In a VM, choose the guest operating system and processor type.
 
 Linux builds use Ubuntu 24.04.
 
-Signing and notarization remain release work. Follow your operating system's
-security prompts and your organization's software policy; do not disable
+Follow your operating system's security prompts; do not disable
 security protections or install a build from an unknown source.
 
 Continue with [Quick Start](./quickstart.md) to connect your first chat.

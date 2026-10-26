@@ -136,6 +136,18 @@ class DesktopServiceTest(TestCase):
 
 
 class DesktopToolsTest(TestCase):
+    def test_audio_reaches_desktop_and_browsers_without_snapshot_replay(self):
+        messages = []
+        with TemporaryDirectory() as directory:
+            surface = DesktopSurface(Path(directory), "/tmp/pad.sock", messages.append, threading.Event())
+            self.addCleanup(surface.close)
+            with patch.object(surface.server, "broadcast_audio") as broadcast:
+                surface.emit_audio("approval", 2)
+            broadcast.assert_called_once_with("approval", 2)
+            self.assertEqual(messages[-1]["payload"],
+                {"protocol": 1, "type": "audio_cue", "cue": "approval", "slot": 2})
+            self.assertNotIn("audio_cue", [item["type"] for item in surface.snapshot()["messages"]])
+
     def test_lan_reconfiguration_preserves_listener_on_bind_failure(self):
         from unittest.mock import Mock
         with TemporaryDirectory() as directory:

@@ -30,7 +30,7 @@ requests must be handled in Codex. See [Control Codex](./control-codex.md).
 - Close any separately running Pad-Lattice daemon before starting Desktop.
 - **Refresh chats** updates the chat list. **Settings > Reload interface**
   reloads the window without disconnecting conversations.
-- In **Explore > Demo** or **Explore > Show**, enable **Sound** and check the
+- In **Demo & Show > Demo** or **Demo & Show > Show**, enable **Sound** and check the
   computer's output device. In a VM, check the guest's audio output too.
 - For MIDI, use **Settings > MIDI controller** to refresh ports and reconnect.
   The controller must be attached to the same computer or VM, not occupied by a DAW.

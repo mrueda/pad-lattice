@@ -8,6 +8,11 @@ const sidebars: SidebarsConfig = {
       label: 'Overview',
     },
     {
+      type: 'doc',
+      id: 'usage/control-codex',
+      label: 'How It Works',
+    },
+    {
       type: 'category',
       label: 'Get Started',
       items: [
@@ -17,40 +22,37 @@ const sidebars: SidebarsConfig = {
           id: 'usage/quickstart',
           label: 'Quick Start',
         },
-        {type: 'doc', id: 'usage/desktop', label: 'Desktop App'},
-        {type: 'doc', id: 'usage/device-catalog', label: 'Device Catalog'},
-        {type: 'doc', id: 'usage/stream-deck', label: 'Stream Deck (Preview)'},
+        {type: 'doc', id: 'usage/audio-feedback', label: 'Audio Feedback'},
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Device Catalog',
+      link: {type: 'doc', id: 'usage/device-catalog'},
+      items: [
         {
-          type: 'doc',
-          id: 'usage/connect-browsers',
-          label: 'Phones, Tablets & Laptops',
+          type: 'category',
+          label: 'Virtual Surfaces',
+          items: [
+            {type: 'doc', id: 'usage/desktop', label: 'Desktop Pad'},
+            {type: 'doc', id: 'usage/connect-browsers', label: 'Phones, Tablets & Browsers'},
+            {type: 'link', label: 'Public Playground', href: 'pathname:///play/'},
+          ],
         },
         {
-          type: 'doc',
-          id: 'usage/control-codex',
-          label: 'Control Codex',
-        },
-        {
-          type: 'doc',
-          id: 'usage/troubleshooting',
-          label: 'Troubleshooting',
+          type: 'category',
+          label: 'Physical Controllers',
+          items: [
+            {type: 'doc', id: 'usage/launchpad', label: 'Novation Launchpad'},
+            {type: 'doc', id: 'usage/stream-deck', label: 'Elgato Stream Deck'},
+          ],
         },
       ],
     },
     {
       type: 'category',
-      label: 'Command Line',
-      items: [{type: 'doc', id: 'usage/cli', label: 'CLI Setup'}],
-    },
-    {
-      type: 'category',
-      label: 'Explore',
+      label: 'Creative Uses',
       items: [
-        {
-          type: 'doc',
-          id: 'usage/audio-feedback',
-          label: 'Audio Feedback',
-        },
         {
           type: 'doc',
           id: 'usage/visual-show',
@@ -86,6 +88,7 @@ const sidebars: SidebarsConfig = {
               id: 'technical-details/visual-language',
               label: 'Visual Protocol',
             },
+            {type: 'doc', id: 'reference/socket-protocol', label: 'Socket Protocol'},
           ],
         },
         {
@@ -125,6 +128,8 @@ const sidebars: SidebarsConfig = {
           type: 'category',
           label: 'Operations & Development',
           items: [
+            {type: 'doc', id: 'usage/cli', label: 'CLI Setup'},
+            {type: 'doc', id: 'reference/cli', label: 'CLI Reference'},
             {
               type: 'doc',
               id: 'technical-details/security-model',
@@ -146,24 +151,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Reference',
+      label: 'Help',
+      link: {type: 'doc', id: 'help/faq'},
       items: [
-        {
-          type: 'doc',
-          id: 'reference/socket-protocol',
-          label: 'Socket Protocol',
-        },
-        {
-          type: 'doc',
-          id: 'reference/cli',
-          label: 'CLI',
-        },
-      ],
-    },
-    {
-      type: 'category',
-      label: 'About',
-      items: [
+        {type: 'doc', id: 'help/faq', label: 'FAQ'},
+        {type: 'doc', id: 'usage/troubleshooting', label: 'Troubleshooting'},
         {
           type: 'doc',
           id: 'about/origin-and-development',

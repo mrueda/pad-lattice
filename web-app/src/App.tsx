@@ -244,8 +244,8 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
 }
 
 function LiveApp() {
-  const live = useLiveSurface();
   const audio = useAudioOutput();
+  const live = useLiveSurface(audio.playLiveCue);
   const [pin, setPin] = useState('');
   const [desktopExperience, setDesktopExperience] = useState<'demo' | 'show' | null>(null);
   const padPreference = useDesktopPreference('pad_focused');
@@ -306,15 +306,25 @@ function LiveApp() {
     <PageFrame
       modeLabel={desktop && exploring ? 'SIMULATION' : 'CODEX CLI'}
       padOnly={padFocused}
-      headerActions={desktop ? <ExploreMenu disabled={agentsConnected || live.connection !== 'connected'} onStart={startDesktopExperience} /> : undefined}
+      headerActions={<>
+        <button className="textButton" onClick={audio.toggle} aria-pressed={audio.enabled}
+          aria-label="Sound" title={audio.enabled ? 'Mute all sound' : 'Enable sound'}>
+          {audio.enabled ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
+        </button>
+        {desktop ? <ExploreMenu disabled={agentsConnected || live.connection !== 'connected'} onStart={startDesktopExperience} /> : null}
+      </>}
       connected={live.connection === 'connected'}>
-      {desktop ? <div className="desktopSetup" hidden={padFocused}><DesktopControls /></div> : null}
+      {desktop ? <div className="desktopSetup" hidden={padFocused}><DesktopControls audioEnabled={audio.enabled} onAudio={audio.toggle} /></div> : null}
       {audio.error ? <p className="desktopError" role="alert">{audio.error}</p> : null}
       {padPreference.error ? <p className="desktopError" role="alert">{padPreference.error}</p> : null}
       {desktop && (exploring || agentsConnected) ? <div className="desktopViews">
         {exploring ? <div className="simulationBar"><span>SIMULATION: {desktopExperience === 'show' ? 'SHOW' : 'DEMO'}</span>
           <button className="textButton" onClick={() => {live.stopExperience(); setDesktopExperience(null);}}><ArrowLeft /> Back to live pad</button></div> : null}
         <div className="desktopViewActions">
+        {padFocused ? <button className="textButton" onClick={audio.toggle} aria-pressed={audio.enabled}
+          aria-label="Sound" title={audio.enabled ? 'Mute all sound' : 'Enable sound'}>
+          {audio.enabled ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
+        </button> : null}
         {agentsConnected ? <button className="textButton padFocusButton" title={padFocused ? 'Restore workspace' : 'Maximize pad'}
           aria-label={padFocused ? 'Restore workspace' : 'Maximize pad'} aria-pressed={padFocused}
           onClick={() => setPadFocused(!padFocused)}>{padFocused ? <Minimize2 /> : <Maximize2 />}</button> : null}

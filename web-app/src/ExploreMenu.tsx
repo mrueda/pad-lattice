@@ -25,10 +25,10 @@ export function ExploreMenu({disabled, onStart}: {disabled: boolean; onStart: (k
       : (index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
     items[next]?.focus();
   }}>
-    <button className="textButton" ref={trigger} aria-label="Explore" aria-haspopup="menu" aria-expanded={open}
-      disabled={disabled} title={disabled ? 'Disconnect conversations before exploring' : 'Explore'}
-      onClick={() => setOpen(!open)}>Explore <ChevronDown aria-hidden="true" /></button>
-    {open ? <div className="exploreChoices" role="menu" aria-label="Explore experiences">
+    <button className="textButton" ref={trigger} aria-label="Demo & Show" aria-haspopup="menu" aria-expanded={open}
+      disabled={disabled} title={disabled ? 'Disconnect conversations before starting Demo or Show' : 'Demo & Show'}
+      onClick={() => setOpen(!open)}>Demo &amp; Show <ChevronDown aria-hidden="true" /></button>
+    {open ? <div className="exploreChoices" role="menu" aria-label="Demo & Show">
       {(['demo', 'show'] as const).map(kind => <button key={kind} role="menuitem" onClick={() => {
         setOpen(false); trigger.current?.focus(); onStart(kind);
       }}>{kind === 'demo' ? <Play aria-hidden="true" /> : <Sparkles aria-hidden="true" />}{kind === 'demo' ? 'Demo' : 'Show'}</button>)}

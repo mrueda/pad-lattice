@@ -1,0 +1,11 @@
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px; margin: 24px 0; }
+.state { display: flex; gap: 16px; align-items: center; min-width: 0; padding-bottom: 14px; border-bottom: 1px solid var(--ifm-color-emphasis-200); }
+.state svg { flex: 0 0 86px; }
+.state p { margin: 4px 0 0; font-size: 14px; line-height: 1.5; }
+.figure { margin: 24px 0; }
+.figure > svg { display: block; width: 100%; max-width: 600px; height: auto; margin: 0 auto; font-family: var(--ifm-font-family-base); }
+.figure figcaption { font-size: 13px; color: var(--ifm-color-emphasis-700); text-align: center; margin: 10px 0 20px; }
+.key { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
+.key dt { font-weight: 700; }
+.key dd { margin: 4px 0 0; font-size: 14px; }
+@media (max-width: 540px) { .key { grid-template-columns: 1fr; } }

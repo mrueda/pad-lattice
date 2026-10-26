@@ -12,6 +12,10 @@ import {fileURLToPath} from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(path.join(root, 'web-app/package.json'));
 const {chromium} = require('@playwright/test');
+const {MousePointer2} = require('lucide-react');
+const {createElement} = require('react');
+const {renderToStaticMarkup} = require('react-dom/server');
+const pointerSvg = renderToStaticMarkup(createElement(MousePointer2, {size: 46, fill: 'white', stroke: '#10151a', strokeWidth: 1.5}));
 const temporary = await mkdtemp(path.join(tmpdir(), 'pl-film-'));
 const socketPath = path.join(temporary, 'agent.sock');
 const output = path.join(root, 'docs-site/static/media');
@@ -159,10 +163,16 @@ try {
     #filmDetail {position:fixed;left:30px;top:76px;color:#435766;font:18px system-ui;margin:0;}
     #filmLabel {position:fixed;right:28px;bottom:22px;color:#596e7c;font:12px system-ui;letter-spacing:1px;}
     #controller {position:fixed;right:28px;top:266px;width:460px;opacity:.26;transition:opacity .7s;}
-    #controller .virtualSurface {width:460px;padding:22px;background:#1a2024;border:5px solid #303a43;box-shadow:0 20px 26px #13283933;border-radius:12px;}
+    #controller .virtualSurface {position:relative;width:460px;padding:22px 22px 55px 52px;background:#1a2024;border:5px solid #303a43;box-shadow:0 12px 0 #0c1014,0 22px 26px #13283933;border-radius:14px;}
+    #controller .surfaceBody {position:relative;}
+    #controller .railControl,#controller .sceneControl {border-radius:50%;}
+    #controller .matrixPad {border-radius:3px;}
+    #controller .reservedLeft {position:absolute;left:-36px;top:0;bottom:0;width:26px;display:grid;grid-template-rows:repeat(8,1fr);gap:8px;align-items:center;}
+    #controller .reservedBottom {position:absolute;left:0;right:calc(100% / 9 + 8px);bottom:-38px;height:26px;display:grid;grid-template-columns:repeat(8,1fr);gap:8px;justify-items:center;}
+    #controller .reservedLeft span,#controller .reservedBottom span {display:block;width:24px;height:24px;border-radius:50%;border:1px solid #606b73;background:#10161c;}
     #controller .surfaceCaption {font-size:10px;}
     #controller .surfaceCaption span:first-child {font-size:0;}
-    #controller .surfaceCaption span:first-child:after {content:'LAUNCHPAD';font:600 12px system-ui; color:#d7e3e9;}
+    #controller .surfaceCaption span:first-child:after {content:'novation  /  Launchpad Pro';font:600 12px system-ui; color:#d7e3e9;}
     #controller .surfaceCaption span:last-child {display:none;}
     #controller .surfaceFooter {display:none;}
     #controller button {cursor:pointer;}
@@ -171,14 +181,28 @@ try {
     #cable.on {background:#1a8a80;box-shadow:0 0 8px #1a8a8033;}
     #cable:after {content:'USB MIDI';position:absolute;top:-24px;left:-8px;font:10px system-ui;white-space:nowrap;color:#496473;}
     .filmPress {outline:4px solid white!important;outline-offset:3px;}
+    #filmPointer {position:fixed;z-index:100;pointer-events:none;display:none;filter:drop-shadow(0 2px 2px #0008);}
+    #filmTarget {position:fixed;z-index:99;pointer-events:none;display:none;border:4px solid #fff;outline:2px solid #111;border-radius:8px;}
+    #filmTargetLabel {position:fixed;z-index:101;pointer-events:none;display:none;background:#fff;color:#17252c;border:2px solid #17252c;border-radius:4px;padding:7px 12px;font:600 18px system-ui;}
   `});
-  await page.evaluate(() => {
+  await page.evaluate(pointerSvg => {
     for (const [id, tag, text] of [['filmCaption','h1','Connect your open Codex conversations.'], ['filmDetail','p','One app for the on-screen pad, MIDI controller, and phone pairing.'], ['filmLabel','p','SIMULATED CODEX SESSIONS + ILLUSTRATED MIDI CONTROLLER'], ['controllerLabel','p','Optional: connect a Launchpad'], ['controller','div',''], ['cable','div','']]) {
       const element = document.createElement(tag); element.id = id; element.textContent = text; document.body.append(element);
     }
+    for (const id of ['filmPointer', 'filmTarget', 'filmTargetLabel']) {
+      const element = document.createElement('div'); element.id = id; document.body.append(element);
+    }
+    document.querySelector('#filmPointer').innerHTML = pointerSvg;
     const source = document.querySelector('.desktopApp .virtualSurface');
     const target = document.querySelector('#controller');
-    const sync = () => {target.innerHTML = source.outerHTML;}; sync();
+    const sync = () => {
+      target.innerHTML = source.outerHTML;
+      for (const className of ['reservedLeft', 'reservedBottom']) {
+        const rail = document.createElement('div'); rail.className = className; rail.setAttribute('aria-hidden', 'true');
+        for (let i = 0; i < 8; i++) rail.append(document.createElement('span'));
+        target.querySelector('.surfaceBody').append(rail);
+      }
+    }; sync();
     new MutationObserver(sync).observe(source, {attributes: true, childList: true, subtree: true, characterData: true});
     target.addEventListener('click', event => {
       const button = event.target.closest('button'); if (!button) return;
@@ -186,37 +210,55 @@ try {
       const index = Array.from(target.querySelectorAll(selector)).indexOf(button);
       if (index >= 0) source.querySelectorAll(selector)[index].click();
     });
-  });
+  }, pointerSvg);
   const caption = (title, detail) => page.evaluate(({title, detail}) => {
     document.querySelector('#filmCaption').textContent = title;
     document.querySelector('#filmDetail').textContent = detail;
   }, {title, detail});
+  const clickCue = async (locator, label, hold = 1400) => {
+    await locator.scrollIntoViewIfNeeded();
+    const box = await locator.boundingBox();
+    if (!box) throw Error(`Missing click target: ${label}`);
+    await page.evaluate(({box, label}) => {
+      const pointer = document.querySelector('#filmPointer');
+      const target = document.querySelector('#filmTarget');
+      const text = document.querySelector('#filmTargetLabel');
+      Object.assign(target.style, {display: 'block', left: `${box.x - 6}px`, top: `${box.y - 6}px`, width: `${box.width + 12}px`, height: `${box.height + 12}px`});
+      Object.assign(pointer.style, {display: 'block', left: `${box.x + box.width / 2}px`, top: `${box.y + box.height / 2}px`});
+      text.textContent = label;
+      Object.assign(text.style, {display: 'block', left: `${Math.max(12, Math.min(box.x - 20, 1600 - 320))}px`, top: `${Math.max(110, box.y - 58)}px`});
+    }, {box, label});
+    await pause(hold);
+    await locator.click();
+    await pause(500);
+    await page.evaluate(() => {for (const id of ['filmPointer', 'filmTarget', 'filmTargetLabel']) document.getElementById(id).style.display = 'none';});
+  };
   await pause(2200);
   for (const label of ['Implementation', 'Review', 'Tests']) {
-    await page.getByRole('button', {name: `Connect ${label}`, exact: true}).click();
+    await clickCue(page.getByRole('button', {name: `Connect ${label}`, exact: true}), `Connect ${label}`, 900);
     await page.getByRole('button', {name: `Disconnect ${label}`, exact: true}).waitFor();
     await pause(500);
   }
   await caption('Keep several sessions in view.', 'Each session has a color. The large symbol shows the selected session.');
   await pause(3000);
-  await page.getByRole('button', {name: 'Settings', exact: true}).click();
-  await page.getByRole('button', {name: 'Connect', exact: true}).click();
-  await page.getByRole('button', {name: 'Close settings', exact: true}).click();
+  await clickCue(page.getByRole('button', {name: 'Settings', exact: true}), 'Open settings', 800);
+  await clickCue(page.getByRole('button', {name: 'Connect', exact: true}), 'Connect MIDI', 800);
+  await clickCue(page.getByRole('button', {name: 'Close settings', exact: true}), 'Back to the pad', 600);
   await page.evaluate(() => {document.querySelector('#controller').style.opacity = '1'; document.querySelector('#cable').classList.add('on');});
   await caption('Connect a Launchpad through USB MIDI.', 'The desktop pad and controller show the same session and available actions.');
   await pause(3000);
   await state('film-review', 'waiting_for_approval', 'Review');
   await approval();
   await page.getByRole('button', {name: 'Refresh chats', exact: true}).click();
-  await caption('Review needs your approval.', 'Select its colored Scene button on the right.');
+  await caption('Select Review: right-side button 2.', 'Press the magenta round button, not a square inside the grid.');
   await pause(2600);
-  await page.locator('#controller .sceneControl').nth(1).click();
+  await clickCue(page.locator('#controller .sceneControl').nth(1), '1. Select Review');
   await page.locator('.selectedConversation').getByRole('button', {name: 'Approve', exact: true}).waitFor();
   await pause(800);
   await page.screenshot({path: path.join(output, 'desktop-workflow-poster.png')});
-  await caption('Press the green control to approve.', 'The decision goes only to the selected request.');
+  await caption('Approve: green button at the top left.', 'Read the request in Codex first. This approves only the selected request.');
   await pause(2600);
-  await page.locator('#controller .railControl').first().click();
+  await clickCue(page.locator('#controller .railControl').first(), '2. Approve');
   await pause(1800);
   if (!approved) throw Error('The controller approval did not reach the selected subscriber');
   await page.locator('.selectedConversation').getByRole('button', {name: 'Approve', exact: true}).waitFor({state: 'hidden'});

@@ -1,5 +1,7 @@
 # Visual Protocol
 
+import {StateLegend} from '@site/src/components/SurfaceVisuals';
+
 Pad-Lattice Visual Protocol **1** defines how agent identity, state,
 selection, action availability, and capacity appear on any conforming surface.
 
@@ -127,62 +129,11 @@ remain recognizable without writing raw session IDs to disk.
 
 ## State Glyphs
 
-The selected-agent canvas is 7x8. Shape and color are both normative.
+The selected-agent canvas is 7x8. These examples use the same renderer as the app.
 
-<div className="matrixDiagram">
-  <div className="stateExampleGrid">
-    <div>
-      <p><strong>Waiting for reply (?)</strong></p>
-      <div className="stateMatrix" aria-label="White question mark for waiting for reply">
-        <span></span><span className="semanticWhite"></span><span className="semanticWhite"></span><span className="semanticWhite"></span><span className="semanticWhite"></span><span className="semanticWhite"></span><span></span>
-        <span className="semanticWhite"></span><span></span><span></span><span></span><span></span><span></span><span className="semanticWhite"></span>
-        <span></span><span></span><span></span><span></span><span></span><span className="semanticWhite"></span><span className="semanticWhite"></span>
-        <span></span><span></span><span></span><span></span><span className="semanticWhite"></span><span className="semanticWhite"></span><span></span>
-        <span></span><span></span><span></span><span></span><span className="semanticWhite"></span><span></span><span></span>
-        <span></span><span></span><span></span><span className="semanticWhite"></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span className="semanticWhite"></span><span></span><span></span><span></span>
-      </div>
-    </div>
-    <div>
-      <p><strong>Waiting for approval (!)</strong></p>
-      <div className="stateMatrix" aria-label="Amber exclamation mark for waiting for approval">
-        <span></span><span></span><span></span><span className="semanticAmber"></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span className="semanticAmber"></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span className="semanticAmber"></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span className="semanticAmber"></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span className="semanticAmber"></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span className="semanticAmber"></span><span></span><span></span><span></span>
-      </div>
-    </div>
-    <div>
-      <p><strong>Success :-)</strong></p>
-      <div className="stateMatrix" aria-label="Green happy face for success">
-        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-        <span></span><span className="semanticGreen"></span><span></span><span></span><span></span><span className="semanticGreen"></span><span></span>
-        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-        <span className="semanticGreen"></span><span></span><span></span><span></span><span></span><span></span><span className="semanticGreen"></span>
-        <span></span><span className="semanticGreen"></span><span></span><span></span><span></span><span className="semanticGreen"></span><span></span>
-        <span></span><span></span><span className="semanticGreen"></span><span></span><span className="semanticGreen"></span><span></span><span></span>
-        <span></span><span></span><span></span><span className="semanticGreen"></span><span></span><span></span><span></span>
-      </div>
-    </div>
-  </div>
-</div>
+<StateLegend all />
 
-| State | Shape and color |
-| --- | --- |
-| running | Blue three-dot ellipsis |
-| waiting_for_reply | White question mark |
-| user_typing | Cyan chevron |
-| waiting_for_approval | Restrained amber exclamation mark |
-| success | Green happy face |
-| error | Red X |
-| cancelled | Gray hollow square |
-| No selection | Dim three-pad dash |
+With no selection, the pad shows a dim three-pad dash.
 
 Rapid flashing and pulsing are not used. Optional running motion is disabled
 unless the daemon starts with `--activity-motion`.

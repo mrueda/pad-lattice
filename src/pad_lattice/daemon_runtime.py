@@ -524,6 +524,7 @@ class PadLatticeDaemon:
             self._play_audio(cue, slot=session.slot)
 
     def _play_audio(self, cue: Earcon, *, slot: int | None) -> None:
+        self.surface.emit_audio(cue.value, slot)
         if self.audio_feedback is None:
             return
         try:

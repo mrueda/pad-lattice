@@ -37,6 +37,12 @@ test('desktop discovers then explicitly connects and disconnects without launchi
     throw Error(`Unexpected desktop method: ${method}`);
   });
   await page.addInitScript(() => {
+    Object.assign(window, {__audioPlays: 0});
+    HTMLMediaElement.prototype.play = function () {
+      const target = window as unknown as {__audioPlays: number};
+      target.__audioPlays += 1;
+      return Promise.resolve();
+    };
     let id = 0;
     const callbacks = new Map<number, (event: unknown) => void>();
     const listeners = new Map<number, string>();
@@ -62,7 +68,7 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   expect(methods).not.toContain('attach_conversation');
   await expect(page.getByRole('button', {name: 'Pair device', exact: true})).toBeEnabled();
   await expect(page.getByText('PAIR A SURFACE', {exact: true})).toBeVisible();
-  const explore = page.getByRole('button', {name: 'Explore', exact: true});
+  const explore = page.getByRole('button', {name: 'Demo & Show', exact: true});
   await expect(page.getByRole('tab')).toHaveCount(0);
   await expect(explore).toBeEnabled();
   await explore.click();
@@ -103,6 +109,22 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   expect(await page.evaluate(() => document.dispatchEvent(new MouseEvent('contextmenu', {bubbles: true, cancelable: true})))).toBe(false);
   await expect(page.getByRole('button', {name: 'Reload interface', exact: true})).toHaveCount(0);
   await page.getByRole('button', {name: 'Settings', exact: true}).click();
+  const sound = page.getByRole('checkbox', {name: 'Enable sound'});
+  await expect(sound).not.toBeChecked();
+  await sound.check();
+  await expect.poll(() => preferences.audio_enabled).toBe(true);
+  const emitCue = () => page.evaluate(() => {
+    (window as unknown as {__emitSurface: (message: unknown) => void}).__emitSurface(
+      {protocol: 1, type: 'audio_cue', cue: 'approval', slot: 0});
+  });
+  await emitCue();
+  await expect.poll(() => page.evaluate(() => (window as unknown as {__audioPlays: number}).__audioPlays)).toBe(1);
+  await page.getByRole('button', {name: 'Sound', exact: true}).click();
+  await expect(sound).not.toBeChecked();
+  await expect.poll(() => preferences.audio_enabled).toBe(false);
+  await emitCue();
+  await page.waitForTimeout(200);
+  expect(await page.evaluate(() => (window as unknown as {__audioPlays: number}).__audioPlays)).toBe(1);
   await expect(page.getByRole('button', {name: 'Save', exact: true})).toHaveCount(0);
   await page.getByRole('button', {name: 'Reload interface', exact: true}).click();
   await expect(list.getByText('Connected, Scene 1', {exact: true})).toBeVisible();

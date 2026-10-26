@@ -1,53 +1,35 @@
 # Device Catalog
 
-**No controller is required.** The desktop pad and paired phone, tablet, or
-laptop browser can control the same Codex CLI sessions. Hardware is optional.
+Choose how you want to see and control your Codex CLI sessions. **No MIDI
+hardware is required.** Start with [How It Works](./control-codex.md) for the
+shared workflow; the entries below explain each surface's setup and layout.
 
-Choose a device below to see its status and setup path. **Supported** means
-physically tested; **experimental** means an implementation exists but still
-needs an owner's hardware test. These are Pad-Lattice integration statuses,
-not manufacturer certifications.
+![Desktop, browser, and physical surfaces sharing Codex sessions](/img/control-surfaces-overview.svg)
 
-## Novation Launchpad
+## Virtual Surfaces
 
-All three profiles use the 8x8 grid, top action buttons, and right-side session
-selectors. Their extra controls, where present, remain reserved. Each uses
-Programmer mode without modifying the device's firmware.
+| Surface | What it does | Status |
+| --- | --- | --- |
+| [**Desktop Pad**](./desktop.md) | Connect existing Codex CLI chats and use the pad on your computer. | Linux and macOS |
+| [**Phones, Tablets & Browsers**](./connect-browsers.md) | Pair a browser to the running bridge and control the same sessions. | Live control; trusted-network access requires pairing |
+| [**Public Playground**](pathname:///play/) | Try the glyphs, guided Demo, and Show without installing anything. | Simulation only; no connection to real agents |
 
-| Model | Status | Profile ID | MIDI interface |
-| --- | --- | --- | --- |
-| **Launchpad Pro Mk1** | **Supported: physically tested** | `novation/launchpad/pro-mk1` | Standalone Port |
-| **Launchpad Mini Mk3** | Experimental: owner testing needed | `novation/launchpad/mini-mk3` | MIDI, not DAW |
-| **Launchpad Pro Mk3** | Experimental: owner testing needed | `novation/launchpad/pro-mk3` | MIDI, not DAW or DIN |
+The desktop app also manages the local service. Browser surfaces can connect
+to it or to the independent [CLI service](./cli.md).
 
-**Setup:** connect over USB, then open **Settings > MIDI controller** in
-Pad-Lattice. Select the profile and press **Connect**. Automatic detection
-only considers supported profiles; choose either Mk3 profile explicitly.
+## Physical Controllers
 
-The profiles map session colors, state glyphs, and available actions. They also
-describe Demo/Show output, but the Mk3 mappings and visual playback are not
-hardware-verified. Do not assume other Launchpad generations share these mappings.
+| Controller | Layout | Status |
+| --- | --- | --- |
+| [**Novation Launchpad Pro Mk1**](./launchpad.md) | Shared 8x8 grid, top action rail, right-side session selectors | Supported: physically tested |
+| [**Novation Launchpad Mini Mk3**](./launchpad.md) | Same visual layout, model-specific MIDI profile | Experimental: hardware testing needed |
+| [**Novation Launchpad Pro Mk3**](./launchpad.md) | Same visual layout, model-specific MIDI profile | Experimental: hardware testing needed |
+| [**Elgato Stream Deck**](./stream-deck.md) | One complete session glyph per LCD key; separate action keys | Experimental source plugin; no physical model validated |
 
-[Desktop MIDI setup](./desktop.md#connect-a-launchpad) ·
-[CLI setup](./cli.md) ·
-[Help test a controller](../technical-details/device-testing.md)
-
-## Elgato Stream Deck
-
-| Integration | Status | Installation | Host software |
-| --- | --- | --- | --- |
-| **LCD session and action keys** | Experimental: simulated-host tests, no physical validation | Separate plugin built from source | Elgato Stream Deck 7.1+, macOS or Windows |
-
-**One key shows one session's full glyph**, its color, and a short label.
-Other keys provide Approve, Reject, and Stop. You choose where these keys go
-and can keep other plugins beside them.
-
-The first integration targets **LCD keypad actions**, not dials, touch strips,
-pedals, or a controller-wide Demo/Show. No individual Stream Deck model is yet
-certified as tested. The Pad-Lattice bridge must run on a supported Linux or
-macOS computer; the plugin can pair locally or over a trusted LAN.
-
-[Stream Deck setup and layout](./stream-deck.md)
+For hardware, **supported** means physically tested; **experimental** means an
+implementation exists but still needs an owner's test. These are Pad-Lattice
+integration statuses, not manufacturer certifications. Each entry explains
+requirements, installation, and limitations.
 
 ## Add a MIDI Profile
 

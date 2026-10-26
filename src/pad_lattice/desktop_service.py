@@ -67,6 +67,10 @@ class DesktopSurface(WebSurface):
     def notify(self, message):
         self.emit({"event": "surface", "payload": message})
 
+    def emit_audio(self, cue, slot):
+        super().emit_audio(cue, slot)
+        self.notify(web_message("audio_cue", cue=cue, slot=slot))
+
     def render(self, view):
         self.last_view = view
         super().render(view)

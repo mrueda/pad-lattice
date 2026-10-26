@@ -16,7 +16,7 @@ interface Status {
 }
 interface Codex {available: boolean; version?: string; tested?: boolean; tested_version: string; error?: string}
 
-export function DesktopControls() {
+export function DesktopControls({audioEnabled, onAudio}: {audioEnabled: boolean; onAudio: () => void}) {
   const [status, setStatus] = useState<Status | null>(null);
   const [codex, setCodex] = useState<Codex | null>(null);
   const [error, setError] = useState('');
@@ -78,6 +78,9 @@ export function DesktopControls() {
       {settingsOpen ? <div className="desktopSettings">
         <div className="desktopToolbar"><h2>Settings</h2><button className="textButton" title="Close settings" aria-label="Close settings" onClick={() => setSettingsOpen(false)}><X /></button></div>
         <div className="desktopSettingsColumns">
+          <section><h3>Sound</h3>
+            <label><input type="checkbox" checked={audioEnabled} onChange={onAudio} /> Enable sound</label>
+          </section>
           <section><h3>Codex</h3>
             <label>Codex executable<div className="desktopInputGroup"><input value={codexPath} placeholder="Automatic detection" onChange={(e) => setCodexPath(e.target.value)} onBlur={() => void savePreferences({codex: codexPath}, true)} />
               <button className="textButton" title="Choose Codex executable" aria-label="Choose Codex executable" onClick={() => void run(async () => {const path = await choosePath(); if (path) {setCodexPath(path); await savePreferences({codex: path}, true);}})}><FolderOpen /></button></div></label>

@@ -9,7 +9,7 @@ This is an **independent hobby project developed in mrueda's free time**.
 
 ## From Ableton Live To Agents
 
-mrueda is also a musician and a member of the duo [The New
+[mrueda](https://github.com/mrueda) is also a musician and a member of the duo [The New
 Assembly](https://www.thenewassembly.com/). He already used a Novation Launchpad
 Pro with Ableton Live and owned other MIDI instruments. Its tactile RGB grid
 and scene controls suggested a new use outside music: stable visual symbols for
@@ -23,6 +23,6 @@ same visual language for people using a phone, tablet, or computer.
 
 Development began on **3 July 2026**.
 
-mrueda designed the interaction and tested each iteration on a Launchpad Pro
-Mk1 and paired browsers. Codex CLI (OpenAI, GPT-5.6) was used during
+[mrueda](https://github.com/mrueda) designed the interaction and tested each iteration on a Launchpad Pro
+Mk1 and paired browsers. Codex CLI (OpenAI, GPT-5.6 and GPT-6) was used during
 implementation, testing, documentation, and design exploration.

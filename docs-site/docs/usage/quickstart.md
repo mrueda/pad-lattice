@@ -1,16 +1,16 @@
 # Quick Start
 
+import {StateLegend} from '@site/src/components/SurfaceVisuals';
+
 **The desktop app is the recommended way to use Pad-Lattice interactively.**
 It connects to your open Codex CLI conversations and gives them a shared
 visual control surface. No MIDI controller is required.
 
 ## 1. Install Desktop
 
-Follow [Install](./install.md) to get the preview build for Linux or macOS.
+Follow [Install](./install.md) to get the app for Linux or macOS.
 Python and the Pad-Lattice engine are bundled; Codex CLI must already be
 installed and authenticated on the same computer.
-
-Desktop is currently a preview, separate from the published PyPI CLI.
 
 ## 2. Connect a Conversation
 
@@ -24,6 +24,8 @@ install hooks for this connection. Names and working folders come from Codex.
 Use **Refresh chats** if a newly opened conversation is missing.
 
 ## 3. Use the Pad
+
+<StateLegend />
 
 The right-side numbered buttons select conversations. The large symbol shows
 the selected conversation's state. When Codex asks for permission:
@@ -52,8 +54,8 @@ The desktop app manages the service; do not start a second daemon alongside it.
 
 ## Try It Without Codex
 
-Disconnect real conversations, then choose **Explore > Demo** for guided
-interaction or **Explore > Show** for the audiovisual story. Both work without
+Disconnect real conversations, then choose **Demo & Show > Demo** for guided
+interaction or **Demo & Show > Show** for the audiovisual story. Both work without
 MIDI hardware. **Sound** is optional; **Back to live pad** ends the simulation.
 
 For a no-installation preview, [try the public pad](pathname:///play/).

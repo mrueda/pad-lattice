@@ -1,5 +1,7 @@
 # Stream Deck
 
+import {StreamDeckDiagram} from '@site/src/components/SurfaceVisuals';
+
 :::caution Experimental preview
 
 The Elgato Stream Deck plugin is available as a **source build**, not a Marketplace
@@ -13,7 +15,7 @@ its glyph shows the current state. Press the key to select it; a white border
 marks the selection. Separate **Approve**, **Reject**, and **Stop** keys act on
 that session and show its name.
 
-![Stream Deck keys using the existing Pad-Lattice glyphs](/img/stream-deck-layout.svg)
+<StreamDeckDiagram />
 
 This is the same visual vocabulary as the Launchpad, placed inside LCD keys
 rather than spread across the controller. You choose the layout and can keep

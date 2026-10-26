@@ -1,7 +1,18 @@
-# Control Codex
+# How It Works
+
+import {StateLegend} from '@site/src/components/SurfaceVisuals';
 
 Pad-Lattice shows what Codex is doing and gives you physical or browser
 controls for actions that Codex makes available.
+
+**Connect a chat, recognize its state, select it, then act.** Colors identify
+sessions; glyphs show their states. Prompts, ordinary replies, and the actual
+permission request stay in Codex, where you review them before deciding.
+
+Choose a virtual or physical surface in the [Device Catalog](./device-catalog.md).
+All connected surfaces share the same selected conversation. On the desktop,
+browser, and Launchpad, the main grid shows the selected session and the right
+rail selects sessions. On Stream Deck, each session has its own glyph key.
 
 ## Connect Your Chats
 
@@ -15,18 +26,11 @@ choose that path when you want to run without the desktop app.
 
 ## Read the Surface
 
-The selected Agent Scene fills the center of the pad. Its shape and color tell
-you the current state:
+The glyph on the main grid, or inside a Stream Deck session key, shows its state:
 
-| You see | Codex is... |
-| --- | --- |
-| White question mark | waiting for your reply |
-| Blue dots | working |
-| Amber exclamation mark | asking for permission |
-| Green happy face | finished successfully |
-| Red X | reporting an error |
+<StateLegend />
 
-The right-side Agent Scenes identify active sessions. Select a Scene before
+Select a right-side Agent Scene or a Stream Deck session key before
 acting on that agent. See [Visual Protocol](../technical-details/visual-language.md)
 for the complete color and symbol reference.
 
@@ -41,8 +45,7 @@ When Codex requests permission:
 
 The decision applies only to that selected, current request. It does not create
 a permanent permission rule. Review the request in Codex before deciding.
-A control goes dark when the request is resolved or no supported decision is
-available. The CLI hook path has a separate 60-second surface-decision timeout.
+Only available actions light up. Ordinary replies and unsupported requests stay in Codex.
 
 ## Resume an Existing Conversation
 
@@ -62,19 +65,3 @@ and color; new connections use an available slot without renumbering existing on
 Up to eight sessions remain visible as Agent Scenes. Selecting a Scene on a
 Launchpad, phone, or laptop updates every other connected surface. A background
 agent may change its status, but it never steals selection.
-
-## Current Limits
-
-| Action | Desktop connection | CLI hooks |
-| --- | --- | --- |
-| Approve / Reject | One supported pending command or file-change request | Current permission request |
-| Stop | Known running turn | Not exposed by permission hooks |
-| Retry, typing, ordinary replies | Stay in Codex | Stay in Codex |
-
-When several approval requests are pending in the same desktop-connected chat,
-use Codex to resolve them: the pad will not guess which request you mean.
-Special permission changes and identity verification also remain in Codex.
-
-See [Desktop Architecture](../technical-details/desktop.md) for live attachment
-and [Codex Integration](../technical-details/codex-integration.md) for CLI hooks
-and non-interactive tasks.

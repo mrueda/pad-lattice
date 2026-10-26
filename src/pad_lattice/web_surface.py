@@ -175,6 +175,10 @@ class BrowserSurfaceServer:
         self._latest_surface = message
         self._broadcast(message)
 
+    def broadcast_audio(self, cue: str, slot: int | None) -> None:
+        # Transient events must not be replayed when a browser reconnects.
+        self._broadcast(web_message("audio_cue", cue=cue, slot=slot))
+
     def broadcast_experience(self, message: dict[str, Any]) -> None:
         self._latest_experience = message
         if message.get("status") in {"idle", "blocked"}:
@@ -782,6 +786,9 @@ class WebSurface:
 
     def set_experience(self, view: ExperienceView) -> None:
         self.server.broadcast_experience(experience_message(view))
+
+    def emit_audio(self, cue: str, slot: int | None) -> None:
+        self.server.broadcast_audio(cue, slot)
 
     def poll_events(self) -> list[SurfaceEvent]:
         events: list[SurfaceEvent] = []

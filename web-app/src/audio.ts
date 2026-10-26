@@ -5,12 +5,15 @@ import {isDesktop} from './desktop';
 import {useDesktopPreference} from './useDesktopPreference';
 
 const defaultSoundtrackUrl = './experiences/audio/constellation-v1.wav';
+const earcons = new Set(['question', 'approval', 'approve', 'reject', 'retry', 'stop',
+  'success', 'error', 'cancelled', 'session_selected', 'unavailable']);
 
 export interface AudioOutput {
   enabled: boolean;
   error: string | null;
   toggle: () => void;
   playCue: (cue: string | null, slot: number | null, sequence: number) => void;
+  playLiveCue: (cue: string, slot: number | null) => void;
   syncExperience: (experience: ExperienceStateMessage | null) => void;
   stop: () => void;
 }
@@ -21,6 +24,8 @@ export function useAudioOutput(): AudioOutput {
   const [error, setError] = useState<string | null>(null);
   const assetsRef = useRef<AudioAssets | null>(null);
   const epochRef = useRef(0);
+  const activeCues = useRef(new Set<HTMLAudioElement>());
+  const recentCue = useRef({key: '', time: -Infinity});
   const resolveSource = useCallback((path: string) => {
     assetsRef.current ??= new AudioAssets(isDesktop());
     return assetsRef.current.resolve(path);
@@ -39,6 +44,8 @@ export function useAudioOutput(): AudioOutput {
 
   const stop = useCallback(() => {
     epochRef.current += 1;
+    for (const cue of activeCues.current) cue.pause();
+    activeCues.current.clear();
     if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     timerRef.current = null;
     if (soundtrackRef.current) {
@@ -73,17 +80,33 @@ export function useAudioOutput(): AudioOutput {
     });
   }, [stop, reportError, setEnabled]);
 
-  const playCue = useCallback((cue: string | null, slot: number | null, sequence: number) => {
-    if (sequence < lastCueRef.current) lastCueRef.current = 0;
-    if (!enabledRef.current || !cue || sequence <= lastCueRef.current) return;
-    lastCueRef.current = sequence;
+  const playLiveCue = useCallback((cue: string, slot: number | null) => {
+    if (!enabledRef.current || !earcons.has(cue)
+      || (slot !== null && (!Number.isInteger(slot) || slot < 0 || slot > 7))) return;
+    const key = `${cue}:${slot}`;
+    const now = performance.now();
+    if (recentCue.current.key === key && now - recentCue.current.time < 120) return;
+    recentCue.current = {key, time: now};
     const suffix = slot === null ? 'none' : String(slot);
     const epoch = epochRef.current;
     void resolveSource(`./experiences/audio/earcon-${cue}-${suffix}.wav`).then((url) => {
       if (!enabledRef.current || epoch !== epochRef.current) return;
-      return new Audio(url).play();
+      if (activeCues.current.size >= 4) return;
+      const player = new Audio(url);
+      activeCues.current.add(player);
+      const release = () => activeCues.current.delete(player);
+      player.onended = release;
+      player.onerror = release;
+      return player.play().catch((reason: unknown) => { release(); throw reason; });
     }).catch(reportError);
   }, [resolveSource, reportError]);
+
+  const playCue = useCallback((cue: string | null, slot: number | null, sequence: number) => {
+    if (sequence < lastCueRef.current) lastCueRef.current = 0;
+    if (!cue || sequence <= lastCueRef.current) return;
+    lastCueRef.current = sequence;
+    playLiveCue(cue, slot);
+  }, [playLiveCue]);
 
   const syncExperience = useCallback((experience: ExperienceStateMessage | null) => {
     if (!enabledRef.current || !experience || experience.kind !== 'show') {
@@ -129,7 +152,7 @@ export function useAudioOutput(): AudioOutput {
     assetsRef.current = null;
   }, [stop]);
   return useMemo(
-    () => ({enabled, error: error || preference.error, toggle, playCue, syncExperience, stop}),
-    [enabled, error, preference.error, playCue, stop, syncExperience, toggle],
+    () => ({enabled, error: error || preference.error, toggle, playCue, playLiveCue, syncExperience, stop}),
+    [enabled, error, preference.error, playCue, playLiveCue, stop, syncExperience, toggle],
   );
 }

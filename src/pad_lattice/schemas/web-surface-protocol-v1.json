@@ -15,10 +15,22 @@
     {"$ref": "#/$defs/surface"},
     {"$ref": "#/$defs/experienceState"},
     {"$ref": "#/$defs/performanceFrame"},
+    {"$ref": "#/$defs/audioCue"},
     {"$ref": "#/$defs/remoteRevoked"},
     {"$ref": "#/$defs/error"}
   ],
   "$defs": {
+    "audioCue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocol", "type", "cue", "slot"],
+      "properties": {
+        "protocol": {"const": 1},
+        "type": {"const": "audio_cue"},
+        "cue": {"enum": ["question", "approval", "approve", "reject", "retry", "stop", "success", "error", "cancelled", "session_selected", "unavailable"]},
+        "slot": {"type": ["integer", "null"], "minimum": 0, "maximum": 7}
+      }
+    },
     "protocol": {"const": 1},
     "actionName": {"enum": ["approve", "reject", "stop", "retry"]},
     "stateName": {

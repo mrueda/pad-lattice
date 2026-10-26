@@ -72,6 +72,10 @@ class CompositeSurface:
             events.extend(surface.poll_events())
         return events
 
+    def emit_audio(self, cue: str, slot: int | None) -> None:
+        for surface in self.surfaces:
+            surface.emit_audio(cue, slot)
+
     def close(self) -> None:
         if self._closed:
             return

@@ -31,7 +31,7 @@ Built-in files follow the same directory hierarchy:
 src/pad_lattice/device_profiles/<manufacturer>/<family>/<model>.json
 ```
 
-The [Device Catalog](../usage/device-catalog.md#novation-launchpad) lists
+The [Launchpad catalog entry](../usage/launchpad.md#models) lists
 the built-in IDs and their hardware-validation status.
 
 User profiles are loaded recursively from:

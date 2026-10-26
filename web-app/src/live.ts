@@ -38,7 +38,9 @@ export interface LiveSurfaceState {
   stopExperience: () => void;
 }
 
-export function useLiveSurface(): LiveSurfaceState {
+export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) => void): LiveSurfaceState {
+  const audioCallback = useRef(onAudioCue);
+  audioCallback.current = onAudioCue;
   const [connection, setConnection] = useState<ConnectionState>('connecting');
   const [surface, setSurface] = useState<SurfaceMessage | null>(null);
   const [experience, setExperience] = useState<ExperienceStateMessage | null>(null);
@@ -94,6 +96,10 @@ export function useLiveSurface(): LiveSurfaceState {
       }
       if (message.type === 'surface') {
         setSurface(message);
+        return;
+      }
+      if (message.type === 'audio_cue') {
+        audioCallback.current?.(message.cue, message.slot);
         return;
       }
       if (message.type === 'experience_state') {

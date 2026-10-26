@@ -7,7 +7,7 @@ const featureLinks = [
   {
     label: 'Recommended',
     title: 'Start with Desktop',
-    text: 'Connect open Codex CLI chats in one app. Python is bundled; no MIDI controller is required. Preview builds for Linux and macOS.',
+    text: 'Connect open Codex CLI chats in one app. Python is bundled; no MIDI controller is required. Available for Linux and macOS.',
     to: '/docs/usage/install',
   },
   {

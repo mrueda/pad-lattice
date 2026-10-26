@@ -1,112 +1,55 @@
 # Audio Feedback
 
-Pad-Lattice can reinforce visual state with short semantic sounds called
-**earcons**. Audio is optional and additive: LEDs remain authoritative, and
-turning sound off never changes agent behavior or physical actions.
+import EarconSamples from '@site/src/components/EarconSamples';
 
-:::info MIDI is not audio
+**Earcons are short sounds for requests, actions, and results.** They complement
+the lights during normal agent use, not just Demo and Show.
+Working and typing stay silent.
 
-MIDI carries control messages. A Launchpad does not synthesize these sounds or
-play them through a speaker. Pad-Lattice generates audio on the computer and
-uses an available local WAV player.
+## Enable Sound
 
-:::
+In Desktop, turn on **Settings > Sound > Enable sound**, or use the speaker
+button at the top. This setting covers live sessions, Demo, and Show.
+Desktop remembers your choice. Each browser has its own sound toggle and
+starts muted.
 
-## Desktop and Browser Sound
+Sounds play through the computer, phone, or tablet, **not the Launchpad**.
+A Launchpad sends MIDI messages; it has no speaker.
 
-In Desktop, choose **Explore > Demo** or **Explore > Show**, then enable
-**Sound**. Disconnect real conversations before exploring. Desktop remembers
-your sound preference; each paired browser has its own toggle and starts muted.
+## Listen to the Sounds
 
-Desktop uses bundled WAV assets and the computer's audio output. This does not
-enable CLI daemon earcons for live chats. The host commands below are a separate,
-optional CLI feature.
+These are the same files used by the app, played here in Session 1's pitch.
+Other sessions use different pitches so you can distinguish them by ear.
 
-## CLI Audio
+<EarconSamples />
 
-Start normal multi-agent operation with audio feedback:
+Action sounds follow the bridge's handling of the request, not just a click.
+Turning sound off never changes agent behavior. Old sounds are not replayed
+when you reconnect.
+
+## CLI
+
+Enable live feedback:
 
 ```bash
 pad-lattice daemon --audio-feedback
 ```
 
-Preview the operational vocabulary in the guided Demo:
+Try the guided Demo or the separate creative Show with sound:
 
 ```bash
 pad-lattice demo --audio
-pad-lattice demo --surface web
-```
-
-Play the standalone visual story with its synchronized score:
-
-```bash
 pad-lattice show --audio
 ```
 
-When a MIDI surface and host audio are enabled, the Demo and daemon speak
-**HELLO FROM CODEX CLI** as the same text scrolls across the controller.
-`--no-greeting` suppresses both forms of greeting. They then use brief mono
-event cues; Show independently uses a continuous authored stereo
-piano-and-strings score with a formant-synthesized robotic signature.
+CLI host audio is independent of Desktop and browser sound. Enable only one
+output on the same computer to avoid hearing cues twice.
 
-Greeting timing is derived from the rendered 5x7 glyph columns and the active
-`--greeting-delay`. Each word is spoken when that word reaches the matrix, so
-changing scroll speed keeps the visual and audio timelines together.
+The host needs one of `pw-play`, `paplay`, `aplay`, `afplay`, or `ffplay`.
+Desktop and browsers use bundled audio files instead.
 
-## Earcon Vocabulary
+With MIDI and host audio enabled, the Demo and daemon also speak the scrolling
+greeting. Use `--no-greeting` to skip it.
 
-| Event | Sound | Purpose |
-| --- | --- | --- |
-| Waiting for reply | Gentle rising question | The agent needs human input. |
-| Waiting for approval | Two unresolved knocks | A permission decision is pending. |
-| Approve | Short rising confirmation | A physical approval was delivered. |
-| Reject | Short descending refusal | A physical rejection was delivered. |
-| Retry | Three-note restart | Retry was delivered to the selected agent. |
-| Stop | Firm falling stop | Stop was delivered to the selected agent. |
-| Success | Bright major chime | Work completed successfully. |
-| Error | Low dissonant descent | Work ended in error. |
-| Cancelled | Two muted low notes | Work was cancelled. |
-| Scene selected | Session-specific bell | Physical selection changed or was confirmed. |
-| Unavailable action | Muted low click | A pressed control had no valid recipient. |
-
-**Running and user typing are deliberately silent.** Continuous sound would
-make long tasks tiring and weaken the important cues.
-
-## Multi-Agent Identity
-
-The semantic rhythm remains constant, while Scene 1 through Scene 8 transpose
-it across `C D E F G A B C`. This mirrors the stable cyan-through-sky Scene
-order. A success always sounds like success, but its pitch also indicates
-which visible agent produced it.
-
-The mapping supplements the terminal title, status legend, and Scene colors;
-it does not replace those explicit identifiers.
-
-## Runtime Behavior
-
-- Host sounds are synthesized from layered waveforms at runtime without a
-  Python audio package. Browser earcons, greeting, and Show soundtrack are
-  deterministic WAV files generated from the same Python authoring source at
-  build time. Both spoken phrases use Pad-Lattice's small formant synthesizer,
-  not an operating-system TTS voice.
-- Every browser Sound toggle is independent and muted by default. Enabling it
-  does not enable host audio or sound on another paired device.
-- Playback is nonblocking, so a slow audio device cannot pause MIDI polling or
-  socket routing.
-- Identical cues within 120 milliseconds are suppressed, and concurrent
-  playback is bounded.
-- Stopping the daemon terminates pending sounds and removes temporary WAV
-  files.
-- Audio playback failure does not alter control-plane state or action routing.
-
-On Unix-like systems Pad-Lattice uses the first available player from
-`pw-play`, `paplay`, `aplay`, `afplay`, or `ffplay`. Requesting audio without a
-supported player returns a clear error; normal operation without the audio
-flag has no player requirement.
-
-## Future MIDI Output
-
-The earcon names are semantic rather than tied to a particular synthesizer.
-A future output backend can send the same vocabulary to a virtual MIDI port,
-DAW, or hardware synthesizer. That extension does not require changing the
-agent protocol or visual meanings.
+For the shared audio sources and build process, see the
+[experience asset compiler](../technical-details/developer-guide.md#experience-asset-compiler).

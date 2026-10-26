@@ -45,6 +45,9 @@ class FakeSurface:
     def render_show_frame(self, frame) -> None:
         self.show_frames.append(frame)
 
+    def emit_audio(self, cue, slot) -> None:
+        pass
+
     def set_experience(self, view) -> None:
         self.experiences.append(view)
 

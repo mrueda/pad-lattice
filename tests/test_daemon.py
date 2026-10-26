@@ -66,6 +66,7 @@ class FakeSurface:
 
     def __init__(self) -> None:
         self.views = []
+        self.audio_cues = []
         self.show_frames = []
         self.experiences = []
         self.events = []
@@ -83,6 +84,9 @@ class FakeSurface:
 
     def set_experience(self, view) -> None:
         self.experiences.append(view)
+
+    def emit_audio(self, cue, slot) -> None:
+        self.audio_cues.append((cue, slot))
 
     def poll_events(self):
         events, self.events = self.events, []
@@ -276,6 +280,14 @@ class DaemonTest(TestCase):
                 (Earcon.SUCCESS, 0),
             ],
         )
+
+    def test_surface_receives_live_audio_without_host_player(self) -> None:
+        daemon = self.daemon()
+        client = Client(FakeSocket())
+        for state in ("running", "waiting_for_approval", "waiting_for_approval", "user_typing", "success"):
+            daemon.handle_message(client, wire({"type": "state", "state": state,
+                "agent": {"backend": "codex", "session_id": "audio-test"}}))
+        self.assertEqual(daemon.surface.audio_cues, [("approval", 0), ("success", 0)])
 
     def test_subscribe_message_records_target_and_capabilities(self) -> None:
         daemon = self.daemon()
