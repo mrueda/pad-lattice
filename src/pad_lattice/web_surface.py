@@ -216,12 +216,10 @@ class BrowserSurfaceServer:
 
     def create_pairing(self) -> dict[str, Any]:
         with self._auth_lock:
-            if self._advertised_base_url is None:
-                raise WebProtocolError("LAN access is not enabled", code="lan_disabled")
             now = self.clock()
             secret = secrets.token_urlsafe(24)
             pin = f"{secrets.randbelow(1_000_000):06d}"
-            pairing_url = f"{self._advertised_base_url}/#pair={secret}"
+            pairing_url = f"{self._advertised_base_url or self.local_url}/#pair={secret}"
             qr = segno.make(pairing_url, error="m")
             credential = PairingCredential(
                 pin=pin,
@@ -246,7 +244,7 @@ class BrowserSurfaceServer:
         with self._clients_lock:
             clients = tuple(self._clients.values())
         for client in clients:
-            if client.remote:
+            if not client.admin:
                 try:
                     client.connection.close(1008, "authorization revoked")
                 except OSError:
@@ -423,7 +421,10 @@ class BrowserSurfaceServer:
                     code="forbidden",
                 )
 
-            client = BrowserClient(connection, admin=loopback, remote=not loopback)
+            admin = loopback and command.credential is not None and hmac.compare_digest(
+                command.credential, self._admin_token
+            )
+            client = BrowserClient(connection, admin=admin, remote=not loopback)
             with self._clients_lock:
                 self._release_client_reservation(client.remote)
                 reserved = False
@@ -523,10 +524,10 @@ class BrowserSurfaceServer:
         if isinstance(command, AuthenticateCommand):
             raise WebProtocolError("client is already authenticated")
         if isinstance(command, ActionCommand):
-            self.event_sink(ActionPressed(command.action))
+            self.event_sink(ActionPressed(command.action, command.expected_revision))
             return
         if isinstance(command, SelectSessionCommand):
-            self.event_sink(SessionSelected(command.slot))
+            self.event_sink(SessionSelected(command.slot, command.expected_revision))
             return
         if isinstance(command, CreatePairingCommand):
             self._require_admin(client)
@@ -555,12 +556,8 @@ class BrowserSurfaceServer:
         loopback: bool,
     ) -> tuple[bool, str | None]:
         with self._auth_lock:
-            if loopback:
-                return (
-                    credential is not None
-                    and hmac.compare_digest(credential, self._admin_token),
-                    None,
-                )
+            if loopback and credential is not None and hmac.compare_digest(credential, self._admin_token):
+                return True, None
             if credential is None or self._rate_limited(peer):
                 return False, None
             if any(

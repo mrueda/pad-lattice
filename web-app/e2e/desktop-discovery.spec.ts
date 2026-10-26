@@ -60,6 +60,8 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   await expect(list.getByText('Approval needed', {exact: true})).toBeVisible();
   await expect(list.getByText('Not connected', {exact: true})).toHaveCount(2);
   expect(methods).not.toContain('attach_conversation');
+  await expect(page.getByRole('button', {name: 'Pair device', exact: true})).toBeEnabled();
+  await expect(page.getByText('PAIR A SURFACE', {exact: true})).toBeVisible();
   const explore = page.getByRole('button', {name: 'Explore', exact: true});
   await expect(page.getByRole('tab')).toHaveCount(0);
   await expect(explore).toBeEnabled();

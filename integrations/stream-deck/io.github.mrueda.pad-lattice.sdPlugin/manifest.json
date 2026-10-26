@@ -1,0 +1,98 @@
+{
+  "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+  "UUID": "io.github.mrueda.pad-lattice",
+  "Name": "Pad-Lattice (Experimental)",
+  "Version": "0.1.0.0",
+  "Author": "mrueda",
+  "Description": "Visual state and guarded actions for Codex CLI sessions connected to Pad-Lattice.",
+  "Category": "Pad-Lattice (Experimental)",
+  "CategoryIcon": "images/category",
+  "Icon": "images/plugin",
+  "CodePath": "bin/plugin.js",
+  "SDKVersion": 3,
+  "Software": {
+    "MinimumVersion": "7.1"
+  },
+  "Nodejs": {
+    "Version": "24"
+  },
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "13"
+    },
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "URL": "https://mrueda.github.io/pad-lattice/",
+  "SupportURL": "https://github.com/mrueda/pad-lattice/issues",
+  "PropertyInspectorPath": "ui/settings.html",
+  "Actions": [
+    {
+      "UUID": "io.github.mrueda.pad-lattice.session",
+      "Name": "Session",
+      "Icon": "images/icon",
+      "Controllers": [
+        "Keypad"
+      ],
+      "SupportedInMultiActions": false,
+      "UserTitleEnabled": false,
+      "States": [
+        {
+          "Image": "images/icon",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "UUID": "io.github.mrueda.pad-lattice.approve",
+      "Name": "Approve",
+      "Icon": "images/icon",
+      "Controllers": [
+        "Keypad"
+      ],
+      "SupportedInMultiActions": false,
+      "UserTitleEnabled": false,
+      "States": [
+        {
+          "Image": "images/icon",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "UUID": "io.github.mrueda.pad-lattice.reject",
+      "Name": "Reject",
+      "Icon": "images/icon",
+      "Controllers": [
+        "Keypad"
+      ],
+      "SupportedInMultiActions": false,
+      "UserTitleEnabled": false,
+      "States": [
+        {
+          "Image": "images/icon",
+          "ShowTitle": false
+        }
+      ]
+    },
+    {
+      "UUID": "io.github.mrueda.pad-lattice.stop",
+      "Name": "Stop",
+      "Icon": "images/icon",
+      "Controllers": [
+        "Keypad"
+      ],
+      "SupportedInMultiActions": false,
+      "UserTitleEnabled": false,
+      "States": [
+        {
+          "Image": "images/icon",
+          "ShowTitle": false
+        }
+      ]
+    }
+  ]
+}

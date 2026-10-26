@@ -187,9 +187,9 @@ class DesktopSurface(WebSurface):
         if method == "surface":
             command = parse_web_command(params)
             if isinstance(command, ActionCommand):
-                self._enqueue_event(ActionPressed(command.action))
+                self._enqueue_event(ActionPressed(command.action, command.expected_revision))
             elif isinstance(command, SelectSessionCommand):
-                self._enqueue_event(SessionSelected(command.slot))
+                self._enqueue_event(SessionSelected(command.slot, command.expected_revision))
             elif isinstance(command, StartExperienceCommand):
                 self._enqueue_event(ExperienceRequested(command.kind))
             elif isinstance(command, StopExperienceCommand):

@@ -41,6 +41,8 @@ See [Control Codex](./control-codex.md) for the symbols and action limits.
 
 ## 4. Add a Controller or Another Screen
 
+See the [Device Catalog](./device-catalog.md) for supported and experimental hardware.
+
 - **Launchpad:** connect it over USB, then use **Settings > MIDI controller > Connect**.
 - **Phone or tablet:** use **Settings > Phone and tablet** to enable pairing on
   your trusted private network. Follow [Connect Screens](./connect-browsers.md).

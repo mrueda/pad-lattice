@@ -21,16 +21,7 @@ same visual language for people using a phone, tablet, or computer.
 
 ## Development
 
-Public development began on 3 July 2026 with the [initial Pad-Lattice
-scaffold](https://github.com/mrueda/pad-lattice/commit/cc0440b2d0bcdc49335c5a0e77e49996bf3f9c90).
-By 7 July, commits had established [host
-mode](https://github.com/mrueda/pad-lattice/commit/72152e997fa37132a78c91f636157e42d30bf596),
-a [visual state
-grammar](https://github.com/mrueda/pad-lattice/commit/f28a14918dbb54f992d1d40b949dec3fe5796601),
-and a [Codex CLI control
-bridge](https://github.com/mrueda/pad-lattice/commit/ce7c1682613adb92f6ac7db37286172117684701).
-Further use added multi-agent Scenes, device profiles, virtual surfaces, audio,
-and shared Demo and Show experiences.
+Development began on **3 July 2026**.
 
 mrueda designed the interaction and tested each iteration on a Launchpad Pro
 Mk1 and paired browsers. Codex CLI (OpenAI, GPT-5.6) was used during

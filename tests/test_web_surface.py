@@ -32,6 +32,18 @@ from pad_lattice.web_protocol import (
 
 
 class BrowserSurfaceServerTest(TestCase):
+    def test_local_pairing_does_not_need_lan(self) -> None:
+        server = BrowserSurfaceServer(lambda event: None)
+        pairing = server.create_pairing()
+        self.assertTrue(pairing["pairing_url"].startswith(server.local_url + "/#pair="))
+        accepted, token = server._authenticate("127.0.0.1", pairing["pin"], loopback=True)
+        self.assertTrue(accepted)
+        self.assertIsNotNone(token)
+        self.assertEqual(server._authenticate("127.0.0.1", token, loopback=True), (True, None))
+        self.assertEqual(server._authenticate("127.0.0.1", pairing["pin"], loopback=True), (False, None))
+        server.revoke_remote()
+        self.assertEqual(server._authenticate("127.0.0.1", token, loopback=True), (False, None))
+
     def test_pairing_is_one_use_and_session_tokens_are_ephemeral(self) -> None:
         now = [10.0]
         server = BrowserSurfaceServer(lambda event: None, clock=lambda: now[0])
@@ -175,6 +187,39 @@ class BrowserSurfaceServerTest(TestCase):
 
 
 class WebSurfaceIntegrationTest(TestCase):
+    def test_paired_local_controller_is_not_admin_and_can_be_revoked(self) -> None:
+        from websockets.exceptions import ConnectionClosed
+
+        surface = WebSurface(port=0)
+        surface.initialize()
+        try:
+            pin = surface.create_pairing()["pin"]
+            url = surface.local_url.replace("http://", "ws://") + "/ws"
+            with connect(url, origin=surface.local_url, proxy=None, close_timeout=1) as client:
+                client.send(json.dumps({"protocol": 1, "type": "authenticate", "credential": pin}))
+                authenticated = json.loads(client.recv(timeout=2))
+                self.assertFalse(authenticated["admin"])
+                self.assertTrue(authenticated["session_token"])
+                self.assertEqual(json.loads(client.recv(timeout=2))["type"], "experience_state")
+                for message_type in ("create_pairing", "revoke_remote", "start_experience"):
+                    command = {"protocol": 1, "type": message_type}
+                    if message_type == "start_experience":
+                        command["kind"] = "show"
+                    client.send(json.dumps(command))
+                    self.assertEqual(json.loads(client.recv(timeout=2))["code"], "admin_required")
+                client.send(json.dumps({"protocol": 1, "type": "action", "action": "approve", "expected_revision": 17}))
+                deadline = time.monotonic() + 2
+                events = []
+                while time.monotonic() < deadline and not events:
+                    events = surface.poll_events()
+                    time.sleep(.01)
+                self.assertEqual(events, [ActionPressed(ControlAction.APPROVE, 17)])
+                surface.server.revoke_remote()
+                with self.assertRaises(ConnectionClosed):
+                    client.recv(timeout=2)
+        finally:
+            surface.close()
+
     def test_browser_event_queue_is_bounded(self) -> None:
         surface = WebSurface(port=0)
         event = ActionPressed(ControlAction.STOP)

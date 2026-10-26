@@ -13,6 +13,7 @@ Codex permission request. Treat every enabled surface as an authorized operator.
 | Local Unix socket | The socket is mode `0600`. Linux also rejects peers whose kernel-reported UID differs from the daemon UID. | Other processes running as the same OS user are trusted. |
 | Local browser | Every daemon generates a random 256-bit administrator token. The startup URL carries it in the fragment, which is not sent in the HTTP request. | The tokenized local URL and browser profile are private to the operator. |
 | LAN browser | A one-use QR secret or six-digit PIN expires after five minutes. Reconnect tokens live only until daemon shutdown or explicit revocation. | The paired device and local network are trusted. |
+| Stream Deck plugin | Non-administrator PIN pairing also works on loopback. Tokens stay in plugin memory; actions carry the displayed control revision, checked at daemon dispatch. | Elgato's software, the plugin host, and physical access to the keys are trusted. |
 | MIDI input | Only mapped positive Note On or Control Change events become semantic surface events. | The selected MIDI port, physical access, and user-supplied profile are trusted. |
 
 The same-user assumption matters. A process already running as your account can
@@ -96,7 +97,7 @@ when this condition is not satisfied.
 3. Keep the default loopback browser unless phone or tablet access is required.
 4. Enable phone pairing or use `--lan` only on a trusted private network and never expose its port
    beyond that LAN.
-5. Pair only devices you control and use **Revoke remote access** afterward.
+5. Pair only devices you control and use **Revoke paired devices** afterward.
 6. Confirm the selected Scene, chat name, and request in Codex before approving.
 7. Use only trusted device profiles and MIDI ports.
 8. Keep Pad-Lattice and its dependencies current.

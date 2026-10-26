@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src ws://127.0.0.1:*">
+<title>Pad-Lattice</title><link rel="stylesheet" href="settings.css"></head>
+<body>
+<label id="sessionLabel">Session<select id="slot"><option value="0">1</option><option value="1">2</option><option value="2">3</option><option value="3">4</option><option value="4">5</option><option value="5">6</option><option value="6">7</option><option value="7">8</option></select></label>
+<form id="pairForm">
+<label>Pad-Lattice address<input id="address" type="url" value="http://127.0.0.1:8765" required autocomplete="off" spellcheck="false"></label>
+<label>Pairing PIN<input id="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" required autocomplete="off"></label>
+<div><button type="submit">Pair</button><button id="disconnect" type="button">Disconnect</button></div>
+</form><output id="status" role="status">Not paired</output>
+<script src="settings.js"></script></body></html>

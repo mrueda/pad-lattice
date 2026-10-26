@@ -1,0 +1,5 @@
+:root { color-scheme: dark; font-family: sans-serif; font-size: 13px; color: #edf2f5; background: #242424; }
+body { margin: 12px; } label { display: grid; gap: 6px; margin: 12px 0; }
+input, select, button { box-sizing: border-box; max-width: 100%; padding: 8px; font: inherit; border: 1px solid #666; border-radius: 4px; background: #303030; color: inherit; }
+input, select { width: 100%; } button { cursor: pointer; margin-right: 6px; } button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #00aebb; }
+output { display: block; margin-top: 12px; overflow-wrap: anywhere; } [hidden] { display: none; }

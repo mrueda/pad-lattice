@@ -18,6 +18,8 @@ const sidebars: SidebarsConfig = {
           label: 'Quick Start',
         },
         {type: 'doc', id: 'usage/desktop', label: 'Desktop App'},
+        {type: 'doc', id: 'usage/device-catalog', label: 'Device Catalog'},
+        {type: 'doc', id: 'usage/stream-deck', label: 'Stream Deck (Preview)'},
         {
           type: 'doc',
           id: 'usage/connect-browsers',

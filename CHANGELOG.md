@@ -8,6 +8,8 @@ versions follow [PEP 440](https://peps.python.org/pep-0440/).
 
 ### Added
 
+- Experimental Elgato Stream Deck plugin with per-session glyph keys, guarded
+  Approve/Reject/Stop, and non-administrator local pairing. Hardware testing pending.
 - Desktop preview for Linux and macOS with bundled Python, the shared virtual
   pad, live conversation connections, MIDI selection, and phone pairing.
 - Manual desktop installer builds and packaged-engine/native-window checks.

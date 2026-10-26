@@ -7,6 +7,30 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  stream-deck:
+    name: Stream Deck plugin (experimental)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: integrations/stream-deck/package-lock.json
+      - name: Build, test, and package plugin
+        working-directory: integrations/stream-deck
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build
+          npm test
+          npm run pack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pad-lattice-stream-deck-experimental
+          path: integrations/stream-deck/*.streamDeckPlugin
+          if-no-files-found: error
+
   test:
     runs-on: ubuntu-latest
     strategy:

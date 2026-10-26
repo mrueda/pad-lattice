@@ -35,11 +35,13 @@ class AuthenticateCommand:
 @dataclass(frozen=True)
 class ActionCommand:
     action: ControlAction
+    expected_revision: int | None = None
 
 
 @dataclass(frozen=True)
 class SelectSessionCommand:
     slot: int
+    expected_revision: int | None = None
 
 
 @dataclass(frozen=True)
@@ -112,17 +114,18 @@ def parse_web_command(message: dict[str, Any]) -> WebCommand:
             raise WebProtocolError("credential must be a non-empty string")
         return AuthenticateCommand(credential)
     if message_type == "action":
-        _require_keys(message, required={"protocol", "type", "action"})
+        _require_keys(message, required={"protocol", "type", "action"}, optional={"expected_revision"})
+        revision = _expected_revision(message)
         try:
-            return ActionCommand(ControlAction(message.get("action")))
+            return ActionCommand(ControlAction(message.get("action")), revision)
         except (TypeError, ValueError) as exc:
             raise WebProtocolError("unknown action") from exc
     if message_type == "select_session":
-        _require_keys(message, required={"protocol", "type", "slot"})
+        _require_keys(message, required={"protocol", "type", "slot"}, optional={"expected_revision"})
         slot = message.get("slot")
         if isinstance(slot, bool) or not isinstance(slot, int) or not 0 <= slot < 8:
             raise WebProtocolError("slot must be an integer from 0 to 7")
-        return SelectSessionCommand(slot)
+        return SelectSessionCommand(slot, _expected_revision(message))
     if message_type == "create_pairing":
         _require_keys(message, required={"protocol", "type"})
         return CreatePairingCommand()
@@ -166,6 +169,7 @@ def surface_message(view: SurfaceView, selector_capacity: int) -> dict[str, Any]
             ),
             "overflow_count": view.overflow_count,
             "activity_motion": view.activity_motion,
+            "control_revision": view.control_revision,
         },
         visual_frame={
             "state": [list(row) for row in visual.state],
@@ -229,6 +233,15 @@ def load_web_protocol_schema() -> dict[str, Any]:
         "schemas", "web-surface-protocol-v1.json"
     )
     return json.loads(schema.read_text(encoding="utf-8"))
+
+
+def _expected_revision(message: dict[str, Any]) -> int | None:
+    if "expected_revision" not in message:
+        return None
+    value = message["expected_revision"]
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise WebProtocolError("expected_revision must be a non-negative integer")
+    return value
 
 
 def _require_keys(

@@ -30,8 +30,8 @@ use the CLI or the developer source-build instructions linked below.
 | --- | --- | --- |
 | Mac with Apple Silicon (M-series) | `macos-arm64` | `.dmg` |
 | Mac with Intel processor | `macos-x64` | `.dmg` |
-| Linux with Intel/AMD processor | `linux-x64` | `.AppImage` or `.deb` |
-| Linux with ARM64 processor | `linux-arm64` | `.AppImage` or `.deb` |
+| Linux with Intel/AMD processor | `linux-x64` | `.AppImage` |
+| Linux with ARM64 processor | `linux-arm64` | `.AppImage` |
 
 Each installer includes a matching `.sha256` checksum and a `source.json`
 record identifying its source commit. Native Windows installers are not yet
@@ -42,8 +42,8 @@ supported. In a VM, choose the guest operating system and processor type.
 - **macOS:** open the DMG, copy Pad-Lattice to Applications, then open it there.
 - **Linux AppImage:** allow the file to run as a program in its file properties,
   then open it. Keep the file where you want to run the app.
-- **Ubuntu/Debian:** install the matching DEB with your package installer, then
-  open Pad-Lattice from the applications menu. The builds use Ubuntu 24.04.
+
+Linux builds use Ubuntu 24.04.
 
 Signing and notarization remain release work. Follow your operating system's
 security prompts and your organization's software policy; do not disable

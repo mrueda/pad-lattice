@@ -106,8 +106,8 @@ The same experience appears on connected browsers and the connected Launchpad.
 - Paired devices can answer Demo prompts; Show is read-only.
 - Each browser has its own **Sound** toggle, initially muted.
 
-Pairings last only while the daemon is running. **Revoke remote** disconnects
-every remote browser at once. Per-device revocation is not currently available,
+Pairings last only while the daemon is running. **Revoke paired devices** disconnects
+every paired browser and Stream Deck plugin at once. Per-device revocation is not currently available,
 so revoke all devices and pair the trusted ones again if a device is lost.
 
 ## Running Inside Parallels Desktop

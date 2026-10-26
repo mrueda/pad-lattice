@@ -28,6 +28,14 @@ from pad_lattice.web_protocol import (
 
 
 class WebProtocolTest(TestCase):
+    def test_guarded_commands_require_nonnegative_integer_revision(self) -> None:
+        for kind, fields in (("action", {"action": "approve"}), ("select_session", {"slot": 0})):
+            command = parse_web_command({"protocol": 1, "type": kind, **fields, "expected_revision": 12})
+            self.assertEqual(command.expected_revision, 12)
+            for revision in (True, -1, None, "12", 1.5):
+                with self.subTest(kind=kind, revision=revision), self.assertRaises(WebProtocolError):
+                    parse_web_command({"protocol": 1, "type": kind, **fields, "expected_revision": revision})
+
     def test_machine_readable_schema_is_packaged(self) -> None:
         schema = load_web_protocol_schema()
         self.assertEqual(schema["title"], "Pad-Lattice Web Surface Protocol v1")

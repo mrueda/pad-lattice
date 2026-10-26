@@ -21,7 +21,6 @@
     "resources": {"engine": "engine"},
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
     "category": "DeveloperTool",
-    "linux": {"deb": {"depends": ["gstreamer1.0-plugins-good"]}},
     "shortDescription": "See and control Codex sessions from a virtual pad or MIDI controller",
     "copyright": "Copyright 2026 Manuel Rueda",
     "license": "Apache-2.0"

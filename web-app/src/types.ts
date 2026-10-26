@@ -40,6 +40,7 @@ export interface SurfaceView {
   available_actions: ControlAction[];
   overflow_count: number;
   activity_motion: boolean;
+  control_revision?: number | null;
 }
 
 export interface VisualFrame {

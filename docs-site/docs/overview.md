@@ -78,6 +78,7 @@ semantic states, selection, and action availability only.
 | Connect open Codex chats | [Quick Start](./usage/quickstart.md). |
 | Pair phones, tablets, or laptops | [Connect a Phone, Tablet, or Laptop](./usage/connect-browsers.md). |
 | Use a Launchpad | [Desktop MIDI setup](./usage/desktop.md#connect-a-launchpad). |
+| Check controller support or add a device | [Device Catalog](./usage/device-catalog.md). |
 | Run several real Codex sessions | [Control Codex](./usage/control-codex.md#run-several-agents) and [Multi-Agent Design](./technical-details/multi-agent-design.md). |
 | Understand the visual grammar | [Visual Protocol](./technical-details/visual-language.md). |
 | Test another MIDI controller | [Device Testing](./technical-details/device-testing.md). |

@@ -3,6 +3,10 @@
 Device profiles are declarative JSON descriptions of MIDI grid controllers.
 They keep hardware-specific behavior out of the daemon and agent integrations.
 
+For models, support status, and installation, start with the
+[Device Catalog](../usage/device-catalog.md). Non-MIDI integrations such as
+Stream Deck use separate plugins, not these JSON profiles.
+
 :::caution Preserve the visual protocol
 
 A device profile is a hardware translation of Pad-Lattice's visual protocol.
@@ -27,13 +31,8 @@ Built-in files follow the same directory hierarchy:
 src/pad_lattice/device_profiles/<manufacturer>/<family>/<model>.json
 ```
 
-Current built-ins:
-
-| Profile ID | Status |
-| --- | --- |
-| `novation/launchpad/pro-mk1` | Supported, physically tested |
-| `novation/launchpad/mini-mk3` | Experimental, tester validation requested |
-| `novation/launchpad/pro-mk3` | Experimental, tester validation requested |
+The [Device Catalog](../usage/device-catalog.md#novation-launchpad) lists
+the built-in IDs and their hardware-validation status.
 
 User profiles are loaded recursively from:
 

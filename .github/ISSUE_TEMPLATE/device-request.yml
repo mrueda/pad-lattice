@@ -1,0 +1,43 @@
+name: Request a device
+description: Suggest a controller or volunteer to test an integration.
+title: "Device request: "
+body:
+  - type: input
+    id: model
+    attributes:
+      label: Manufacturer and exact model
+      placeholder: Include generation or revision, if known.
+    validations:
+      required: true
+  - type: textarea
+    id: controls
+    attributes:
+      label: Controls and visual feedback
+      description: Buttons, grid dimensions, LEDs, LCD keys, dials, or other controls.
+    validations:
+      required: true
+  - type: textarea
+    id: documentation
+    attributes:
+      label: Programming documentation
+      description: Link official MIDI/USB specifications or an SDK when available. Unknown is fine.
+  - type: input
+    id: platform
+    attributes:
+      label: Operating system and controller software
+      description: Include firmware and vendor software versions if known.
+  - type: dropdown
+    id: testing
+    attributes:
+      label: Can you test the device?
+      options:
+        - I own it and can test
+        - I can access one for testing
+        - I cannot test it
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: What would you like to control?
+      description: Describe your workflow. Do not include pairing PINs, tokens, private chats, or sensitive logs.

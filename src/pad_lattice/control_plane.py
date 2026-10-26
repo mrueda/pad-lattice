@@ -452,6 +452,7 @@ class ControlPlane:
             available_actions=self.available_actions(),
             overflow_count=self.overflow_count,
             activity_motion=activity_motion and self._preview is None,
+            control_revision=self.revision,
         )
 
     def session_label(self, session: AgentSession) -> str:

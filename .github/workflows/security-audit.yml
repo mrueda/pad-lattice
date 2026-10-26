@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        project: [web-app, docs-site]
+        project: [web-app, docs-site, integrations/stream-deck]
 
     steps:
       - name: Check out repository

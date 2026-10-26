@@ -257,6 +257,13 @@ Server messages include semantic surface snapshots, experience lifecycle,
 and exact full-surface RGB frames during Show. Audio fields identify built-in
 cue names or packaged assets; they never carry arbitrary URLs or audio bytes.
 
+Live snapshots include `view.control_revision`. A client may attach that value
+as `expected_revision` to `action` or `select_session`. The daemon rejects an
+event if the revision changed before dispatch, then refreshes the surface.
+The Stream Deck plugin requires this guard and never automatically retries an
+action. Demo/Show views have no live control revision. This revision is an
+optimistic concurrency check, not an authentication credential.
+
 That protocol has its own packaged [Web Surface Protocol 1 JSON
 Schema](https://github.com/mrueda/pad-lattice/blob/main/src/pad_lattice/schemas/web-surface-protocol-v1.json).
 Its runtime uses the same small typed-parser approach and message-size bounds as

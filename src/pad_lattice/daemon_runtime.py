@@ -430,6 +430,12 @@ class PadLatticeDaemon:
 
     def _handle_surface_event(self, event: SurfaceEvent) -> None:
         now = time.monotonic()
+        # Check at dispatch, not on the socket thread: queued selections and
+        # replacement approval requests may have changed the target meanwhile.
+        if isinstance(event, (ActionPressed, SessionSelected)) and event.expected_revision is not None:
+            self._rendered_revision = -1
+            if event.expected_revision != self.control.revision or self.experience.active:
+                return
         if isinstance(event, ExperienceRequested):
             if self.control.sessions:
                 self.experience.block(

@@ -52,8 +52,8 @@ jobs:
               if kind != 'tag':
                   raise SystemExit('An annotated tag is required')
           platforms = [
-              {'platform': 'linux-x64', 'os': 'ubuntu-24.04', 'bundle': 'appimage,deb'},
-              {'platform': 'linux-arm64', 'os': 'ubuntu-24.04-arm', 'bundle': 'appimage,deb'},
+              {'platform': 'linux-x64', 'os': 'ubuntu-24.04', 'bundle': 'appimage'},
+              {'platform': 'linux-arm64', 'os': 'ubuntu-24.04-arm', 'bundle': 'appimage'},
               {'platform': 'macos-x64', 'os': 'macos-15-intel', 'bundle': 'dmg'},
               {'platform': 'macos-arm64', 'os': 'macos-15', 'bundle': 'dmg'},
           ]
@@ -131,7 +131,7 @@ jobs:
           import hashlib, json, os, shutil
           from pathlib import Path
           target = Path('build/installers'); target.mkdir(parents=True, exist_ok=True)
-          files = [p for p in Path('web-app/src-tauri/target/release/bundle').rglob('*') if p.suffix in ('.dmg', '.deb', '.AppImage')]
+          files = [p for p in Path('web-app/src-tauri/target/release/bundle').rglob('*') if p.suffix in ('.dmg', '.AppImage')]
           if not files: raise SystemExit('No installers found')
           for path in files:
               name = f'pad-lattice-{os.environ["VERSION"]}-{os.environ["PLATFORM"]}{path.suffix}'

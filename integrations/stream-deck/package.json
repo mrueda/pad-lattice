@@ -1,0 +1,28 @@
+{
+  "name": "pad-lattice-stream-deck",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "pack": "streamdeck pack io.github.mrueda.pad-lattice.sdPlugin"
+  },
+  "dependencies": {
+    "@elgato/streamdeck": "3.0.3",
+    "lucide": "0.468.0",
+    "ws": "8.22.0"
+  },
+  "overrides": {"@elgato/utils": {"zod": "4.6.6"}},
+  "devDependencies": {
+    "@elgato/cli": "1.10.3",
+    "@resvg/resvg-js": "2.6.2",
+    "@types/node": "^24.0.0",
+    "@types/ws": "^8.18.1",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3"
+  }
+}

@@ -1,0 +1,7 @@
+node_modules/
+io.github.mrueda.pad-lattice.sdPlugin/bin/
+io.github.mrueda.pad-lattice.sdPlugin/logs/
+io.github.mrueda.pad-lattice.sdPlugin/images/
+io.github.mrueda.pad-lattice.sdPlugin/licenses/
+*.streamDeckPlugin
+preview/

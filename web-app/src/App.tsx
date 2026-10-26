@@ -380,7 +380,7 @@ function LiveApp() {
             </>
           ) : null}
 
-          {live.admin && live.lanEnabled ? (
+          {live.admin ? (
             <PairingPanel
               pairing={live.pairing}
               onCreate={live.createPairing}
@@ -630,7 +630,7 @@ function PairingPanel({
 }) {
   return (
     <section className="pairingPanel">
-      <div className="sectionTitle"><span>PHONE &amp; TABLET</span><ShieldCheck aria-hidden="true" /></div>
+      <div className="sectionTitle"><span>PAIR A SURFACE</span><ShieldCheck aria-hidden="true" /></div>
       {pairing ? (
         <div className="pairingContent">
           <img src={pairing.qr_data_uri} alt="One-time device pairing QR code" />
@@ -638,17 +638,18 @@ function PairingPanel({
             <span>PAIRING PIN</span>
             <strong>{pairing.pin}</strong>
             <small>One use · expires in five minutes</small>
+            <small>{new URL(pairing.pairing_url).origin}</small>
           </div>
         </div>
       ) : (
-        <p>Create a one-time credential for another device on this trusted network.</p>
+        <p>Pair Stream Deck on this computer, or enable network pairing in Settings for another device.</p>
       )}
       <div className="paneActions">
         <button className="textButton" onClick={onCreate}>
           <RefreshCw aria-hidden="true" /> {pairing ? 'New code' : 'Pair device'}
         </button>
         <button className="textButton danger" onClick={onRevoke}>
-          <ShieldOff aria-hidden="true" /> Revoke remote
+          <ShieldOff aria-hidden="true" /> Revoke paired devices
         </button>
       </div>
     </section>

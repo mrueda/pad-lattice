@@ -31,6 +31,7 @@ class SurfaceView:
     available_actions: frozenset[ControlAction] = field(default_factory=frozenset)
     overflow_count: int = 0
     activity_motion: bool = False
+    control_revision: int | None = None
 
 
 @dataclass(frozen=True)
@@ -89,11 +90,13 @@ class ExperienceView:
 @dataclass(frozen=True)
 class ActionPressed:
     action: ControlAction
+    expected_revision: int | None = None
 
 
 @dataclass(frozen=True)
 class SessionSelected:
     slot: int
+    expected_revision: int | None = None
 
 
 @dataclass(frozen=True)

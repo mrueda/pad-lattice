@@ -37,8 +37,11 @@ fragment, so it is not sent with the initial HTTP request.
 
 A loopback browser becomes a local administrator only after presenting that
 token. It can see sanitized session labels and semantic state, select Agent
-Scenes, and invoke lit actions. When `--lan` is enabled, the local
-administrator can also generate pairing credentials and revoke remote clients.
+Scenes, and invoke lit actions. The local administrator can generate pairing
+credentials for local clients, including the Stream Deck plugin, without enabling
+LAN access. With `--lan` enabled, those credentials also work for trusted-network
+clients. Paired clients remain non-administrators, even on loopback. Revocation
+disconnects all paired clients.
 Do not share the tokenized local URL.
 
 The administrator is also the only browser allowed to start or stop Demo and

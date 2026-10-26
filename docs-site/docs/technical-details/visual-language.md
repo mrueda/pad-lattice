@@ -13,6 +13,13 @@ hardware lights; they do not invent new meanings for them.
 
 ## Reference Surface
 
+LCD-key controllers use the same state glyphs inside individual keys rather
+than spreading one glyph across the whole device. The experimental
+[Stream Deck layout](../usage/stream-deck.md) shows one session per key, a
+session-color strip, a white selection border, and separate action keys.
+It does not define a new alphabet. A compact alphabet for smaller LED grids
+has not yet been specified.
+
 The reference topology is the common Launchpad arrangement: an **8x8 matrix,
 eight top controls, and eight right-side controls**. The browser uses the same
 geometry, so knowledge transfers directly between virtual and physical pads:

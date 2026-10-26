@@ -105,6 +105,47 @@ class FakeAudioFeedback:
 
 
 class DaemonTest(TestCase):
+    def test_guarded_surface_events_reject_changed_control_revision(self) -> None:
+        daemon = self.daemon()
+        revision = daemon.control.revision
+        with patch.object(daemon, "_handle_action") as action, patch.object(daemon.control, "select_slot") as select:
+            daemon._handle_surface_event(ActionPressed(ControlAction.APPROVE, revision + 1))
+            daemon._handle_surface_event(SessionSelected(0, revision + 1))
+            action.assert_not_called()
+            select.assert_not_called()
+            daemon._handle_surface_event(ActionPressed(ControlAction.APPROVE, revision))
+            action.assert_called_once_with(ControlAction.APPROVE)
+        self.assertEqual(daemon._rendered_revision, -1)
+
+    def test_guarded_approval_does_not_follow_changed_selection(self) -> None:
+        daemon = self.daemon()
+        first = AgentIdentity("codex", "first")
+        second = AgentIdentity("codex", "second")
+        self.update_agent(daemon, first, AgentState.WAITING_FOR_APPROVAL)
+        self.update_agent(daemon, second, AgentState.WAITING_FOR_APPROVAL)
+        daemon.control.select_slot(0, now=time.monotonic())
+        revision = daemon.control.revision
+        daemon.control.select_slot(1, now=time.monotonic())
+        with patch.object(daemon, "_handle_action") as action:
+            daemon._handle_surface_event(ActionPressed(ControlAction.APPROVE, revision))
+            action.assert_not_called()
+
+    def test_guarded_approval_does_not_follow_replacement_request(self) -> None:
+        daemon = self.daemon()
+        identity = AgentIdentity("codex", "review")
+        self.update_agent(daemon, identity, AgentState.WAITING_FOR_APPROVAL)
+        for request_id in ("first-request", "replacement-request"):
+            daemon.control.subscribe(
+                123, identity, frozenset({ControlAction.APPROVE}),
+                request_id=request_id, one_shot=True, now=time.monotonic(),
+            )
+            if request_id == "first-request":
+                revision = daemon.control.revision
+        with patch.object(daemon, "_handle_action") as action:
+            daemon._handle_surface_event(ActionPressed(ControlAction.APPROVE, revision))
+            action.assert_not_called()
+
+
     def setUp(self) -> None:
         self.daemons = []
 

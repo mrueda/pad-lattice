@@ -44,7 +44,8 @@
       "properties": {
         "protocol": {"$ref": "#/$defs/protocol"},
         "type": {"const": "action"},
-        "action": {"$ref": "#/$defs/actionName"}
+        "action": {"$ref": "#/$defs/actionName"},
+        "expected_revision": {"type": "integer", "minimum": 0}
       }
     },
     "selectSession": {
@@ -54,7 +55,8 @@
       "properties": {
         "protocol": {"$ref": "#/$defs/protocol"},
         "type": {"const": "select_session"},
-        "slot": {"type": "integer", "minimum": 0, "maximum": 7}
+        "slot": {"type": "integer", "minimum": 0, "maximum": 7},
+        "expected_revision": {"type": "integer", "minimum": 0}
       }
     },
     "createPairing": {
@@ -149,7 +151,8 @@
             "sessions": {"type": "array", "maxItems": 8, "items": {"$ref": "#/$defs/session"}},
             "available_actions": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/actionName"}},
             "overflow_count": {"type": "integer", "minimum": 0},
-            "activity_motion": {"type": "boolean"}
+            "activity_motion": {"type": "boolean"},
+            "control_revision": {"type": ["integer", "null"], "minimum": 0}
           }
         },
         "visual_frame": {
