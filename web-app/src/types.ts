@@ -165,6 +165,7 @@ export interface ErrorMessage {
 }
 
 export type ServerMessage =
+  | {protocol: 1; type: 'device_disconnected'}
   | {protocol: 1; type: 'audio_cue'; cue: string; slot: number | null}
   | SurfaceMessage
   | PairingMessage

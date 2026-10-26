@@ -1,8 +1,11 @@
+import {recordRequestFailure} from './diagnostics';
+
 export const isDesktop = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
 export async function desktopRequest<T>(method: string, params: object = {}): Promise<T> {
   const {invoke} = await import('@tauri-apps/api/core');
-  return invoke<T>('desktop_request', {method, params});
+  try {return await invoke<T>('desktop_request', {method, params});}
+  catch (error) {recordRequestFailure(method); throw error;}
 }
 
 export async function choosePath(): Promise<string | null> {
@@ -51,7 +54,13 @@ export function surfaceSocket(url: string): SurfaceSocket {
       const work = message.type === 'authenticate'
         ? desktopRequest<{messages: unknown[]}>('snapshot').then(({messages}) => messages.forEach(deliver))
         : desktopRequest('surface', message);
-      work.catch((error: unknown) => deliver({protocol: 1, type: 'error', code: 'desktop_error', error: String(error)}));
+      work.catch((error: unknown) => {
+        deliver({protocol: 1, type: 'error', code: 'desktop_error', error: String(error)});
+        if (message.type === 'authenticate' && !closed) {
+          bridge.close();
+          bridge.onclose?.();
+        }
+      });
     },
     close: () => { closed = true; bridge.readyState = 3; cleanup.splice(0).forEach((fn) => fn()); },
   };
@@ -61,7 +70,7 @@ export function surfaceSocket(url: string): SurfaceSocket {
     cleanup.push(unlisten);
     const disconnect = await listen('pad-lattice-disconnected', ({payload}) => {
       deliver({protocol: 1, type: 'error', error: String(payload)});
-      bridge.readyState = 3;
+      bridge.close();
       bridge.onclose?.();
     });
     if (closed) { disconnect(); return; }

@@ -19,56 +19,29 @@
 
 **📘 Documentation:** <https://mrueda.github.io/pad-lattice/>
 
-**🚀 Quick Start:** <https://mrueda.github.io/pad-lattice/docs/usage/quickstart>
+**See which Codex CLI session needs you, then act on it.** Pad-Lattice uses
+colors and glyphs to show agent activity. Select a session to approve or reject
+a pending request, or stop a running turn. Prompts and replies stay in Codex.
 
-**Pad-Lattice is a human-in-the-loop control surface for monitoring and
-directing multiple AI agents.** At a glance, it shows which session is working,
-waiting for a reply, requesting approval, completed successfully, or failed.
-When an action is available, illuminated controls route it only to the selected
-agent.
-
-The same tactile visual language runs on physical Novation Launchpad MIDI
-controllers, the desktop app, and browser surfaces on phones, tablets, or
-computers. **No MIDI controller is required.**
-
-Pad-Lattice grew from [mrueda](https://github.com/mrueda)'s personal need to
-interact more directly with Codex CLI. As a musician and member of the duo [The
-New Assembly](https://www.thenewassembly.com/), he had used a Launchpad Pro
-with Ableton Live and recognized that its mature grid interface could become a
-visual surface for agents. Read the [origin
-story](https://mrueda.github.io/pad-lattice/docs/about/origin-and-development).
+Use the desktop app, a phone or tablet browser, or a physical MIDI controller.
+All share the same visual language. **No MIDI hardware is required.**
 
 <div align="center">
   <img src="docs-site/static/img/human-control-workflow.svg" width="1200" alt="Codex asks for approval, physical and virtual pads light up, and one human press returns a targeted action">
 </div>
 
-The first integration is **Codex CLI**. Connect an open conversation, select
-its colored Scene, and use the available controls to approve or reject a
-permission request or stop a running turn. Prompts and replies stay in Codex.
-
 ## Get Started
 
-**Desktop is recommended for interactive use.** Follow the
+**Desktop is recommended.** Follow the
 [installation guide](https://mrueda.github.io/pad-lattice/docs/usage/install)
 and [Quick Start](https://mrueda.github.io/pad-lattice/docs/usage/quickstart).
 Python is bundled; Codex CLI must be installed and authenticated separately.
 
-The independent [Python CLI](https://mrueda.github.io/pad-lattice/docs/usage/cli)
-is available from PyPI for terminal workflows and automation:
-`pipx install pad-lattice`.
+Prefer a terminal? Install with `pipx install pad-lattice` and follow
+[CLI Setup](https://mrueda.github.io/pad-lattice/docs/usage/cli).
 
-Pad-Lattice is alpha software; desktop builds are currently previews.
-The public virtual pad is a simulation, not a connection to your agents.
-
-The **Novation Launchpad Pro Mk1** is physically tested. Mini Mk3 and Pro Mk3
-support is experimental. See [device profiles](https://mrueda.github.io/pad-lattice/docs/technical-details/device-profiles).
-
-## About
-
-Created and maintained by [mrueda](https://github.com/mrueda) as an independent
-free-time project, developed iteratively with Codex CLI.
-See [origin and development](https://mrueda.github.io/pad-lattice/docs/about/origin-and-development)
-for the background and development process.
+The public playground is a simulation. Hardware support and testing status are
+listed in the [Device Catalog](https://mrueda.github.io/pad-lattice/docs/usage/device-catalog).
 
 [Changelog](CHANGELOG.md) · [Citation](CITATION.cff) · [Technical guide](https://mrueda.github.io/pad-lattice/docs/technical-details/)
 

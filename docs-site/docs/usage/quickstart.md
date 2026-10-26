@@ -46,7 +46,7 @@ See [Control Codex](./control-codex.md) for the symbols and action limits.
 See the [Device Catalog](./device-catalog.md) for supported and experimental hardware.
 
 - **Launchpad:** connect it over USB, then use **Settings > MIDI controller > Connect**.
-- **Phone or tablet:** use **Settings > Phone and tablet** to enable pairing on
+- **Phone or tablet:** use **Settings > Phones & tablets** to enable network access on
   your trusted private network. Follow [Connect Screens](./connect-browsers.md).
 
 Every connected surface shares the same selected conversation and actions.

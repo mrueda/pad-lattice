@@ -49,6 +49,7 @@ TCP port to that listener. The server also provides:
 - exact Host and same-origin WebSocket checks;
 - token authentication before any state is sent;
 - separate local-administrator and remote-device credentials;
+- per-device, in-memory credentials with individual revocation from Desktop;
 - local-administrator authorization for Demo/Show start and stop;
 - typed command allowlists and bounded JSON messages;
 - browser, remote-client, command-rate, and event-queue limits;
@@ -56,6 +57,11 @@ TCP port to that listener. The server also provides:
 - a restrictive Content Security Policy and no third-party scripts;
 - sanitized browser state without prompts, responses, terminal output, raw
   working directories, or full Codex event payloads.
+
+Desktop's device list uses browser-provided labels, not verified identities.
+It exposes random device IDs, never credentials. Disconnecting closes current
+connections; revoking removes the credential and requires pairing again.
+Restarting the service clears all paired devices.
 
 These controls follow the main recommendations in the
 [OWASP WebSocket Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/WebSocket_Security_Cheat_Sheet.html).

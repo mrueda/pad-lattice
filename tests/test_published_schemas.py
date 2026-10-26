@@ -193,6 +193,7 @@ class PublishedSchemaTest(TestCase):
             performance_frame_message(_show_frame()),
             web_message("remote_revoked"),
             web_message("audio_cue", cue="approval", slot=0),
+            web_message("device_disconnected"),
             web_error(WebProtocolError("bad request")),
         )
         validator = Draft202012Validator(load_web_protocol_schema())

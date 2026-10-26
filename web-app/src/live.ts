@@ -28,6 +28,9 @@ export interface LiveSurfaceState {
   pairing: PairingMessage | null;
   admin: boolean;
   lanEnabled: boolean;
+  paused: boolean;
+  reconnect: () => void;
+  disconnect: () => void;
   error: string | null;
   pair: (pin: string) => void;
   selectSession: (slot: number) => void;
@@ -49,20 +52,21 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
   const [admin, setAdmin] = useState(false);
   const [lanEnabled, setLanEnabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paused, setPaused] = useState(false);
   const socketRef = useRef<SurfaceSocket | null>(null);
-  const retryRef = useRef<number | null>(null);
   const credentialRef = useRef<string | null>(initialCredential());
   const authenticatedRef = useRef(false);
   const authenticationRejectedRef = useRef(false);
   const stoppedRef = useRef(false);
 
   const connect = useCallback((credential?: string | null) => {
+    stoppedRef.current = false;
+    setPaused(false);
     if (credential !== undefined) credentialRef.current = credential;
     if (socketRef.current) {
       socketRef.current.onclose = null;
       socketRef.current.close();
     }
-    if (retryRef.current !== null) window.clearTimeout(retryRef.current);
     setConnection('connecting');
     setError(null);
     authenticatedRef.current = false;
@@ -98,6 +102,16 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
         setSurface(message);
         return;
       }
+      if (message.type === 'device_disconnected') {
+        stoppedRef.current = true;
+        setPaused(true);
+        setConnection('disconnected');
+        setSurface(null);
+        setExperience(null);
+        setPerformanceFrame(null);
+        setError('Disconnected from Desktop.');
+        return;
+      }
       if (message.type === 'audio_cue') {
         audioCallback.current?.(message.cue, message.slot);
         return;
@@ -124,29 +138,36 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
       if (message.type === 'error') {
         setError(message.error);
         if (message.code === 'forbidden' || message.code === 'authentication_timeout') {
+          authenticatedRef.current = false;
           authenticationRejectedRef.current = true;
           window.localStorage.removeItem(tokenKey);
           window.localStorage.removeItem(adminTokenKey);
           credentialRef.current = null;
           setConnection('pairing_required');
+          setSurface(null);
+          setExperience(null);
+          setPerformanceFrame(null);
         }
       }
     };
     socket.onerror = () => setError('Cannot reach the local Pad-Lattice bridge.');
     socket.onclose = () => {
       socketRef.current = null;
+      setSurface(null);
+      setExperience(null);
+      setPerformanceFrame(null);
+      setPairing(null);
       if (stoppedRef.current) return;
-      if (!authenticatedRef.current) {
-        if (authenticationRejectedRef.current) {
-          setConnection('pairing_required');
-        } else {
-          setConnection('disconnected');
-          retryRef.current = window.setTimeout(() => connect(), 1200);
-        }
+      if (authenticationRejectedRef.current) {
+        setConnection('pairing_required');
         return;
       }
+      stoppedRef.current = true;
+      setPaused(true);
       setConnection('disconnected');
-      retryRef.current = window.setTimeout(() => connect(), 1200);
+      setError(authenticatedRef.current ? 'Desktop disconnected.' : 'Cannot reach Pad-Lattice.');
+      authenticatedRef.current = false;
+      setAdmin(false);
     };
 
     function applyAuthentication(message: AuthenticatedMessage) {
@@ -154,6 +175,7 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
       setAdmin(message.admin);
       setLanEnabled(message.lan_enabled);
       setConnection('connected');
+      setError(null);
       if (message.session_token) {
         credentialRef.current = message.session_token;
         window.localStorage.setItem(tokenKey, message.session_token);
@@ -166,7 +188,6 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
     connect();
     return () => {
       stoppedRef.current = true;
-      if (retryRef.current !== null) window.clearTimeout(retryRef.current);
       socketRef.current?.close();
     };
   }, [connect]);
@@ -185,11 +206,31 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
     pairing,
     admin,
     lanEnabled,
+    paused,
+    reconnect: () => connect(),
+    disconnect: () => {
+      stoppedRef.current = true;
+      const socket = socketRef.current;
+      socketRef.current = null;
+      if (socket) {
+        socket.onopen = socket.onmessage = socket.onerror = socket.onclose = null;
+        socket.close();
+      }
+      authenticatedRef.current = false;
+      setPaused(true);
+      setConnection('disconnected');
+      setSurface(null);
+      setExperience(null);
+      setPerformanceFrame(null);
+      setPairing(null);
+      setAdmin(false);
+      setError('Disconnected on this device.');
+    },
     error,
     pair: (pin) => connect(pin.replace(/\s/g, '')),
     selectSession: (slot) => send({type: 'select_session', slot}),
     sendAction: (action) => send({type: 'action', action}),
-    createPairing: () => send({type: 'create_pairing'}),
+    createPairing: () => {setPairing(null); setError(null); send({type: 'create_pairing'});},
     revokeRemote: () => send({type: 'revoke_remote'}),
     startExperience: (kind) => send({type: 'start_experience', kind}),
     stopExperience: () => send({type: 'stop_experience'}),

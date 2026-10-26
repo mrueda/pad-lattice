@@ -2,7 +2,7 @@
   "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
   "UUID": "io.github.mrueda.pad-lattice",
   "Name": "Pad-Lattice (Experimental)",
-  "Version": "0.1.0.0",
+  "Version": "0.2.0.0",
   "Author": "mrueda",
   "Description": "Visual state and guarded actions for Codex CLI sessions connected to Pad-Lattice.",
   "Category": "Pad-Lattice (Experimental)",

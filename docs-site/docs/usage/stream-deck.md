@@ -25,7 +25,7 @@ your other Stream Deck actions. Up to eight session slots are available.
 
 1. Install the plugin using its [build instructions](https://github.com/mrueda/pad-lattice/tree/main/integrations/stream-deck).
 2. Open Pad-Lattice and connect your Codex conversations.
-3. Choose **Pair device** beside the pad to display an address and a one-use PIN.
+3. Open **Settings > Phones & tablets > Pair device** for an address and one-use PIN.
 4. Add a **Session** key in Elgato's Stream Deck software. Enter that address and
    PIN in its settings, then press **Pair**. Choose the session number for the key.
 5. Add other session keys and the action keys. **Pair once for the whole plugin.**
@@ -43,7 +43,8 @@ and use its reachable private IPv4 address.
   the updated selection and press again; approvals are never retried automatically.
 - **Connection lost:** keys lose their live state and controls are disabled.
 - **Plugin or Pad-Lattice restarted:** generate a new PIN and pair again.
-- **Revoke paired devices:** disconnects the plugin and paired browsers.
+- **Revoke access:** removes the selected device in Desktop's paired-device list.
+- **Revoke paired devices:** removes all paired devices from the pairing window.
 
 Read the actual request in Codex before approving. The keys do not display
 prompts or replace the conversation. Demo, Show, dials, and touch strips are

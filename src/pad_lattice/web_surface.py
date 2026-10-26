@@ -60,6 +60,7 @@ GLOBAL_PAIRING_ATTEMPT_LIMIT = 20
 MAX_PENDING_SURFACE_EVENTS = 256
 MAX_BROWSER_CLIENTS = 16
 MAX_REMOTE_CLIENTS = 8
+MAX_PAIRED_DEVICES = 64
 COMMAND_RATE_WINDOW = 1.0
 COMMAND_RATE_LIMIT = 20
 ADMIN_TOKEN_BYTES = 32
@@ -76,10 +77,17 @@ class PairingCredential:
 
 
 @dataclass
+class PairedDevice:
+    id: str
+    name: str = "Browser"
+
+
+@dataclass
 class BrowserClient:
     connection: ServerConnection
     admin: bool
     remote: bool
+    device_id: str | None = None
     send_lock: threading.Lock = field(default_factory=threading.Lock)
     command_times: list[float] = field(default_factory=list)
 
@@ -135,7 +143,7 @@ class BrowserSurfaceServer:
         self._latest_experience = experience_message(ExperienceView(status="idle"))
         self._latest_performance_frame: dict[str, Any] | None = None
         self._pairing: PairingCredential | None = None
-        self._session_tokens: set[str] = set()
+        self._session_tokens: dict[str, PairedDevice] = {}
         self._failed_attempts: dict[str, list[float]] = {}
         self._advertised_base_url: str | None = None
         self._advertised_hostname: str | None = None
@@ -150,6 +158,10 @@ class BrowserSurfaceServer:
     @property
     def local_url(self) -> str:
         return f"http://127.0.0.1:{self.actual_port}"
+
+    @property
+    def network_url(self) -> str | None:
+        return self._advertised_base_url
 
     @property
     def admin_url(self) -> str:
@@ -254,6 +266,34 @@ class BrowserSurfaceServer:
                 except OSError:
                     pass
 
+    def paired_devices(self) -> list[dict[str, Any]]:
+        with self._auth_lock, self._clients_lock:
+            return [{"id": device.id, "name": device.name,
+                     "connected": any(c.device_id == device.id for c in self._clients.values())}
+                    for device in self._session_tokens.values()]
+
+    def manage_device(self, device_id: str, *, revoke: bool) -> None:
+        with self._auth_lock:
+            token = next((token for token, device in self._session_tokens.items()
+                          if device.id == device_id), None)
+            if token is None:
+                raise ValueError("Paired device no longer exists.")
+            if revoke:
+                del self._session_tokens[token]
+            with self._clients_lock:
+                clients = [client for client in self._clients.values() if client.device_id == device_id]
+                for client in clients:
+                    self._clients.pop(id(client.connection), None)
+        for client in clients:
+            try:
+                if revoke:
+                    client.send(web_error(WebProtocolError("Device access revoked", code="forbidden")))
+                else:
+                    client.send(web_message("device_disconnected"))
+                client.connection.close(1008 if revoke else 1000, "Disconnected by administrator")
+            except (ConnectionClosed, OSError):
+                pass
+
     def close(self) -> None:
         if self._closed:
             return
@@ -281,28 +321,42 @@ class BrowserSurfaceServer:
         self._thread = None
         self._server = None
 
-    def set_lan(self, host: str | None) -> None:
+    def set_lan(self, host: str | None, *, port: int | None = None,
+                advertise_host: str | None = None) -> None:
         """Change the optional LAN listener without restarting agent sessions."""
+        if port is not None and (isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535):
+            raise ValueError("Pairing port must be between 1 and 65535.")
+        port = self.actual_port if port is None else port
+        advertised = advertise_host or host
         if host is not None:
-            address = ipaddress.ip_address(host)
-            if address.version != 4 or not address.is_private or address.is_loopback or address.is_unspecified:
-                raise ValueError("Choose this computer's private IPv4 address.")
-        if host == self.host and self._lan_server is not None:
+            for value in (host, advertised):
+                address = ipaddress.ip_address(value)
+                if address.version != 4 or not address.is_private or address.is_loopback or address.is_unspecified:
+                    raise ValueError("Choose a private IPv4 address for the computer and pairing address.")
+        network_url = f"http://{advertised}:{port}" if host else None
+        same_listener = (host == self.host and self._lan_server is not None
+                         and self._advertised_base_url is not None
+                         and urlsplit(self._advertised_base_url).port == port)
+        if same_listener and network_url == self._advertised_base_url:
             return
-        replacement = None
-        if host is not None:
-            replacement = serve(self._handle_connection, host, self.actual_port,
+        replacement = self._lan_server if same_listener else None
+        if host is not None and not same_listener:
+            replacement = serve(self._handle_connection, host, port,
                                 process_request=self._process_request, server_header=None,
                                 compression=None, close_timeout=1, max_size=16 * 1024, max_queue=8)
         self.revoke_remote()
-        if self._lan_server is not None:
+        if self._lan_server is not None and not same_listener:
             self._lan_server.shutdown()
-        if self._lan_thread is not None:
+        if self._lan_thread is not None and not same_listener:
             self._lan_thread.join(timeout=5)
         self._lan_server = replacement
-        self._lan_thread = None
         self.host = host or "127.0.0.1"
-        self._advertised_base_url = f"http://{host}:{self.actual_port}" if host else None
+        with self._auth_lock:
+            self._advertised_base_url = network_url
+            self._advertised_hostname = advertised if host else None
+        if same_listener:
+            return
+        self._lan_thread = None
         if replacement is not None:
             self._lan_thread = threading.Thread(target=replacement.serve_forever, daemon=True,
                                                 name="pad-lattice-web-lan")
@@ -428,11 +482,19 @@ class BrowserSurfaceServer:
             admin = loopback and command.credential is not None and hmac.compare_digest(
                 command.credential, self._admin_token
             )
-            client = BrowserClient(connection, admin=admin, remote=not loopback)
-            with self._clients_lock:
-                self._release_client_reservation(client.remote)
-                reserved = False
-                self._clients[id(connection)] = client
+            with self._auth_lock:
+                device = None if admin else self._session_tokens.get(issued_token or command.credential)
+                if not admin and device is None:
+                    raise WebProtocolError("Device access revoked", code="forbidden")
+                if device is not None:
+                    agents = connection.request.headers.get_all("User-Agent")
+                    device.name = _device_name(agents[0] if agents else "")
+                client = BrowserClient(connection, admin=admin, remote=not loopback,
+                                       device_id=device.id if device else None)
+                with self._clients_lock:
+                    self._release_client_reservation(client.remote)
+                    reserved = False
+                    self._clients[id(connection)] = client
             client.send(
                 web_message(
                     "authenticated",
@@ -525,6 +587,11 @@ class BrowserSurfaceServer:
             self._pending_remote_clients -= 1
 
     def _handle_command(self, client: BrowserClient, command: object) -> None:
+        if client.device_id is not None:
+            with self._auth_lock, self._clients_lock:
+                if (not any(device.id == client.device_id for device in self._session_tokens.values())
+                        or id(client.connection) not in self._clients):
+                    raise WebProtocolError("Device access revoked or disconnected", code="forbidden")
         if isinstance(command, AuthenticateCommand):
             raise WebProtocolError("client is already authenticated")
         if isinstance(command, ActionCommand):
@@ -577,7 +644,9 @@ class BrowserSurfaceServer:
                 or hmac.compare_digest(credential, pairing.secret)
             ):
                 token = secrets.token_urlsafe(32)
-                self._session_tokens.add(token)
+                if len(self._session_tokens) >= MAX_PAIRED_DEVICES:
+                    raise WebProtocolError("Revoke an unused device before pairing another.", code="device_limit")
+                self._session_tokens[token] = PairedDevice(secrets.token_hex(12))
                 self._pairing = None
                 self._failed_attempts.pop(peer, None)
                 return True, token
@@ -656,17 +725,15 @@ class BrowserSurfaceServer:
             port = parsed.port
         except ValueError:
             return False
-        expected_port = self.actual_port
         if port is None:
             port = 80
-        if port != expected_port:
-            return False
         if hostname in {"localhost", "127.0.0.1"}:
-            return True
+            return port == self.actual_port
         if self.host == "127.0.0.1":
             return False
         with self._auth_lock:
-            return hostname == self._advertised_hostname
+            advertised_port = urlsplit(self._advertised_base_url or "").port or 80
+            return hostname == self._advertised_hostname and port == advertised_port
 
     def _same_origin(self, request: Request) -> bool:
         try:
@@ -806,6 +873,19 @@ class WebSurface:
 
     def close(self) -> None:
         self.server.close()
+
+
+def _device_name(user_agent: str) -> str:
+    value = user_agent[:1024].lower()
+    if "pad-lattice-stream-deck" in value:
+        return "Elgato Stream Deck"
+    platform = next((label for marker, label in (("android", "Android"), ("iphone", "iPhone"),
+        ("ipad", "iPad"), ("windows", "Windows"), ("macintosh", "Mac"), ("linux", "Linux"))
+        if marker in value), None)
+    browser = next((label for marker, label in (("edg", "Edge"), ("firefox", "Firefox"),
+        ("fxios", "Firefox"), ("chrome", "Chrome"), ("crios", "Chrome"), ("safari", "Safari"))
+        if marker in value), "Browser")
+    return f"{platform} / {browser}" if platform else browser
 
 
 def _peer_host(remote_address: object) -> str:

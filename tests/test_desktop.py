@@ -136,6 +136,48 @@ class DesktopServiceTest(TestCase):
 
 
 class DesktopToolsTest(TestCase):
+    def test_theme_preference_persists_and_rejects_non_boolean_values(self):
+        with TemporaryDirectory() as directory:
+            surface = DesktopSurface(Path(directory), "/tmp/pad.sock", lambda _: None, threading.Event())
+            self.addCleanup(surface.close)
+            surface.command("settings", {"light_theme": True})
+            self.assertIs(surface.settings()["light_theme"], True)
+            surface.command("settings", {"light_theme": False})
+            self.assertIs(surface.settings()["light_theme"], False)
+            with self.assertRaises(ValueError):
+                surface.command("settings", {"light_theme": "light"})
+    def test_shared_network_pairing_uses_host_address_and_fixed_port(self):
+        from unittest.mock import Mock
+        with TemporaryDirectory() as directory:
+            surface = DesktopSurface(Path(directory), "/tmp/pad.sock", lambda _: None, threading.Event())
+            self.addCleanup(surface.close)
+            listener = Mock()
+            with patch("pad_lattice.web_surface.serve", return_value=listener) as serve:
+                surface.server.set_lan("10.211.55.4", port=8001, advertise_host="192.168.1.45")
+                self.assertEqual(serve.call_args.args[1:3], ("10.211.55.4", 8001))
+                surface.server.set_lan("10.211.55.4", port=8001, advertise_host="192.168.1.46")
+                self.assertEqual(serve.call_count, 1)
+            pairing = surface.create_pairing()
+            self.assertTrue(pairing["pairing_url"].startswith("http://192.168.1.46:8001/#pair="))
+            self.assertTrue(surface.server._host_is_allowed("192.168.1.46:8001"))
+            self.assertFalse(surface.server._host_is_allowed("192.168.1.45:8001"))
+            self.assertFalse(surface.server._host_is_allowed("192.168.1.46:9999"))
+            self.assertFalse(surface.server._host_is_allowed("evil.example:8001"))
+            surface.server.set_lan(None)
+            self.assertFalse(surface.server._host_is_allowed("192.168.1.46:8001"))
+            self.assertIsNone(surface.server.network_url)
+
+    def test_shared_network_rejects_public_addresses_and_invalid_ports(self):
+        with TemporaryDirectory() as directory:
+            surface = DesktopSurface(Path(directory), "/tmp/pad.sock", lambda _: None, threading.Event())
+            self.addCleanup(surface.close)
+            for advertised in ("8.8.8.8", "127.0.0.1", "0.0.0.0", "example.com"):
+                with self.assertRaises(ValueError):
+                    surface.server.set_lan("10.211.55.4", port=8001, advertise_host=advertised)
+            for port in (0, -1, 65536, True, "8001"):
+                with self.assertRaises(ValueError):
+                    surface.server.set_lan("10.211.55.4", port=port)
+
     def test_audio_reaches_desktop_and_browsers_without_snapshot_replay(self):
         messages = []
         with TemporaryDirectory() as directory:

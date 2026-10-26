@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {desktopRequest, isDesktop} from './desktop';
 
-export function useDesktopPreference(key: 'pad_focused' | 'audio_enabled') {
+export function useDesktopPreference(key: 'pad_focused' | 'audio_enabled' | 'light_theme') {
   const [value, setValue] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const touched = useRef(false);

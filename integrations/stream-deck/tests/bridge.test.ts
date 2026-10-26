@@ -50,6 +50,7 @@ test('paired bridge gates actions, reconnects with memory-only token, and clears
   server.on('connection', (socket, request) => {
     current = socket;
     assert.equal(request.headers.origin, `http://127.0.0.1:${address.port}`);
+    assert.equal(request.headers['user-agent'], 'pad-lattice-stream-deck');
     socket.on('message', raw => {
       const m = JSON.parse(raw.toString()); commands.push(m);
       if (m.type === 'authenticate') {
@@ -99,4 +100,26 @@ test('authentication rejection never enables actions or retries the PIN', async 
   await sleep(1200);
   assert.equal(attempts, 1);
   assert.equal(bridge.view, null);
+});
+
+test('administrator disconnect stops automatic reconnection', async t => {
+  const server = new WebSocketServer({host: '127.0.0.1', port: 0});
+  await once(server, 'listening');
+  const address = server.address(); assert.ok(address && typeof address !== 'string');
+  let attempts = 0;
+  server.on('connection', socket => socket.on('message', () => {
+    attempts++;
+    socket.send(JSON.stringify({protocol: 1, type: 'authenticated', admin: false, session_token: 'test-token'}));
+    socket.send(JSON.stringify({protocol: 1, type: 'surface', visual_protocol: 1, view}));
+    socket.send(JSON.stringify({protocol: 1, type: 'device_disconnected'}));
+    socket.close(1000);
+  }));
+  const bridge = new Bridge(() => {});
+  t.after(async () => { bridge.disconnect(); for (const client of server.clients) client.terminate(); await new Promise<void>(resolve => server.close(() => resolve())); });
+  bridge.pair(`http://127.0.0.1:${address.port}`, '123456');
+  await until(() => attempts === 1 && bridge.status === 'Disconnected');
+  await sleep(1200);
+  assert.equal(attempts, 1);
+  assert.equal(bridge.view, null);
+  assert.equal(bridge.act('approve', 7), false);
 });

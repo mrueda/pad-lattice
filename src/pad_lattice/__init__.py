@@ -4,7 +4,7 @@ from pad_lattice.client import ActionSubscription, PadLatticeClient
 from pad_lattice.events import AgentIdentity, AgentState, ControlAction
 from pad_lattice.protocol import ActionEvent
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "ActionEvent",

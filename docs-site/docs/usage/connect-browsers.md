@@ -9,9 +9,9 @@ another agent: every surface shares the same selected conversation.
 
 1. Keep Pad-Lattice open on the computer running Codex. Connect both computers
    or devices to the same **trusted private network**.
-2. Open **Settings > Phone and tablet**, enter the computer's private IPv4
-   address, and choose **Enable pairing**.
-3. Choose **Pair device** beside the pad.
+2. Open **Settings > Phones & tablets > Network setup**, enter the computer's private IPv4
+   address, and choose **Enable network access**.
+3. The pairing window opens automatically with a fresh QR code and PIN.
 4. Scan the QR code, or open the displayed address and enter its PIN.
 5. Wait for **Pad connected**. If no sessions appear, connect a chat in the
    desktop app.
@@ -29,7 +29,8 @@ encrypted. Do not expose the service to the internet or use public Wi-Fi.
 ## Add More Browsers
 
 Up to **eight remote browser connections** can use the service at once.
-Choose **New code** for each additional device; a used PIN cannot pair another one.
+Open **Settings > Phones & tablets > Pair device** for each additional device;
+a used PIN cannot pair another one.
 
 Selection is shared. Check the selected chat before acting, especially if
 someone else is using another surface.
@@ -42,52 +43,47 @@ own **Sound** toggle, initially muted.
 
 Only the desktop or local administrator page starts and stops playback.
 Paired browsers can answer Demo prompts; Show is read-only.
+They have no Demo & Show panel or playback controls; sound and disconnect stay
+in the toolbar.
 
 ## Disconnect and Revoke
 
-**Revoke paired devices** disconnects all paired browsers and the Stream Deck
-plugin. Per-device revocation is not available. Restarting Pad-Lattice also
-invalidates pairings; create new codes to reconnect.
+On the phone or tablet, the unplug icon in the toolbar is **Disconnect this device**.
+It disconnects only that browser tab and keeps its pairing. Select **Reconnect**
+to return; other devices and Codex sessions keep running. Reloading the page also reconnects.
+
+**Settings > Phones & tablets** lists paired devices and their connection status.
+**Disconnect** closes a device's connection; it can reconnect without pairing again.
+**Revoke access** removes its permission and requires a new PIN or QR code.
+Device labels come from the browser and are not verified identities.
+
+Restarting Pad-Lattice invalidates all pairings. Enable network access again to
+open a fresh QR/PIN, then use it on your phone. **Revoke paired devices** in the
+pairing window removes every paired browser and Stream Deck connection at once.
 
 ## Running Inside Parallels Desktop
 
-Shared Network can prevent your phone from reaching the VM directly. Use bridged
-networking or the port-forwarding setup below.
+With **Shared Network**, your phone reaches the Mac, which forwards the
+connection to the VM. Both addresses are needed.
 
-<details>
-<summary>Port forwarding with Parallels Pro and the CLI</summary>
+1. Find the VM address with `hostname -I` inside Linux.
+2. On the Mac, find its LAN address in **System Settings > Wi-Fi > Details > TCP/IP**.
+3. In Pad-Lattice, open **Settings > Phones & tablets > Network setup** and enable
+   **VM shared network**. Enter the VM address, the Mac address, and port **8001**.
+4. In Parallels Shared Network settings, add a **TCP** forwarding rule:
+   Mac port **8001** to the VM address, destination port **8001**.
+5. Choose **Enable network access**. A fresh QR/PIN opens automatically.
+   The QR code should contain the **Mac address**, not `127.0.0.1`.
 
-Close the desktop app first. Its settings do not expose a fixed port or a
-separate advertised host address; this setup uses the independent CLI.
+For example, VM `10.211.55.4` and Mac `192.168.1.43` produce the phone
+address `http://192.168.1.43:8001`. Use your own current addresses.
 
-1. Find the VM's private address with `hostname -I`.
-2. Find the Mac's private address in **System Settings > Wi-Fi > Details > TCP/IP**.
-3. Under **Parallels Desktop > Preferences > Network > Shared**, add a rule:
+Addresses and port are remembered, but network access must be enabled again
+after restarting the app. Use the same source and destination port in Parallels.
+**Do not add router forwarding** or expose this port to the internet.
 
-| Field | Example |
-| --- | --- |
-| Protocol | TCP |
-| Source port | 8001 |
-| Forward to | VM address: 10.211.55.4 |
-| Destination port | 8001 |
-
-Replace the example addresses with your own, then run inside the VM:
-
-```bash
-pad-lattice web --lan --port 8001 \
-  --bind-host 10.211.55.4 \
-  --advertise-host 192.168.1.45
-```
-
-Here, `--bind-host` is the VM address and `--advertise-host` is the Mac address
-your phone can reach. Open `http://192.168.1.45:8001` on the phone and enter
-the PIN. Follow [CLI Setup](./cli.md) to connect Codex.
-
-Keep source and destination ports the same. **Do not add router forwarding**:
-this rule should connect only your trusted LAN to the VM. See
-[Parallels network settings](https://docs.parallels.com/landing/pdfm-ug/parallels-desktop-for-mac-26-users-guide/parallels-desktop-preferences-and-virtual-machine-settings/parallels-desktop-preferences/network-preferences).
-
-</details>
+Bridged networking is another option: use the VM's LAN address directly, without
+the shared-network checkbox or port forwarding.
 
 ## Quick Troubleshooting
 

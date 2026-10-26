@@ -187,6 +187,48 @@ class BrowserSurfaceServerTest(TestCase):
 
 
 class WebSurfaceIntegrationTest(TestCase):
+    def test_device_list_disconnect_and_individual_revocation(self) -> None:
+        surface = WebSurface(port=0)
+        surface.initialize()
+        self.addCleanup(surface.close)
+        url = surface.local_url.replace("http://", "ws://") + "/ws"
+        def pair(credential, agent):
+            client = connect(url, origin=surface.local_url, proxy=None, close_timeout=0.1,
+                             user_agent_header=agent)
+            self.addCleanup(client.close)
+            client.send(json.dumps({"protocol": 1, "type": "authenticate", "credential": credential}))
+            response = json.loads(client.recv(timeout=2))
+            if response["type"] == "authenticated":
+                client.recv(timeout=2)
+            return client, response
+        first, auth = pair(surface.create_pairing()["pin"], "Android Chrome")
+        second, other_auth = pair(surface.create_pairing()["pin"], "Macintosh Safari")
+        devices = surface.server.paired_devices()
+        self.assertEqual([device["name"] for device in devices], ["Android / Chrome", "Mac / Safari"])
+        self.assertTrue(all(device["connected"] for device in devices))
+        self.assertNotIn(auth["session_token"], json.dumps(devices))
+        first_id, second_id = [device["id"] for device in devices]
+        surface.server.manage_device(first_id, revoke=False)
+        self.assertEqual(json.loads(first.recv(timeout=2))["type"], "device_disconnected")
+        self.assertFalse(surface.server.paired_devices()[0]["connected"])
+        resumed, resumed_auth = pair(auth["session_token"], "Android Chrome")
+        self.assertEqual(resumed_auth["type"], "authenticated")
+        self.assertEqual(surface.server.paired_devices()[0]["id"], first_id)
+        surface.server.manage_device(first_id, revoke=True)
+        self.assertEqual(json.loads(resumed.recv(timeout=2))["code"], "forbidden")
+        _, denied = pair(auth["session_token"], "Android Chrome")
+        self.assertEqual(denied["code"], "forbidden")
+        remaining = surface.server.paired_devices()
+        self.assertEqual([device["id"] for device in remaining], [second_id])
+        self.assertTrue(remaining[0]["connected"])
+        second.send(json.dumps({"protocol": 1, "type": "select_session", "slot": 0}))
+        deadline = time.monotonic() + 2
+        events = []
+        while not events and time.monotonic() < deadline:
+            events = surface.poll_events()
+            time.sleep(.01)
+        self.assertEqual(events, [SessionSelected(0)])
+
     def test_paired_local_controller_is_not_admin_and_can_be_revoked(self) -> None:
         from websockets.exceptions import ConnectionClosed
 

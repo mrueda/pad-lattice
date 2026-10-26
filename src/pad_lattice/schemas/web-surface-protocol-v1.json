@@ -16,10 +16,16 @@
     {"$ref": "#/$defs/experienceState"},
     {"$ref": "#/$defs/performanceFrame"},
     {"$ref": "#/$defs/audioCue"},
+    {"$ref": "#/$defs/deviceDisconnected"},
     {"$ref": "#/$defs/remoteRevoked"},
     {"$ref": "#/$defs/error"}
   ],
   "$defs": {
+    "deviceDisconnected": {
+      "type": "object", "additionalProperties": false,
+      "required": ["protocol", "type"],
+      "properties": {"protocol": {"const": 1}, "type": {"const": "device_disconnected"}}
+    },
     "audioCue": {
       "type": "object",
       "additionalProperties": false,

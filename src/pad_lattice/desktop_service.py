@@ -13,6 +13,7 @@ import threading
 import time
 import tempfile
 from typing import Any
+from urllib.parse import urlsplit
 
 from pad_lattice import __version__
 from pad_lattice.codex_discovery import discover_conversations
@@ -33,7 +34,8 @@ from pad_lattice.web_surface import WebSurface
 
 MAX_REQUEST = 64 * 1024
 PREFERENCE_TYPES = {"codex": str, "midi_profile": str, "midi_input": str,
-                    "midi_output": str, "pad_focused": bool, "audio_enabled": bool}
+                    "midi_output": str, "pad_focused": bool, "audio_enabled": bool, "light_theme": bool,
+                    "pairing_host": str, "pairing_port": str, "pairing_advertise_host": str}
 
 
 def valid_preference(key, value):
@@ -139,6 +141,7 @@ class DesktopSurface(WebSurface):
                 "inputs": inputs, "outputs": outputs, "profiles": profiles,
                 "midi": self.midi.profile_id if self.midi else None,
                 "midi_error": self.midi_error or error, "lan_host": self.server.host,
+                "network_url": self.server.network_url,
                 "port": self.server.actual_port, "socket": self.socket_path}
 
     def command(self, method: str, params: dict):
@@ -146,6 +149,14 @@ class DesktopSurface(WebSurface):
             return self.snapshot()
         if method == "status":
             return self.status()
+        if method == "paired_devices":
+            return {"devices": self.server.paired_devices()}
+        if method in {"disconnect_device", "revoke_device"}:
+            device_id = params.get("device_id")
+            if not isinstance(device_id, str) or not device_id:
+                raise ValueError("Choose a paired device.")
+            self.server.manage_device(device_id, revoke=method == "revoke_device")
+            return {"devices": self.server.paired_devices()}
         if method == "settings":
             if any(not valid_preference(key, value) for key, value in params.items()):
                 raise ValueError("Invalid settings")
@@ -164,7 +175,13 @@ class DesktopSurface(WebSurface):
                     temporary.unlink(missing_ok=True)
             return values
         if method == "lan":
-            self.server.set_lan(params.get("host") or None)
+            self.server.set_lan(params.get("host") or None, port=params.get("port"),
+                                advertise_host=params.get("advertise_host") or None)
+            if params.get("host"):
+                self.command("settings", {"pairing_host": params["host"],
+                    "pairing_port": str(urlsplit(self.server.network_url).port),
+                    "pairing_advertise_host": params.get("advertise_host") or ""})
+            self.notify(web_message("remote_revoked"))
             self.notify(self.snapshot()["messages"][0])
             return self.status()
         if method == "disconnect_midi":

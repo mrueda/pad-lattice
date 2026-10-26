@@ -54,8 +54,12 @@ Disconnecting MIDI does not end your chats; the virtual pad keeps working.
 
 ## Connect a Phone
 
-Enable **Settings > Phone and tablet**, then choose **Pair device** beside the
-pad. Both devices must be on the same trusted network.
+Open **Pair device** in the toolbar, or **Settings > Phones & tablets**.
+Enable network access; a fresh QR/PIN window opens automatically.
+Both devices must be on the same trusted network. The paired-device list lets
+you disconnect a device or revoke its access without affecting the others.
+The toolbar shows the live connected-device count; select it to open the list.
+**Network enabled** means pairing is available, not that a phone is connected.
 Follow [Connect Screens](./connect-browsers.md) for the QR/PIN steps.
 
 ## Try Demo and Show
@@ -68,12 +72,24 @@ during playback also returns the pad to live control.
 
 ## Preferences and Closing
 
-Sound, pad size, MIDI selections, and the Codex executable path save automatically
+Choose **Light** or **Dark** under **Settings > Appearance**. The pad stays dark
+in both themes to preserve its LED colors.
+
+Theme, sound, pad size, MIDI selections, and the Codex executable path save automatically
 in the app's settings folder, not your project. Connections and network pairing
 are not restored automatically.
 
 If Codex is not found, choose it under **Settings > Codex**. The app reports
 whether the installed version has been tested with this integration.
+
+**Settings > About** lists the app version, project links, license, and core
+third-party library credits. **Bundled dependency notices** opens the collected
+license texts. **Copy diagnostics** copies versions, connection counts, and failed
+operation names, without prompts, tokens, device names, or private paths.
+
+If the connection drops, stale actions clear and a status banner appears, including
+in maximized mode. Select **Reconnect** when Desktop is available again;
+the browser does not keep retrying. Revoked access requires pairing again.
 
 Minimize the window to leave Pad-Lattice running. Closing it stops its service
 and releases MIDI; your Codex terminals remain open. Do not run a separate

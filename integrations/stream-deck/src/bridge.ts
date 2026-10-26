@@ -102,6 +102,7 @@ export class Bridge {
     this.changed();
     const socket = new WebSocket(this.origin.replace('http:', 'ws:') + '/ws', {
       origin: this.origin, maxPayload: 16384, followRedirects: false, handshakeTimeout: 5000,
+      headers: {'User-Agent': 'pad-lattice-stream-deck'},
     });
     this.socket = socket;
     this.watchdog = setTimeout(() => socket.terminate(), 10000);
@@ -125,6 +126,10 @@ export class Bridge {
         }, 10000);
         this.retryDelay = 1000;
         this.status = 'Connected';
+      } else if (m.type === 'device_disconnected') {
+        this.stopped = true;
+        this.view = null;
+        this.status = 'Disconnected';
       } else if (m.type === 'surface' && this.authenticated) {
         this.view = m.visual_protocol === 1 ? liveView(m.view) : null;
         this.status = this.view ? 'Connected' : 'No live session';

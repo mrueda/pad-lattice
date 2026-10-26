@@ -66,6 +66,9 @@ protections:
 The browser stores its reconnect token locally, but a restarted daemon does
 not recognize it. Pair again after every daemon restart. A loopback
 administrator can create a replacement code or revoke every remote token.
+Desktop can also disconnect or revoke individual paired devices. The
+`device_disconnected` message stops automatic reconnect without removing the
+credential; a `forbidden` error clears it and returns the browser to PIN entry.
 
 For ordinary setup, multiple browsers, and NATed VM instructions, follow
 [Connect a Phone, Tablet, or Laptop](../usage/connect-browsers.md). This page focuses on the

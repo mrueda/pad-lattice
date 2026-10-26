@@ -22,7 +22,7 @@ function discover() {
   return discovery;
 }
 
-export function OpenConversations() {
+export function OpenConversations({onSetup}: {onSetup: () => void}) {
   const [result, setResult] = useState<Discovery | null>(null);
   const [busy, setBusy] = useState(false);
   const [changing, setChanging] = useState<string | null>(null);
@@ -75,7 +75,11 @@ export function OpenConversations() {
     {result?.error ? <p className="desktopNotice" role="status">{result.error}</p> : null}
     {error ? <p className="desktopError" role="alert">{error}</p> : null}
     {!result ? <p className="desktopNotice">Looking for local conversations...</p> : null}
-    {result?.available && !result.conversations.length ? <p className="desktopNotice">No loaded Codex CLI conversations on this computer.</p> : null}
+    {result && !result.conversations.length ? <div className="conversationEmpty">
+      <Terminal aria-hidden="true" />
+      <strong>{result.available ? 'No open Codex conversations' : 'Codex discovery unavailable'}</strong>
+      {result.available ? <code>codex</code> : <button className="textButton" onClick={onSetup}>Codex settings</button>}
+    </div> : null}
     {result?.conversations.length ? <ul className="openConversationList">
       {[...result.conversations].sort((a, b) =>
         (a.slot ?? Number.MAX_SAFE_INTEGER) - (b.slot ?? Number.MAX_SAFE_INTEGER)
@@ -84,7 +88,8 @@ export function OpenConversations() {
           style={conversation.accent ? {color: tokenColor(`accent:${conversation.accent}:selected`)} : undefined}>{conversation.slot + 1}</span>
           : <Terminal aria-hidden="true" />}
         <div className="openConversationIdentity"><strong title={conversation.name}>{conversation.name}</strong><span title={conversation.cwd}>{conversation.cwd || 'No working folder'}</span><code title={conversation.id}>{conversation.id.slice(0, 8)}</code></div>
-        <div className="openConversationStatus"><span>{states[conversation.state] ?? 'Unknown'}</span><small>
+        <div className="openConversationStatus"><span>{states[conversation.state] ?? 'Unknown'}</span><small
+          className={!conversation.error && (conversation.connected || conversation.launcher) ? 'chatConnected' : undefined}>
           {conversation.error ? 'Disconnected' : conversation.connected || conversation.launcher
             ? `Connected${conversation.slot != null ? `, Scene ${conversation.slot + 1}` : ''}` : 'Not connected'}
         </small>{conversation.error ? <small className="desktopError" title={conversation.error}>{conversation.error}</small> : null}</div>

@@ -9,6 +9,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main() -> None:
+    subprocess.run([sys.executable, str(ROOT / "scripts/collect_desktop_notices.py")], check=True)
+    shutil.copy2(ROOT / "web-app/public/third-party-notices.txt",
+                 ROOT / "src/pad_lattice/web_dist/play/third-party-notices.txt")
     work = ROOT / "build/desktop-engine"
     subprocess.run([
         sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onedir",

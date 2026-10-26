@@ -60,6 +60,12 @@ The optional LAN listener can start or stop without resetting the control
 plane. Reconfiguration revokes paired clients. It uses the existing pairing,
 host checks, and browser message validation.
 
+Desktop manages paired devices through the native `paired_devices`,
+`disconnect_device`, and `revoke_device` commands. Records use random IDs;
+credentials never appear in the UI. A browser disconnected by Desktop waits
+for manual reconnect. Revocation removes its credential and requires pairing
+again. Device records are cleared when the engine stops.
+
 ## Conversation Lifetime
 
 The desktop lists loaded CLI conversations through Codex's
@@ -180,3 +186,15 @@ npm --prefix web-app run desktop
 For installers, use `npm --prefix web-app run desktop:build` after bundling the
 engine. Linux ARM64 is included for development on ARM virtual machines.
 Native Windows support requires additional backend work.
+
+### Dependency Notices
+
+The engine build runs `scripts/collect_desktop_notices.py`. It collects Python
+runtime dependencies, production npm packages, and the target's resolved Cargo
+graph, including build dependencies. Shared license texts are deduplicated in
+`web-app/public/third-party-notices.txt` and bundled for offline access in About.
+
+Version-specific upstream texts in `licenses/upstream/` cover archives that omit
+their license files; `sources.json` records their provenance. Missing texts stop
+the installer build. Regenerate with `--offline` when Cargo sources are cached.
+Platform-provided libraries are outside this inventory.
