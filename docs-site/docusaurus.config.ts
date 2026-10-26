@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Pad-Lattice',
-  tagline: 'Human-in-the-loop control surfaces for AI agents',
+  tagline: 'Physical and virtual control surfaces for AI agents',
   url: 'https://mrueda.github.io',
   baseUrl: '/pad-lattice/',
   organizationName: 'mrueda',

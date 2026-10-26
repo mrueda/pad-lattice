@@ -1,4 +1,4 @@
-# Stream Deck
+# Elgato Stream Deck
 
 import {StreamDeckDiagram} from '@site/src/components/SurfaceVisuals';
 

@@ -4,6 +4,9 @@ Choose how you want to see and control your Codex CLI sessions. **No MIDI
 hardware is required.** Start with [How It Works](./control-codex.md) for the
 shared workflow; the entries below explain each surface's setup and layout.
 
+Already own hardware? Go directly to [Novation Launchpad](./launchpad.md) or
+[Elgato Stream Deck](./stream-deck.md) (experimental plugin).
+
 ![Desktop, browser, and physical surfaces sharing Codex sessions](/img/control-surfaces-overview.svg)
 
 ## Virtual Surfaces

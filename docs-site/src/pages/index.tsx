@@ -23,10 +23,10 @@ const featureLinks = [
     to: '/docs/usage/connect-browsers',
   },
   {
-    label: 'Protocol',
-    title: 'Read the visual protocol',
-    text: 'See how identity accents, state glyphs, selection, actions, and overflow form one shared visual language.',
-    to: '/docs/technical-details/visual-language',
+    label: 'Physical controllers',
+    title: 'Launchpad or Stream Deck',
+    text: 'Use a Launchpad RGB grid or Stream Deck LCD keys. Stream Deck support is experimental and needs hardware testers.',
+    to: '/docs/usage/device-catalog',
   },
 ];
 
@@ -65,21 +65,22 @@ export default function Home() {
 
   return (
     <Layout
-      title="Human control surfaces for AI agents"
-      description="Connect open Codex CLI conversations with the Pad-Lattice desktop app. Use the virtual pad, a Launchpad, or paired phones and tablets.">
+      title="Physical and virtual control surfaces for AI agents"
+      description="Control Codex CLI sessions from Desktop, phones, tablets, Novation Launchpad, or the experimental Elgato Stream Deck plugin. No hardware required.">
       <main className={styles.page}>
         <section className={styles.hero}>
           <div className={styles.heroGrid}>
             <div className={styles.copy}>
               <p className={styles.kicker}>Pad-Lattice</p>
-              <h1>Monitor and direct AI agents from a physical or virtual pad.</h1>
+              <h1>Monitor and direct AI agents with physical or virtual controls.</h1>
               <p className={styles.lede}>
                 <strong>A tactile visual language between people and AI agents.</strong>{' '}
                 See which session is working, waiting, requesting approval, or
                 finished. Connect your open <strong>Codex CLI</strong> chats in the{' '}
                 <strong>desktop app</strong>, then act from its pad, a{' '}
-                <strong>Novation Launchpad</strong>, or a paired phone or tablet.
-                No MIDI controller is required.
+                <Link to="/docs/usage/launchpad">Novation Launchpad</Link>, a paired phone or tablet,
+                or an <Link to="/docs/usage/stream-deck">Elgato Stream Deck (experimental)</Link>.
+                No hardware is required.
               </p>
               <div className={styles.actions}>
                 <Link className="button button--primary button--lg" to="/docs/usage/install">

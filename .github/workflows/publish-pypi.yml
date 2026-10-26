@@ -1,9 +1,12 @@
 name: Publish to PyPI
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Stable version to publish (e.g. 0.2.0, without v); matching annotated tag must exist"
+        required: true
+        type: string
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -12,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pypi-${{ github.ref }}
+  group: pypi-${{ inputs.version }}
   cancel-in-progress: false
 
 jobs:
@@ -20,10 +23,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Validate requested version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+
+          version = os.environ["RELEASE_VERSION"]
+          if re.fullmatch(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)", version) is None:
+              raise SystemExit("Enter a stable version in X.Y.Z form, without the v prefix")
+          PY
+
       - name: Check out release tag
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.ref }}
+          ref: refs/tags/v${{ inputs.version }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -44,7 +60,7 @@ jobs:
 
       - name: Verify annotated tag, version, and changelog
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: v${{ inputs.version }}
         run: |
           test "$(git cat-file -t "refs/tags/$RELEASE_TAG")" = "tag" || {
             echo "Release tag $RELEASE_TAG must be annotated"

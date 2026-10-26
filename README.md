@@ -2,7 +2,7 @@
   <a href="https://github.com/mrueda/pad-lattice">
     <img src="https://raw.githubusercontent.com/mrueda/pad-lattice/main/assets/pad-lattice-logo.svg" width="220" alt="Pad-Lattice logo">
   </a>
-  <p><em>Human-in-the-loop control surfaces for AI agents</em></p>
+  <p><em>Physical and virtual control surfaces for AI agents</em></p>
 </div>
 
 # Pad-Lattice
@@ -23,8 +23,10 @@
 colors and glyphs to show agent activity. Select a session to approve or reject
 a pending request, or stop a running turn. Prompts and replies stay in Codex.
 
-Use the desktop app, a phone or tablet browser, or a physical MIDI controller.
-All share the same visual language. **No MIDI hardware is required.**
+Use the desktop app, a phone or tablet browser, a
+[Novation Launchpad](https://mrueda.github.io/pad-lattice/docs/usage/launchpad),
+or an [Elgato Stream Deck](https://mrueda.github.io/pad-lattice/docs/usage/stream-deck)
+(experimental plugin). All share the same visual language. **No hardware is required.**
 
 <div align="center">
   <img src="docs-site/static/img/human-control-workflow.svg" width="1200" alt="Codex asks for approval, physical and virtual pads light up, and one human press returns a targeted action">

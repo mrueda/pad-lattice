@@ -36,8 +36,9 @@ The [Device Catalog](./usage/device-catalog.md) covers desktop and browser pads,
 Novation Launchpads, and the experimental Stream Deck plugin. You can use
 several surfaces together; they share the selected session and actions.
 
-MIDI controllers bring physical buttons and colored lights to a new task.
-The virtual pad provides the same controls without buying hardware.
+[Novation Launchpad](./usage/launchpad.md) uses an RGB grid;
+[Elgato Stream Deck](./usage/stream-deck.md) uses LCD keys through an experimental
+plugin. The virtual pad provides the same controls without buying hardware.
 
 ## Try It First
 
