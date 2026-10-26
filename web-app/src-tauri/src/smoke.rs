@@ -62,6 +62,9 @@ pub async fn smoke_checkpoint(
 
 #[tauri::command]
 pub fn smoke_finish(app: tauri::AppHandle, error: Option<String>) {
+    if let Some(message) = &error {
+        eprintln!("Native smoke test failed: {message}");
+    }
     let _ = std::fs::write(
         directory().join("result.json"),
         serde_json::to_vec_pretty(&json!({"success": error.is_none(), "error": error})).unwrap(),
@@ -115,12 +118,13 @@ pub const SCRIPT: &str = r#"
       constructor(...args) { super(...args); players.push(this); }
     };
     if ([...document.querySelectorAll('button')].some(button => button.textContent.includes('Start Show'))) throw Error('Show controls leaked into the Codex sessions view');
-    document.querySelector('button[aria-label="Explore"]').click();
+    const sound = document.querySelector('button[aria-label="Sound"]');
+    if (!sound) throw Error('Global sound control missing');
+    if (sound.getAttribute('aria-pressed') !== 'true') sound.click();
+    document.querySelector('button[aria-label="Demo & Show"]').click();
     await wait(100);
     [...document.querySelectorAll('[role="menuitem"]')].find(button => button.textContent === 'Show').click();
     await wait(200);
-    [...document.querySelectorAll('button')].find(button => button.textContent.includes('Sound off')).click();
-    await request('surface', {protocol: 1, type: 'start_experience', kind: 'show'});
     await wait(2500);
     const active = await request('snapshot');
     if (!active.messages.some(m => m.type === 'performance_frame')) throw Error('Show frames unavailable');
