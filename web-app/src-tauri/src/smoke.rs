@@ -77,6 +77,15 @@ pub const SCRIPT: &str = r#"
   const invoke = window.__TAURI_INTERNALS__.invoke;
   const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
   const request = (method, params = {}) => invoke('desktop_request', {method, params});
+  const until = async (check, message) => {
+    const deadline = Date.now() + 15000;
+    do {
+      const result = await check();
+      if (result) return result;
+      await wait(100);
+    } while (Date.now() < deadline);
+    throw Error(message);
+  };
   try {
     for (let i = 0; i < 100 && !document.querySelector('.desktopControls'); i++) await wait(100);
     if (!document.querySelector('.desktopControls')) throw Error('Desktop controls did not render');
@@ -124,11 +133,18 @@ pub const SCRIPT: &str = r#"
     document.querySelector('button[aria-label="Demo & Show"]').click();
     await wait(100);
     [...document.querySelectorAll('[role="menuitem"]')].find(button => button.textContent === 'Show').click();
-    await wait(200);
-    await wait(2500);
-    const active = await request('snapshot');
-    if (!active.messages.some(m => m.type === 'performance_frame')) throw Error('Show frames unavailable');
-    const playingAudio = players.find(player => player.currentTime > 0 && !player.paused && !player.muted && player.volume > 0);
+    let active;
+    try {
+      await until(async () => {
+        active = await request('snapshot');
+        return active.messages.some(m => m.type === 'performance_frame');
+      }, 'Show frames unavailable');
+    } catch (error) {
+      await invoke('smoke_checkpoint', {label: 'desktop-show-failed', details: active ?? {}});
+      throw error;
+    }
+    const playingAudio = await until(() => players.find(player => player.currentTime > 0 && !player.paused && !player.muted && player.volume > 0),
+      'The Show player did not start audible playback');
     await invoke('smoke_checkpoint', {label: 'desktop-show-audio', details: {
       playing: !!playingAudio, players: players.map(player => ({url: player.src, time: player.currentTime, paused: player.paused, error: player.error?.code})),
     }});

@@ -62,9 +62,9 @@ test('Devices groups MIDI, Stream Deck and browsers without mixing their configu
   await expect(paired).toContainText('Elgato Stream Deck');
   await expect(paired).not.toContainText('Android / Chrome');
   await page.getByRole('button', {name: 'Plugin setup guide'}).click();
-  expect(calls.find(call => call.method === 'open_project_link')?.params.destination).toBe('stream-deck');
+  await expect.poll(() => calls.find(call => call.method === 'open_project_link')?.params.destination).toBe('stream-deck');
   await page.getByRole('button', {name: 'Get plugin', exact: true}).click();
-  expect(calls.some(call => call.method === 'open_project_link' && call.params.destination === 'downloads')).toBe(true);
+  await expect.poll(() => calls.some(call => call.method === 'open_project_link' && call.params.destination === 'downloads')).toBe(true);
   await page.getByRole('button', {name: 'Pair device', exact: true}).click();
   const pairing = page.getByRole('dialog', {name: 'Pair Stream Deck'});
   await expect(pairing).toContainText('123456');
