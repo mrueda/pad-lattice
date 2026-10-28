@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import {ChevronDown, Play, Sparkles} from 'lucide-react';
 
-export function ExploreMenu({disabled, onStart}: {disabled: boolean; onStart: (kind: 'demo' | 'show') => void}) {
+export function ExploreMenu({disabled, onStart, active}: {disabled: boolean; onStart: (kind: 'demo' | 'show') => void; active?: 'demo' | 'show' | null}) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -27,7 +27,8 @@ export function ExploreMenu({disabled, onStart}: {disabled: boolean; onStart: (k
   }}>
     <button className="textButton" ref={trigger} aria-label="Demo & Show" aria-haspopup="menu" aria-expanded={open}
       disabled={disabled} title={disabled ? 'Disconnect conversations before starting Demo or Show' : 'Demo & Show'}
-      onClick={() => setOpen(!open)}>Demo &amp; Show <ChevronDown aria-hidden="true" /></button>
+      onClick={() => setOpen(!open)}>{active === 'show' ? <Sparkles aria-hidden="true" /> : <Play aria-hidden="true" />}
+      {active === 'demo' ? 'Demo' : active === 'show' ? 'Show' : 'Demo & Show'} <ChevronDown aria-hidden="true" /></button>
     {open ? <div className="exploreChoices" role="menu" aria-label="Demo & Show">
       {(['demo', 'show'] as const).map(kind => <button key={kind} role="menuitem" onClick={() => {
         setOpen(false); trigger.current?.focus(); onStart(kind);

@@ -1,5 +1,5 @@
 import {useEffect, useState, type ReactNode} from 'react';
-import {CircleAlert, CircleHelp, ShieldAlert} from 'lucide-react';
+import {CircleAlert, CircleHelp, ShieldAlert, MessagesSquare, Bell} from 'lucide-react';
 import {desktopRequest} from './desktop';
 import {tokenColor} from './surfaceModel';
 import type {SessionView} from './types';
@@ -58,9 +58,9 @@ export function AttentionView({children, disabled, revision}: {
       setTab(next);
       document.getElementById(next === 'all' ? 'all-conversations-tab' : 'attention-tab')?.focus();
     }}>
-      <button id="all-conversations-tab" role="tab" tabIndex={tab === 'all' ? 0 : -1} aria-controls="all-conversations-panel" aria-selected={tab === 'all'} onClick={() => setTab('all')}>All conversations</button>
+      <button id="all-conversations-tab" role="tab" tabIndex={tab === 'all' ? 0 : -1} aria-controls="all-conversations-panel" aria-selected={tab === 'all'} onClick={() => setTab('all')}><MessagesSquare aria-hidden="true" /><span>All conversations</span></button>
       <button id="attention-tab" role="tab" tabIndex={tab === 'attention' ? 0 : -1} aria-controls="attention-panel" aria-selected={tab === 'attention'} onClick={() => setTab('attention')}>
-        Needs attention{snapshot ? ` (${snapshot.sessions.length})` : ''}</button>
+        <Bell aria-hidden="true" /><span>Needs attention{snapshot ? ` (${snapshot.sessions.length})` : ''}</span></button>
     </div>
     <div id="all-conversations-panel" role="tabpanel" aria-labelledby="all-conversations-tab" hidden={tab !== 'all'}>{children}</div>
     <div id="attention-panel" role="tabpanel" aria-labelledby="attention-tab" hidden={tab !== 'attention'}>

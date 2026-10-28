@@ -66,6 +66,10 @@ test('pauses, resumes, replays, and stops advancing outside the Demo tab', async
 test('keeps the current Show story beat beside the lights', async ({page}) => {
   await page.goto('/');
   await page.locator('.modeSwitch').getByRole('button', {name: 'Show'}).click();
+  await expect(page.locator('.sceneControl')).toHaveText(Array(8).fill(''));
+  await expect(page.locator('.sessionRow')).toHaveCount(0);
+  await expect(page.getByRole('button', {name: /^Select /})).toHaveCount(0);
+  await expect(page.locator('.surfaceFooter')).toContainText('FULL SURFACE');
   await expect(page.locator('.experiencePanel').getByRole('button', {name: 'Start Demo'})).toHaveCount(0);
   await page.locator('.experiencePanel').getByRole('button', {name: 'Start Show'}).click();
 
@@ -81,6 +85,10 @@ test('keeps the current Show story beat beside the lights', async ({page}) => {
   expect(metrics.scrollX).toBe(0);
 
   await page.locator('.experiencePanel').getByRole('button', {name: 'Stop'}).click();
+  await expect(page.locator('.sceneControl')).toHaveText(Array(8).fill(''));
+  await expect(page.locator('.sessionRow')).toHaveCount(0);
+  await expect(page.locator('.surfaceFooter')).not.toContainText('Reviewer');
+  await page.screenshot({path: test.info().outputPath('show-stopped.png'), fullPage: true});
 });
 
 test('sandbox targets one session and records actions without claiming immediate success', async ({page}) => {

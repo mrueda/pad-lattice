@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState} from 'react';
-import {RefreshCw, Terminal, Plug, Unplug, Stethoscope} from 'lucide-react';
+import {RefreshCw, Terminal, Plug, Unplug, Stethoscope, Settings} from 'lucide-react';
 import {desktopRequest} from './desktop';
 import {tokenColor} from './surfaceModel';
 
@@ -82,7 +82,7 @@ export function OpenConversations({onSetup, onDiagnostics, codexAvailable}: {
     {result && !result.conversations.length ? <div className="conversationEmpty">
       <Terminal aria-hidden="true" />
       <strong>{codexAvailable === false ? 'Codex CLI not available' : result.available ? 'No open Codex conversations' : 'Codex discovery unavailable'}</strong>
-      {result.available && codexAvailable !== false ? <code>codex</code> : <button className="textButton" onClick={onSetup}>Codex settings</button>}
+      {result.available && codexAvailable !== false ? <code>codex</code> : <button className="textButton" onClick={onSetup}><Settings aria-hidden="true" />Codex settings</button>}
     </div> : null}
     {result?.conversations.length ? <p className="desktopNotice conversationCounts" role="status">
       {result.conversations.length} open · {connectedCount} connected to the pad

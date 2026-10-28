@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {BookOpen, Github, Copy} from 'lucide-react';
+import {BookOpen, Github, Copy, Check, Scale} from 'lucide-react';
 import {desktopRequest, openProjectLink} from './desktop';
 import {diagnosticsReport} from './diagnostics';
 import license from '../../LICENSE?raw';
@@ -56,7 +56,7 @@ export function About({version}: {version?: string}) {
     <div className="desktopActions">
       <button className="textButton" onClick={() => void open('docs')}><BookOpen /> Documentation</button>
       <button className="textButton" onClick={() => void open('github')}><Github /> GitHub</button>
-      <button className="textButton" disabled={busy} onClick={() => void copyDiagnostics()}><Copy />{busy ? 'Collecting...' : 'Copy diagnostics'}</button>
+      <button className="textButton" disabled={busy} onClick={() => void copyDiagnostics()}>{copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}{busy ? 'Collecting...' : 'Copy diagnostics'}</button>
     </div>
     {copied ? <p className="desktopNotice" role="status">Diagnostics copied</p> : null}
     {error ? <p className="desktopError" role="alert">{error}</p> : null}
@@ -64,7 +64,7 @@ export function About({version}: {version?: string}) {
     <details><summary>Pad-Lattice license</summary><pre>{license}</pre></details>
     <h3>Third-party credits</h3>
     <p className="desktopNotice">Core runtime libraries. Each retains its own license.</p>
-    <button className="textButton" disabled={loadingNotices} onClick={() => void loadNotices()}><BookOpen />{loadingNotices ? 'Loading...' : 'Bundled dependency notices'}</button>
+    <button className="textButton" disabled={loadingNotices} onClick={() => void loadNotices()}><Scale aria-hidden="true" />{loadingNotices ? 'Loading...' : 'Bundled dependency notices'}</button>
     {notices ? <details open><summary>Dependency notices</summary><pre tabIndex={0}>{notices}</pre></details> : null}
     <ul className="thirdPartyCredits">{credits.map(([name, purpose, terms]) => <li key={name}>
       <div><strong>{name}</strong><small>{purpose}</small></div><span>{terms}</span>

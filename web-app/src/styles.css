@@ -371,7 +371,18 @@ select:focus-visible {
   outline: 2px solid #f4f8fa;
   outline-offset: 3px;
   filter: brightness(1.1) saturate(1.08);
+  animation: demo-focus 1.8s ease-in-out 3;
 }
+@keyframes demo-focus { 50% { outline-offset: 6px; outline-color: #71d5e5; } }
+@media (prefers-reduced-motion: reduce) { .guidedControl { animation: none; } }
+.liveDemoCue { display: flex; align-items: center; gap: 12px; padding: 12px 0 16px; border-bottom: 1px solid #35434c; margin-bottom: 16px; }
+.liveDemoCue > svg { width: 24px; height: 24px; color: #71d5e5; flex-shrink: 0; }
+.liveDemoCue > div { display: grid; gap: 4px; }
+.liveDemoCue small { color: #9bb4c3; font-size: 11px; }
+.liveDemoCue strong { font-size: 18px; }
+.liveDemoCue span { color: #aeb9c0; font-size: 13px; }
+[data-theme="light"] .liveDemoCue :is(small, span) { color: #425967; }
+[data-theme="light"] .liveDemoCue > svg { color: #126789; }
 
 .railControl svg {
   width: 42%;
@@ -380,6 +391,8 @@ select:focus-visible {
   color: #07100b;
   filter: drop-shadow(0 1px 1px rgb(255 255 255 / 18%));
 }
+
+.railControl svg.inactiveActionIcon { color: #9ba8b1; filter: none; opacity: .65; }
 
 .matrixGrid {
   display: grid;
@@ -691,6 +704,7 @@ select:focus-visible {
 .primaryButton svg {
   width: 15px;
   height: 15px;
+  flex-shrink: 0;
 }
 
 .textButton.danger {
@@ -1028,6 +1042,8 @@ select:focus-visible {
 .desktopApp .desktopControls { flex-shrink: 0; margin: 0; padding: 12px 24px 18px; max-height: 58vh; overflow: auto; }
 .desktopApp .workspace { min-height: 0; overflow: auto; }
 .desktopApp .surfaceWorkspace { padding: 20px; align-items: flex-start; }
+.desktopDemoWorkspace .surfaceWorkspace, .desktopApp .desktopDemoWorkspace .surfaceWorkspace { flex-direction: column; align-items: center; justify-content: flex-start; }
+.liveDemoCue { width: min(100%, 500px); box-sizing: border-box; min-height: 86px; }
 .desktopApp .virtualSurface { width: min(100%, 500px, calc(100vh - 440px)); }
 .desktopApp .contextPane { padding: 20px 24px; gap: 20px; }
 .desktopControls { margin: 0 0 22px; border-bottom: 1px solid var(--desktop-border); padding: 0 0 20px; }
@@ -1088,7 +1104,8 @@ select:focus-visible {
 .hardwareTestStep p { font-size: 14px; line-height: 1.5; }
 .hardwareTestResult { display: flex; align-items: start; flex-direction: column; gap: 12px; margin-top: 20px; font-size: 14px; }
 .attentionTabs { display: flex; gap: 12px; border-bottom: 1px solid #35414a; margin-bottom: 16px; }
-.attentionTabs button { border: 0; border-bottom: 2px solid transparent; background: transparent; padding: 12px 0; font-size: 14px; cursor: pointer; }
+.attentionTabs button { display: inline-flex; align-items: center; gap: 7px; min-width: 0; border: 0; border-bottom: 2px solid transparent; background: transparent; padding: 12px 0; font-size: 14px; cursor: pointer; }
+.attentionTabs button svg { width: 16px; height: 16px; flex-shrink: 0; }
 .attentionTabs button[aria-selected="true"] { border-bottom-color: #41c6cd; }
 .attentionRow { display: grid; grid-template-columns: 12px minmax(0, 1fr) 18px 64px; gap: 10px; align-items: center; text-align: left; width: 100%; min-height: 68px; padding: 12px 8px; border: 0; border-bottom: 1px solid #35414a; background: transparent; cursor: pointer; }
 .attentionRow[aria-pressed="true"] { background: #1d2933; }

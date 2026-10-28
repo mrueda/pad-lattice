@@ -89,12 +89,19 @@ Follow [Connect Screens](./connect-browsers.md) for the QR/PIN steps.
 Disconnect real sessions, then choose **Demo & Show > Demo** or **Demo & Show > Show**.
 Enable **Sound** for audio. **Back to live pad** ends playback.
 
+The interactive desktop Demo highlights the next Scene or action control and
+shows a **Your turn** cue. Its simulated sessions are separate from your Codex
+conversations. The public browser Demo plays automatically.
+
+**Show** is an audiovisual exhibition, not an agent simulation. Its grid and
+outer lights form one animation; their colors do not represent connected chats.
+
 Demo & Show is disabled while real sessions are connected. Connecting a session
 during playback also returns the pad to live control.
 
 ## Preferences and Closing
 
-Choose **Light** or **Dark** under **Settings > Appearance**. The pad stays dark
+Choose **Light** or **Dark** under **Settings > Appearance & sound**. The pad stays dark
 in both themes to preserve its LED colors.
 
 Theme, sound, pad size, MIDI selections, and the Codex executable path save automatically

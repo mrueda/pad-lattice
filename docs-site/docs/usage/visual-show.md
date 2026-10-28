@@ -20,8 +20,9 @@ playback; connecting a real agent ends the show.
 
 No hardware is needed. You can also [watch in the public pad](pathname:///play/).
 
-**Demo is different:** it lets you practice responding to simulated agents.
-Show is a light-and-music performance, not a tutorial or a view of agent activity.
+**Demo is different:** Desktop guides you through simulated agent requests;
+the public browser Demo plays those steps automatically. Show is a
+light-and-music exhibition, not a tutorial or a view of agent activity.
 
 ## The Story
 

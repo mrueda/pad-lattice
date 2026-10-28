@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useRef, useState, type KeyboardEvent} from 'react';
-import {BookOpen, Download, Cable, Grid2X2, FolderOpen, Settings, RefreshCw, RotateCw, Plug, Unplug, Wifi, ArrowLeft, Sun, Moon, MonitorSmartphone, SlidersHorizontal, Terminal, Info, CheckCircle2, CircleAlert, Stethoscope} from 'lucide-react';
+import {BookOpen, Download, Cable, QrCode, Grid2X2, FolderOpen, Settings, RefreshCw, RotateCw, Plug, Unplug, Wifi, WifiOff, ArrowLeft, Sun, Moon, MonitorSmartphone, SlidersHorizontal, Terminal, Info, CheckCircle2, CircleAlert, Stethoscope} from 'lucide-react';
 import {choosePath, desktopRequest, openProjectLink} from './desktop';
 import {OpenConversations} from './OpenConversations';
 import {PairedDevices, usePairedDevices} from './PairedDevices';
@@ -45,7 +45,8 @@ interface Status {
 }
 interface Codex {available: boolean; version?: string; tested?: boolean; tested_version: string; error?: string}
 
-export function DesktopControls({audioEnabled, onAudio, settingsOpen, onSettingsChange, onPairDevice, lightTheme, onThemeChange}: {
+export function DesktopControls({audioEnabled, onAudio, settingsOpen, onSettingsChange, onPairDevice, lightTheme, onThemeChange, showConversations = true}: {
+  showConversations?: boolean;
   audioEnabled: boolean;
   onAudio: () => void;
   settingsOpen: boolean;
@@ -185,11 +186,11 @@ export function DesktopControls({audioEnabled, onAudio, settingsOpen, onSettings
           {status?.network_url ? <span title={status.network_url}><Wifi aria-hidden="true" />Network enabled</span> : null}
         </div>
         <div className="desktopActions">
-          {!settingsOpen ? <button className="textButton" onClick={() => openDevices('browser')}><Cable /> Pair device</button> : null}
+          {!settingsOpen ? <button className="textButton" onClick={() => openDevices('browser')}><QrCode aria-hidden="true" /> Pair device</button> : null}
           <button className="textButton" title="Settings" aria-label="Settings" aria-expanded={settingsOpen} onClick={() => onSettingsChange(!settingsOpen)}><Settings /></button>
         </div>
       </div>
-      <div hidden={settingsOpen}><OpenConversations codexAvailable={codex?.available} onSetup={openCodex} onDiagnostics={openDiagnostics} /></div>
+      <div hidden={settingsOpen || !showConversations}><OpenConversations codexAvailable={codex?.available} onSetup={openCodex} onDiagnostics={openDiagnostics} /></div>
       {error || codex?.error ? <p className="desktopError" role="alert">{error || codex?.error}</p> : null}
       {settingsOpen ? <div className="desktopSettings" onKeyDown={event => {
         if (event.key === 'Escape' && !event.defaultPrevented) {
@@ -253,7 +254,7 @@ export function DesktopControls({audioEnabled, onAudio, settingsOpen, onSettings
           </section>
           <section hidden={devicePage === 'midi'}>
             <div className="desktopToolbar"><h3>{devicePage === 'stream_deck' ? 'Elgato Stream Deck' : 'Phones, tablets & computers'}</h3>
-              <button className="textButton" onClick={() => onPairDevice(devicePage === 'stream_deck' ? 'stream_deck' : 'browser')}><Cable /> Pair device</button></div>
+              <button className="textButton" onClick={() => onPairDevice(devicePage === 'stream_deck' ? 'stream_deck' : 'browser')}><QrCode aria-hidden="true" /> Pair device</button></div>
             {devicePage === 'stream_deck' ? <dl className="deviceSetupFacts">
               <div><dt>Integration</dt><dd>Experimental plugin</dd></div>
               <div><dt>Key configuration</dt><dd>Elgato Stream Deck software</dd></div>
@@ -278,7 +279,7 @@ export function DesktopControls({audioEnabled, onAudio, settingsOpen, onSettings
               {networkBusy ? 'Enabling...' : status?.network_url ? 'Apply network settings' : 'Enable network access'}</button>
             {networkError ? <p className="desktopError" role="alert">{networkError}</p> : null}
             {status?.network_url ? <>
-              <button className="textButton" disabled={busy || networkBusy} onClick={() => void run(async () => {await desktopRequest('lan', {host: null}); await refresh();})}>Disable network access</button>
+              <button className="textButton" disabled={busy || networkBusy} onClick={() => void run(async () => {await desktopRequest('lan', {host: null}); await refresh();})}><WifiOff aria-hidden="true" />Disable network access</button>
             </> : null}
             </details>
           </section>

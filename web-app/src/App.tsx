@@ -25,6 +25,9 @@ import {
   CircleHelp,
   CircleAlert,
   Copy,
+  MousePointer2,
+  QrCode,
+  Sparkles,
 } from 'lucide-react';
 import {
   demoPrompt,
@@ -59,6 +62,7 @@ import {StreamDeckSurface} from './StreamDeckSurface';
 import {isDesktop, openProjectLink} from './desktop';
 import {DesktopControls} from './DesktopControls';
 import {ExploreMenu} from './ExploreMenu';
+import {useLiveDemo} from './liveDemo';
 import {PairingDialog} from './PairingDialog';
 import {useDesktopPreference} from './useDesktopPreference';
 
@@ -118,7 +122,7 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
   const [showElapsed, setShowElapsed] = useState(0);
   const showStartRef = useRef(0);
   const audio = useAudioOutput();
-  const view = mode === 'sandbox' ? playgroundView(sandbox) : demoSurfaceView(demo);
+  const view = mode === 'show' ? emptySurface().view : mode === 'sandbox' ? playgroundView(sandbox) : demoSurfaceView(demo);
   const frame = useMemo(() => compileVisualFrame(view), [view]);
   const prompt = demoPrompt(demo);
   const guidance = mode === 'demo' ? playback.target : null;
@@ -244,6 +248,7 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
               variant={surface}
               frame={frame}
               performanceFrame={fullFrame}
+              showMode={mode === 'show'}
               performanceAct={showAct}
               performanceCaption={showCaption}
               guidedAction={guidance?.action}
@@ -277,6 +282,7 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
 
           {mode === 'show' ? (
             <ExperienceControls
+              kind="show"
               active={showStatus !== 'idle'}
               admin
               audioEnabled={audio.enabled}
@@ -346,6 +352,9 @@ function LiveApp() {
   const demoActive = live.experience?.kind === 'demo'
     && ['starting', 'playing'].includes(live.experience.status);
   const agentsConnected = !demoActive && view.sessions.length > 0;
+  const showMode = desktop ? desktopExperience === 'show' : live.experience?.kind === 'show'
+    && ['starting', 'playing'].includes(live.experience.status);
+  const demoGuidance = useLiveDemo(demoActive, live.experience, view);
   const padFocused = desktop && agentsConnected && padPreference.value;
   useEffect(() => {
     if (!padFocused) return;
@@ -394,7 +403,7 @@ function LiveApp() {
           aria-label="Sound" title={audio.enabled ? 'Mute all sound' : 'Enable sound'}>
           {audio.enabled ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
         </button>
-        {desktop ? <ExploreMenu disabled={agentsConnected || live.connection !== 'connected'} onStart={startDesktopExperience} /> : null}
+        {desktop ? <ExploreMenu active={desktopExperience} disabled={agentsConnected || live.connection !== 'connected'} onStart={startDesktopExperience} /> : null}
         {!desktop && live.connection === 'connected' ? <button className="textButton" onClick={live.disconnect}
           aria-label="Disconnect this device" title="Disconnect this device"><Unplug aria-hidden="true" /></button> : null}
       </>}
@@ -404,6 +413,7 @@ function LiveApp() {
           : agentsConnected ? `${view.sessions.length} ${view.sessions.length === 1 ? 'chat' : 'chats'} connected` : 'No chats connected'
         : undefined}>
       {desktop ? <div className="desktopSetup" hidden={padFocused}><DesktopControls audioEnabled={audio.enabled} onAudio={audio.toggle}
+        showConversations={!exploring}
         settingsOpen={settingsOpen} onSettingsChange={setSettingsOpen}
         lightTheme={themePreference.value} onThemeChange={themePreference.save}
         onPairDevice={kind => {setPairingKind(kind); setPairingOpen(true); live.createPairing();}} /></div> : null}
@@ -421,7 +431,7 @@ function LiveApp() {
       </div> : null}
       {desktop && !settingsOpen && (exploring || agentsConnected) ? <div className="desktopViews">
         {exploring ? <div className="simulationBar"><span>SIMULATION: {desktopExperience === 'show' ? 'SHOW' : 'DEMO'}</span>
-          <button className="textButton" onClick={() => {live.stopExperience(); setDesktopExperience(null);}}><ArrowLeft /> Back to live pad</button></div> : null}
+          <button className="textButton" onClick={() => {audio.stop(); live.stopExperience(); setDesktopExperience(null);}}><ArrowLeft /> Back to live pad</button></div> : null}
         <div className="desktopViewActions">
         {padFocused ? <button className="textButton" onClick={audio.toggle} aria-pressed={audio.enabled}
           aria-label="Sound" title={audio.enabled ? 'Mute all sound' : 'Enable sound'}>
@@ -432,33 +442,41 @@ function LiveApp() {
           onClick={() => setPadFocused(!padFocused)}>{padFocused ? <Minimize2 /> : <Maximize2 />}</button> : null}
         </div>
       </div> : null}
-      <div className={`workspace ${padFocused ? 'padFocusWorkspace' : ''}`} id={desktop ? 'desktop-workspace' : undefined}
+      <div className={`workspace ${padFocused ? 'padFocusWorkspace' : ''} ${demoActive ? 'desktopDemoWorkspace' : ''}`} id={desktop ? 'desktop-workspace' : undefined}
         style={settingsOpen ? {display: 'none'} : undefined}>
         <section className={`surfaceWorkspace ${performance ? 'performanceWorkspace' : ''}`}>
+          {demoActive && demoGuidance ? <div className="liveDemoCue" role="status">
+            <MousePointer2 aria-hidden="true" /><div><small>YOUR TURN · SIMULATION</small>
+              <strong>{demoGuidance.label}</strong><span>{demoGuidance.detail}</span></div>
+          </div> : null}
           <VirtualSurface
             disabled={!live.controlsReady}
-            frame={frame}
+            frame={showMode ? empty.frame : frame}
             performanceFrame={performance}
-            performanceAct={live.experience?.detail}
-            performanceCaption={live.experience?.caption}
-            view={view}
+            showMode={showMode}
+            performanceAct={live.experience?.detail ?? 'VISUAL SHOW'}
+            performanceCaption={live.experience?.caption ?? live.experience?.title ?? 'Ready'}
+            view={showMode ? empty.view : view}
+            guidedSlot={demoGuidance?.slot}
+            guidedAction={demoGuidance?.action}
             onAction={live.sendAction}
             onSelect={live.selectSession}
           />
         </section>
         <aside className="contextPane">
-          <ConnectionSummary state={live.connection} error={live.error} />
+          {desktop && exploring ? null : <ConnectionSummary state={live.connection} error={live.error} />}
 
           {live.connection === 'connected' && exploring && (desktop || live.admin) ? (
             <ExperienceControls
+              kind={desktop ? desktopExperience : null}
               active={live.experience?.status === 'playing' || live.experience?.status === 'starting'}
               admin={live.admin}
               canStart={!agentsConnected}
               blockedReason={live.experience?.status === 'blocked' ? live.experience.reason : null}
               caption={live.experience?.caption}
               detail={live.experience?.detail}
-              onStartDemo={() => live.startExperience('demo')}
-              onStartShow={() => live.startExperience('show')}
+              onStartDemo={desktop ? null : () => live.startExperience('demo')}
+              onStartShow={desktop ? null : () => live.startExperience('show')}
               onStop={() => { audio.stop(); live.stopExperience(); }}
             />
           ) : null}
@@ -483,12 +501,13 @@ function LiveApp() {
             </form>
           ) : null}
 
-          {live.connection === 'connected' ? (
+          {live.connection === 'connected' && !showMode ? (
             <>
               {desktop && !exploring ? <SelectedConversation view={view} disabled={!live.controlsReady} onAction={live.sendAction} /> : null}
               {desktop && !exploring && agentsConnected ? <AttentionView disabled={!live.controlsReady} revision={view.control_revision}>
                 <SessionList sessions={view.sessions} readOnly={!live.controlsReady} onSelect={live.selectSession} title="Codex conversations" />
               </AttentionView> : <SessionList sessions={view.sessions} readOnly={!live.controlsReady} onSelect={live.selectSession}
+                guidedSlot={demoGuidance?.slot}
                 title={desktop ? (live.experience?.kind === 'demo' ? 'Demo sessions' : 'Codex conversations') : undefined} />}
             </>
           ) : null}
@@ -528,6 +547,7 @@ function SelectedConversation({view, disabled, onAction}: {view: SurfaceView; di
 }
 
 function ExperienceControls({
+  kind = null,
   active,
   admin,
   canStart = true,
@@ -540,6 +560,7 @@ function ExperienceControls({
   onStartShow,
   onStop,
 }: {
+  kind?: 'demo' | 'show' | null;
   active: boolean;
   admin: boolean;
   canStart?: boolean;
@@ -549,13 +570,13 @@ function ExperienceControls({
   detail?: string | null;
   onAudio?: () => void;
   onStartDemo?: (() => void) | null;
-  onStartShow: () => void;
+  onStartShow: (() => void) | null;
   onStop: () => void;
 }) {
   const AudioIcon = audioEnabled ? Volume2 : VolumeX;
   return (
     <section className="experiencePanel" aria-live="polite">
-      <div className="sectionTitle"><span>DEMO & SHOW</span><span>{active ? 'PLAYING' : 'READY'}</span></div>
+      <div className="sectionTitle"><span>{kind === 'demo' ? 'INTERACTIVE DEMO' : kind === 'show' ? 'VISUAL SHOW' : 'DEMO & SHOW'}</span><span>{active ? (kind === 'demo' ? 'IN PROGRESS' : 'PLAYING') : 'READY'}</span></div>
       {caption ? <p className="experienceCaption">{caption}</p> : null}
         {detail ? <p className="experienceDetail">{detail}</p> : null}
         {blockedReason ? <p className="experienceWarning">{blockedReason}</p> : null}
@@ -565,9 +586,9 @@ function ExperienceControls({
             <Play aria-hidden="true" /> Start Demo
           </button>
         ) : null}
-        {admin && !active ? (
+        {admin && !active && onStartShow ? (
           <button className="primaryButton" disabled={!canStart} onClick={onStartShow}>
-            <Play aria-hidden="true" /> Start Show
+            <Sparkles aria-hidden="true" /> Start Show
           </button>
         ) : null}
         {admin && active ? (
@@ -791,7 +812,7 @@ function PairingPanel({
       )}
       <div className="paneActions">
         <button className="textButton" onClick={onCreate}>
-          <RefreshCw aria-hidden="true" /> {pairing ? 'New code' : 'Pair device'}
+          {pairing ? <RefreshCw aria-hidden="true" /> : <QrCode aria-hidden="true" />} {pairing ? 'New code' : 'Pair device'}
         </button>
         <button className="textButton danger" onClick={onRevoke}>
           <ShieldOff aria-hidden="true" /> Revoke paired devices

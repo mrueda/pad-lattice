@@ -120,6 +120,8 @@ test('attention selects the named conversation, preserves age and handles unavai
     return common(method, view);
   });
   await page.goto('/');
+  await expect(page.getByRole('tab', {name: 'All conversations'}).locator('svg')).toBeVisible();
+  await expect(page.getByRole('tab', {name: 'Needs attention (2)'}).locator('svg')).toBeVisible();
   await page.getByRole('tab', {name: 'Needs attention (2)'}).click();
   const rows = page.locator('.attentionRow');
   await expect(rows).toHaveCount(2);
@@ -129,6 +131,7 @@ test('attention selects the named conversation, preserves age and handles unavai
   await expect(rows.first()).toHaveAttribute('aria-pressed', 'true');
   await expect(rows.first()).toContainText('1m 15s');
   await expect(page.locator('.selectedConversation')).toContainText('Review changes');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({path: test.info().outputPath('attention.png'), fullPage: true});
   expect(commands).toHaveLength(1);
   expect(commands[0].type).toBe('select_session');

@@ -108,7 +108,7 @@ try {
   await page.exposeFunction('__filmRpc', async (command, args) => {
     if (command === 'choose_path') return '/projects/website';
     if (command !== 'desktop_request') throw Error(command);
-    if (args.method === 'inspect_codex') return {available: true, version: '0.164.0', tested: true, tested_version: '0.164.0'};
+    if (args.method === 'inspect_codex') return {available: true, version: '0.165.0', tested: true, tested_version: '0.165.0'};
     if (args.method === 'list_conversations') {
       const snapshot = await rpc('snapshot');
       const sessions = snapshot.messages.find(message => message.type === 'surface').view.sessions;
@@ -154,9 +154,9 @@ try {
   await page.locator('.desktopControls').waitFor();
   await page.addStyleTag({content: `
     html, body {background:#edf2f5!important; overflow:hidden; color-scheme:light;}
-    .desktopApp {position:fixed; left:26px; top:135px; width:1030px; height:800px; border:1px solid #8d9aa5; border-radius:8px; box-shadow:0 8px 30px #19354322; color-scheme:dark;}
+    .desktopApp {position:fixed; left:26px; top:135px; width:1030px; height:840px; border:1px solid #8d9aa5; border-radius:8px; box-shadow:0 8px 30px #19354322; color-scheme:dark;}
     .desktopApp .workspace {grid-template-columns:minmax(0,1.2fr) minmax(290px,.8fr);}
-    .desktopApp .virtualSurface {width:min(100%,270px);}
+    .desktopApp .virtualSurface {width:min(100%,235px);}
     .desktopApp .contextPane {padding:20px;}
     .desktopApp .desktopNotice {font-size:12px;}
     #filmCaption {position:fixed;left:30px;top:26px;color:#152735;font:600 30px/1.25 system-ui; margin:0; max-width:1220px;}
@@ -257,6 +257,12 @@ try {
   await clickCue(page.locator('#controller .sceneControl').nth(1), '1. Select Review');
   await page.locator('.selectedConversation').getByRole('button', {name: 'Approve', exact: true}).waitFor();
   await pause(800);
+  const framing = await page.evaluate(() => {
+    const pad = document.querySelector('.desktopApp .virtualSurface').getBoundingClientRect();
+    const workspace = document.querySelector('.desktopApp .workspace').getBoundingClientRect();
+    return pad.bottom <= workspace.bottom && pad.top >= workspace.top;
+  });
+  if (!framing) throw Error('Documentation capture clips the virtual pad');
   await page.screenshot({path: path.join(output, 'desktop-workflow-poster.png')});
   await caption('Approve: green button at the top left.', 'Read the request in Codex first. This approves only the selected request.');
   await pause(2600);

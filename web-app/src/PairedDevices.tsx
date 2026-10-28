@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useState} from 'react';
-import {Grid2X2, MonitorSmartphone, RefreshCw, Unplug, ShieldOff} from 'lucide-react';
+import {Grid2X2, MonitorSmartphone, RefreshCw, Unplug, ShieldOff, X} from 'lucide-react';
 import {desktopRequest} from './desktop';
 
 export interface Device {id: string; name: string; kind: 'browser' | 'stream_deck'; connected: boolean}
@@ -63,8 +63,8 @@ export function PairedDevices({state, kind}: {state: ReturnType<typeof usePaired
         </div>
         {confirmId === device.id ? <div className="deviceRevokeConfirm" role="group" aria-label={`Confirm revoke ${device.name}`}>
           <span>Revoke access? This device will need to pair again.</span>
-          <button className="textButton danger" disabled={busy} onClick={() => void manage(device, true)}>Revoke access</button>
-          <button className="textButton" disabled={busy} onClick={() => setConfirmId(null)}>Cancel</button>
+          <button className="textButton danger" disabled={busy} onClick={() => void manage(device, true)}><ShieldOff aria-hidden="true" />Revoke access</button>
+          <button className="textButton" disabled={busy} onClick={() => setConfirmId(null)}><X aria-hidden="true" />Cancel</button>
         </div> : null}
       </li>)}
     </ul>}

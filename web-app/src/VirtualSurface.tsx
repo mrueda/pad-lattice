@@ -14,6 +14,7 @@ interface Props {
   variant?: 'virtual' | 'launchpad';
   frame: VisualFrame;
   performanceFrame?: FullSurfaceFrame | null;
+  showMode?: boolean;
   performanceAct?: string | null;
   performanceCaption?: string | null;
   guidedAction?: ControlAction | null;
@@ -47,6 +48,7 @@ export function VirtualSurface({
   variant = 'virtual',
   frame,
   performanceFrame = null,
+  showMode = false,
   performanceAct = null,
   performanceCaption = null,
   guidedAction = null,
@@ -57,7 +59,7 @@ export function VirtualSurface({
   onAction,
   onSelect,
 }: Props) {
-  const performance = performanceFrame !== null;
+  const performance = showMode || performanceFrame !== null;
   const launchpad = variant === 'launchpad';
   return (
     <div
@@ -94,9 +96,9 @@ export function VirtualSurface({
                 key={index}
                 onClick={() => control.action && onAction(control.action)}
                 style={{'--pad-color': displayColor} as React.CSSProperties}
-                title={control.label}
-                aria-label={control.label}>
-                {!performance && Icon && token !== 'off' ? <Icon aria-hidden="true" /> : null}
+                title={performance ? `Show top light ${index + 1}` : control.label}
+                aria-label={performance ? `Show top light ${index + 1}` : control.label}>
+                {!performance && Icon ? <Icon aria-hidden="true" className={token === 'off' ? 'inactiveActionIcon' : undefined} /> : null}
                 {demonstration && guidedAction === control.action ? <DemoPointer {...demonstration} /> : null}
               </button>
             );
@@ -109,11 +111,10 @@ export function VirtualSurface({
         {launchpad ? <div className="reservedRail" aria-label="Reserved left buttons">
           {Array.from({length: 8}, (_, index) => <span key={index} title="Reserved" />)}
         </div> : null}
-        <div className="matrixGrid" aria-label="Selected-agent state and agent status grid">
+        <div className="matrixGrid" aria-label={performance ? 'Visual Show light grid' : 'Selected-agent state and agent status grid'}>
           {Array.from({length: 8}, (_, row) =>
             Array.from({length: 8}, (_, column) => {
-              const token = performanceFrame?.grid[row]?.[column]
-                ?? (column === 7 ? frame.statuses[row] : frame.state[row][column]);
+              const token = column === 7 ? frame.statuses[row] : frame.state[row][column];
               const status = !performance && column === 7;
               const statusSession = status
                 ? view.sessions.find((session) => session.slot === row)
@@ -123,7 +124,7 @@ export function VirtualSurface({
                   className={`matrixPad ${status ? 'statusPad' : ''}`}
                   key={`${row}-${column}`}
                   style={{
-                    '--pad-color': performance ? token : tokenColor(token),
+                    '--pad-color': performanceFrame?.grid[row]?.[column] ?? tokenColor(token),
                   } as React.CSSProperties}
                   title={statusSession ? `${statusSession.label}: ${statusSession.state}` : undefined}
                 />
@@ -131,7 +132,7 @@ export function VirtualSurface({
             }),
           )}
         </div>
-        <div className="sceneRail" aria-label="Agent Scenes">
+        <div className="sceneRail" aria-label={performance ? 'Show right lights' : 'Agent Scenes'}>
           {frame.selectors.map((token, slot) => {
             const session = view.sessions.find((item) => item.slot === slot);
             return (
@@ -143,9 +144,9 @@ export function VirtualSurface({
                 style={{
                   '--pad-color': performanceFrame?.right[slot] ?? tokenColor(token),
                 } as React.CSSProperties}
-                title={session ? `Select ${session.label}` : `Empty Scene ${slot + 1}`}
+                title={performance ? `Show right light ${slot + 1}` : session ? `Select ${session.label}` : `Empty Scene ${slot + 1}`}
                 aria-pressed={!performance && Boolean(session?.selected)}
-                aria-label={session ? `Select ${session.label}` : `Empty Scene ${slot + 1}`}>
+                aria-label={performance ? `Show right light ${slot + 1}` : session ? `Select ${session.label}` : `Empty Scene ${slot + 1}`}>
                 <span>{!performance && session ? slot + 1 : ''}</span>
                 {demonstration && guidedSlot === slot ? <DemoPointer {...demonstration} /> : null}
               </button>

@@ -132,6 +132,7 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', {name: '1 device connected', exact: true})).toBeFocused();
   await expect(page.getByRole('button', {name: 'Pair device', exact: true})).toBeEnabled();
+  await expect(page.getByRole('button', {name: 'Pair device', exact: true}).locator('svg.lucide-qr-code')).toBeVisible();
   await expect(page.locator('.contextPane .pairingPanel')).toHaveCount(0);
   const explore = page.getByRole('button', {name: 'Demo & Show', exact: true});
   await expect(page.getByRole('tab')).toHaveCount(0);
@@ -146,6 +147,11 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   await expect(page.getByRole('menuitem', {name: 'Show', exact: true})).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByText('SIMULATION', {exact: true})).toBeVisible();
+  await expect(page.locator('.sessionSection')).toHaveCount(0);
+  await expect(page.locator('.surfaceFooter')).toContainText('FULL SURFACE');
+  await expect(list).toBeHidden();
+  await page.getByRole('button', {name: 'Back to live pad', exact: true}).click();
+  await expect(list).toBeVisible();
   await page.getByRole('button', {name: 'Connect Review implementation', exact: true}).click();
   await expect(list.getByText('Connected, Scene 1', {exact: true})).toBeVisible();
   const swatch = page.locator('.sessionRow > button i').first();
@@ -221,11 +227,17 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   await page.keyboard.press('Escape');
   await expect(pairingDialog).not.toBeVisible();
   await expect(page.getByText('Network access enabled', {exact: true})).toBeVisible();
+  await page.locator('.networkSetup summary').click();
+  await expect(page.getByRole('button', {name: 'Disable network access'}).locator('svg')).toBeVisible();
+  await page.locator('.networkSetup summary').click();
   await expect(page.getByRole('region', {name: 'Paired devices'})).toContainText('Android / Chrome');
   await page.getByRole('button', {name: 'Disconnect Android / Chrome', exact: true}).click();
   await expect(page.getByRole('region', {name: 'Paired devices'})).toContainText('Offline');
   await expect(page.getByRole('button', {name: '0 devices connected', exact: true})).not.toHaveClass(/online/);
   await page.getByRole('button', {name: 'Revoke access for Android / Chrome'}).click();
+  await expect(page.getByRole('button', {name: 'Revoke access', exact: true}).locator('svg')).toBeVisible();
+  await expect(page.getByRole('button', {name: 'Cancel', exact: true}).locator('svg')).toBeVisible();
+  await page.screenshot({path: test.info().outputPath('revoke-confirmation.png'), fullPage: true});
   await page.getByRole('button', {name: 'Revoke access', exact: true}).click();
   await expect(page.getByText('No browsers paired', {exact: true})).toBeVisible();
   await page.screenshot({path: test.info().outputPath('phone-settings.png'), fullPage: true});
