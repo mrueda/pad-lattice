@@ -9,10 +9,10 @@ describe('guided demo', () => {
   it('routes selection, approval, and rejection to the intended agents', () => {
     let state = createDemoState(demoManifest);
     expect(demoTarget(state)).toMatchObject({
-      slot: 1,
+      slot: 0,
       action: null,
     });
-    state = demoReducer(state, {type: 'select', slot: 1});
+    state = demoReducer(state, {type: 'select', slot: 0});
     expect(state.stage).toBe('approve_reviewer');
     expect(demoSurfaceView(state).available_actions).toEqual(['approve', 'reject']);
     expect(demoTarget(state)).toMatchObject({
@@ -22,12 +22,12 @@ describe('guided demo', () => {
 
     state = demoReducer(state, {type: 'action', action: 'approve'});
     expect(state.stage).toBe('select_tests');
-    expect(demoSurfaceView(state).sessions[1].state).toBe('running');
-    state = demoReducer(state, {type: 'select', slot: 2});
+    expect(demoSurfaceView(state).sessions[0].state).toBe('running');
+    state = demoReducer(state, {type: 'select', slot: 1});
     state = demoReducer(state, {type: 'action', action: 'reject'});
 
     expect(state.stage).toBe('complete');
-    expect(demoSurfaceView(state).sessions.map((session) => session.state)).toEqual(['running', 'success', 'cancelled']);
+    expect(demoSurfaceView(state).sessions.map((session) => session.state)).toEqual(['success', 'cancelled']);
     expect(demoTarget(state)).toBeNull();
   });
 
@@ -35,7 +35,7 @@ describe('guided demo', () => {
     let state = createDemoState(demoManifest);
     expect(demoReducer(state, {type: 'action', action: 'approve'})).toBe(state);
     expect(demoReducer(state, {type: 'select', slot: 7})).toBe(state);
-    state = demoReducer(state, {type: 'select', slot: 1});
+    state = demoReducer(state, {type: 'select', slot: 0});
     state = demoReducer(state, {type: 'action', action: 'reject'});
     expect(state.stage).toBe('review_declined');
     expect(demoSurfaceView(state).available_actions).toEqual([]);

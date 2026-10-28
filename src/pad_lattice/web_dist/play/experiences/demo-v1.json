@@ -8,21 +8,20 @@
     {
       "id": "select_reviewer",
       "prompt": {
-        "eyebrow": "Three sessions, one surface",
+        "eyebrow": "Two agents, two decisions",
         "title": "Reviewer needs permission.",
-        "detail": "Builder and Tests are working. Reviewer needs permission to run a command. Its magenta selector chooses that session."
+        "detail": "Reviewer needs permission to run a command. Select its magenta Scene 1 button on the right. Tests keeps working."
       },
-      "guide_target": {"event": "select", "slot": 1, "action": null},
+      "guide_target": {"event": "select", "slot": 0, "action": null},
       "view": {
         "sessions": [
-          {"slot": 0, "state": "running", "selected": true, "accent": "cyan", "label": "Builder"},
-          {"slot": 1, "state": "waiting_for_approval", "selected": false, "accent": "magenta", "label": "Reviewer"},
-          {"slot": 2, "state": "running", "selected": false, "accent": "lime", "label": "Tests"}
+          {"slot": 0, "state": "waiting_for_approval", "selected": false, "accent": "magenta", "label": "Reviewer"},
+          {"slot": 1, "state": "running", "selected": true, "accent": "lime", "label": "Tests"}
         ],
         "available_actions": []
       },
       "transitions": [
-        {"event": "select", "slot": 1, "action": null, "next_stage": "approve_reviewer", "audio": "session_selected"}
+        {"event": "select", "slot": 0, "action": null, "next_stage": "approve_reviewer", "audio": "session_selected"}
       ],
       "enter_audio": "question",
       "terminal": false
@@ -37,9 +36,8 @@
       "guide_target": {"event": "action", "slot": null, "action": "approve"},
       "view": {
         "sessions": [
-          {"slot": 0, "state": "running", "selected": false, "accent": "cyan", "label": "Builder"},
-          {"slot": 1, "state": "waiting_for_approval", "selected": true, "accent": "magenta", "label": "Reviewer"},
-          {"slot": 2, "state": "running", "selected": false, "accent": "lime", "label": "Tests"}
+          {"slot": 0, "state": "waiting_for_approval", "selected": true, "accent": "magenta", "label": "Reviewer"},
+          {"slot": 1, "state": "running", "selected": false, "accent": "lime", "label": "Tests"}
         ],
         "available_actions": ["approve", "reject"]
       },
@@ -55,14 +53,13 @@
       "prompt": {
         "eyebrow": "Request declined",
         "title": "The command did not run.",
-        "detail": "Reviewer did not receive permission. Builder and Tests were not interrupted."
+        "detail": "Reviewer did not receive permission. Tests was not interrupted."
       },
       "guide_target": null,
       "view": {
         "sessions": [
-          {"slot": 0, "state": "running", "selected": false, "accent": "cyan", "label": "Builder"},
-          {"slot": 1, "state": "cancelled", "selected": true, "accent": "magenta", "label": "Reviewer"},
-          {"slot": 2, "state": "running", "selected": false, "accent": "lime", "label": "Tests"}
+          {"slot": 0, "state": "cancelled", "selected": true, "accent": "magenta", "label": "Reviewer"},
+          {"slot": 1, "state": "running", "selected": false, "accent": "lime", "label": "Tests"}
         ],
         "available_actions": []
       },
@@ -75,19 +72,18 @@
       "prompt": {
         "eyebrow": "Permission granted",
         "title": "Now Tests needs a decision.",
-        "detail": "Reviewer is working again. Tests wants to install a dependency. Its lime selector chooses this new request."
+        "detail": "Reviewer is working again. Tests wants to install a dependency. Select its lime Scene 2 button on the right."
       },
-      "guide_target": {"event": "select", "slot": 2, "action": null},
+      "guide_target": {"event": "select", "slot": 1, "action": null},
       "view": {
         "sessions": [
-          {"slot": 0, "state": "running", "selected": false, "accent": "cyan", "label": "Builder"},
-          {"slot": 1, "state": "running", "selected": true, "accent": "magenta", "label": "Reviewer"},
-          {"slot": 2, "state": "waiting_for_approval", "selected": false, "accent": "lime", "label": "Tests"}
+          {"slot": 0, "state": "running", "selected": true, "accent": "magenta", "label": "Reviewer"},
+          {"slot": 1, "state": "waiting_for_approval", "selected": false, "accent": "lime", "label": "Tests"}
         ],
         "available_actions": []
       },
       "transitions": [
-        {"event": "select", "slot": 2, "action": null, "next_stage": "reject_tests", "audio": "session_selected"}
+        {"event": "select", "slot": 1, "action": null, "next_stage": "reject_tests", "audio": "session_selected"}
       ],
       "enter_audio": null,
       "terminal": false
@@ -97,14 +93,13 @@
       "prompt": {
         "eyebrow": "A different session, a different decision",
         "title": "Decline the installation.",
-        "detail": "Tests requests npm install. The red cross refuses this request without stopping Builder or Reviewer."
+        "detail": "Tests requests npm install. The red cross refuses this request without stopping Reviewer."
       },
       "guide_target": {"event": "action", "slot": null, "action": "reject"},
       "view": {
         "sessions": [
-          {"slot": 0, "state": "running", "selected": false, "accent": "cyan", "label": "Builder"},
-          {"slot": 1, "state": "running", "selected": false, "accent": "magenta", "label": "Reviewer"},
-          {"slot": 2, "state": "waiting_for_approval", "selected": true, "accent": "lime", "label": "Tests"}
+          {"slot": 0, "state": "running", "selected": false, "accent": "magenta", "label": "Reviewer"},
+          {"slot": 1, "state": "waiting_for_approval", "selected": true, "accent": "lime", "label": "Tests"}
         ],
         "available_actions": ["reject"]
       },
@@ -119,14 +114,13 @@
       "prompt": {
         "eyebrow": "Demo complete",
         "title": "Two decisions. The right agents.",
-        "detail": "Reviewer finished. Tests did not install the dependency. Builder kept working. No real commands were run in this demonstration."
+        "detail": "Reviewer finished. Tests did not install the dependency. Two decisions, each sent to the selected agent. No real commands were run."
       },
       "guide_target": null,
       "view": {
         "sessions": [
-          {"slot": 0, "state": "running", "selected": false, "accent": "cyan", "label": "Builder"},
-          {"slot": 1, "state": "success", "selected": false, "accent": "magenta", "label": "Reviewer"},
-          {"slot": 2, "state": "cancelled", "selected": true, "accent": "lime", "label": "Tests"}
+          {"slot": 0, "state": "success", "selected": false, "accent": "magenta", "label": "Reviewer"},
+          {"slot": 1, "state": "cancelled", "selected": true, "accent": "lime", "label": "Tests"}
         ],
         "available_actions": []
       },

@@ -47,7 +47,7 @@ describe('live demo guidance', () => {
   it('does not suggest unavailable actions or actions on the wrong session', () => {
     const {experience, view} = stage(1);
     expect(demoGuide(manifest, experience, {...view, available_actions: []})).toBeNull();
-    view.sessions.forEach(session => {session.selected = session.slot === 0;});
+    view.sessions.forEach(session => {session.selected = session.slot === 1;});
     expect(demoGuide(manifest, experience, view)).toBeNull();
   });
 });

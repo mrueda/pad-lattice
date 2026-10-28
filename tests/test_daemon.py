@@ -485,12 +485,12 @@ class DaemonTest(TestCase):
         daemon = self.daemon()
 
         daemon._handle_surface_event(ExperienceRequested("demo"))
-        daemon._handle_surface_event(SessionSelected(1))
+        daemon._handle_surface_event(SessionSelected(0))
         daemon._handle_surface_event(ActionPressed(ControlAction.APPROVE))
 
         self.assertEqual(daemon.status_snapshot()["experience"], "demo")
         self.assertEqual(daemon.experience.demo_actions[-1], ControlAction.APPROVE)
-        self.assertEqual(daemon.surface.views[-1].sessions[1].state, AgentState.RUNNING)
+        self.assertEqual(daemon.surface.views[-1].sessions[0].state, AgentState.RUNNING)
         self.assertEqual(daemon.surface.experiences[-1].kind, "demo")
 
         daemon._handle_surface_event(ExperienceStopRequested())

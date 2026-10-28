@@ -73,9 +73,9 @@ class DemoAgentTest(TestCase):
     def test_shared_multi_agent_demo_accepts_scene_and_action_input(self) -> None:
         surface = FakeSurface(
             (
-                [SessionSelected(1)],
+                [SessionSelected(0)],
                 [ActionPressed(ControlAction.APPROVE)],
-                [SessionSelected(2)],
+                [SessionSelected(1)],
                 [ActionPressed(ControlAction.REJECT)],
             )
         )
@@ -95,7 +95,7 @@ class DemoAgentTest(TestCase):
         self.assertTrue(surface.initialized)
         self.assertTrue(surface.closed)
         self.assertEqual(len(surface.views), 5)
-        self.assertEqual(surface.views[0].sessions[0].label, "Builder")
+        self.assertEqual(surface.views[0].sessions[0].label, "Reviewer")
         self.assertEqual(surface.views[1].selected_state, AgentState.WAITING_FOR_APPROVAL)
         self.assertEqual(surface.views[-1].selected_state, AgentState.CANCELLED)
         self.assertEqual(surface.experiences[0].kind, "demo")
@@ -115,13 +115,12 @@ class DemoAgentTest(TestCase):
 
     def test_rejecting_the_first_request_ends_without_affecting_other_agents(self) -> None:
         surface = FakeSurface((
-            [SessionSelected(1)],
+            [SessionSelected(0)],
             [ActionPressed(ControlAction.REJECT)],
         ))
         run_demo_surface(surface, poll_interval=0, clock=IncrementingClock(), sleep=lambda _: None)
 
         self.assertEqual(surface.views[2].selected_state, AgentState.CANCELLED)
         self.assertEqual(surface.views[2].available_actions, frozenset())
-        self.assertEqual(surface.views[2].sessions[0].state, AgentState.RUNNING)
-        self.assertEqual(surface.views[2].sessions[2].state, AgentState.RUNNING)
+        self.assertEqual(surface.views[2].sessions[1].state, AgentState.RUNNING)
         self.assertTrue(surface.closed)

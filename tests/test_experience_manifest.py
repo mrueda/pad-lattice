@@ -42,7 +42,10 @@ class ExperienceManifestTest(TestCase):
         self.assertEqual(demo.schema_version, 1)
         self.assertEqual(len(demo.stages), 6)
         self.assertEqual(demo.stage(demo.initial_stage).id, "select_reviewer")
-        self.assertEqual(demo.stage(demo.initial_stage).guide_target.slot, 1)
+        self.assertEqual(demo.stage(demo.initial_stage).guide_target.slot, 0)
+        for stage in demo.stages:
+            self.assertEqual([session.label for session in stage.view.sessions], ["Reviewer", "Tests"])
+            self.assertEqual([session.slot for session in stage.view.sessions], [0, 1])
 
         question_index = next(
             index

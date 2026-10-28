@@ -15,7 +15,7 @@ describe('autoplay Demo', () => {
   it('shows the pointer before the click and keeps outcomes deterministic', () => {
     const steps = demoPlaybackSteps(manifest);
     expect(demoPlaybackFrame(steps, 0).pointer).toBeNull();
-    expect(demoPlaybackFrame(steps, 6000)).toMatchObject({target: {slot: 1}, pointer: {pressed: false, approach: 1}});
+    expect(demoPlaybackFrame(steps, 6000)).toMatchObject({target: {slot: 0}, pointer: {pressed: false, approach: 1}});
     expect(demoPlaybackFrame(steps, 6800).pointer?.pressed).toBe(true);
     expect(demoPlaybackFrame(steps, 7000).state.stage).toBe('approve_reviewer');
     expect(demoPlaybackFrame(steps, 21000).state.stage).toBe('reject_tests');

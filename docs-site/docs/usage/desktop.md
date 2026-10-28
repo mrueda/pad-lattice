@@ -89,9 +89,9 @@ Follow [Connect Screens](./connect-browsers.md) for the QR/PIN steps.
 Disconnect real sessions, then choose **Demo & Show > Demo** or **Demo & Show > Show**.
 Enable **Sound** for audio. **Back to live pad** ends playback.
 
-The interactive desktop Demo highlights the next Scene or action control and
-shows a **Your turn** cue. Its simulated sessions are separate from your Codex
-conversations. The public browser Demo plays automatically.
+Demo uses two simulated agents: **Reviewer (Scene 1)** for approval, then
+**Tests (Scene 2)** for rejection. Desktop highlights each control with a
+**Your turn** cue. The public browser Demo plays the same steps automatically.
 
 **Show** is an audiovisual exhibition, not an agent simulation. Its grid and
 outer lights form one animation; their colors do not represent connected chats.

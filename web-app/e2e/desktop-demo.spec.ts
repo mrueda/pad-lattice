@@ -33,7 +33,7 @@ test('desktop demo has one mode chooser and highlights each requested control', 
     if (method === 'surface') {
       if (params.type === 'start_experience') index = 0;
       else if (params.type === 'stop_experience') index = -1;
-      else if (params.type === 'select_session') {expect(params.slot).toBe(1); index = 1;}
+      else if (params.type === 'select_session') {expect(params.slot).toBe(0); index = 1;}
       else if (params.type === 'action') {expect(params.action).toBe('approve'); index = 3;}
       await emit(); return {};
     }
@@ -47,6 +47,8 @@ test('desktop demo has one mode chooser and highlights each requested control', 
   await expect(page.getByRole('button', {name: 'Start Show'})).toHaveCount(0);
   await expect(page.getByRole('button', {name: 'Start Demo'})).toHaveCount(0);
   await expect(page.locator('.liveDemoCue')).toContainText('Select Reviewer');
+  await expect(page.locator('.sessionRow')).toHaveCount(2);
+  await expect(page.locator('.liveDemoCue')).toContainText('Scene 1 on the right');
   const reviewer = page.locator('.sceneRail').getByRole('button', {name: 'Select Reviewer'});
   await expect(reviewer).toHaveClass(/guidedControl/);
   await page.emulateMedia({reducedMotion: 'reduce'});
