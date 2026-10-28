@@ -63,6 +63,7 @@ class ExperienceController:
         self._soundtrack: Soundtrack | None = None
         self._audio_sequence = 0
         self._frame = 0
+        self._control_revision: int | None = None
         self.demo_actions: list[object] = []
         self.last_reason: str | None = None
 
@@ -78,11 +79,13 @@ class ExperienceController:
         tempo: float = 1.0,
         host_show_audio: bool = False,
         lead_in: float = DEFAULT_SHOW_LEAD_IN,
+        control_revision: int | None = None,
     ) -> bool:
         if self.active:
             return False
         if tempo <= 0:
             raise ValueError("experience tempo must be positive")
+        self._control_revision = control_revision
         if kind == "demo":
             self._start_demo(now)
         else:
@@ -249,7 +252,9 @@ class ExperienceController:
         audio: str | None,
         slot: int | None = None,
     ) -> None:
-        self.surface.render(replace(stage.view, frame=self._frame))
+        self.surface.render(replace(
+            stage.view, frame=self._frame, control_revision=self._control_revision,
+        ))
         self._frame += 1
         if audio is not None:
             self._audio_sequence += 1

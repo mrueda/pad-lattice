@@ -242,9 +242,10 @@ try {
   await caption('Keep several sessions in view.', 'Each session has a color. The large symbol shows the selected session.');
   await pause(3000);
   await clickCue(page.getByRole('button', {name: 'Settings', exact: true}), 'Open settings', 800);
-  await clickCue(page.getByRole('tab', {name: 'MIDI controller', exact: true}), 'MIDI controller', 600);
+  await clickCue(page.getByRole('tab', {name: 'Devices', exact: true}), 'Devices', 600);
+  await clickCue(page.getByRole('tab', {name: 'MIDI controllers', exact: true}), 'MIDI controllers', 600);
   await clickCue(page.getByRole('button', {name: 'Connect', exact: true}), 'Connect MIDI', 800);
-  await clickCue(page.getByRole('button', {name: 'Close settings', exact: true}), 'Back to the pad', 600);
+  await clickCue(page.getByRole('button', {name: 'Back to pad', exact: true}), 'Back to the pad', 600);
   await page.evaluate(() => {document.querySelector('#controller').style.opacity = '1'; document.querySelector('#cable').classList.add('on');});
   await caption('Connect a Launchpad through USB MIDI.', 'The desktop pad and controller show the same session and available actions.');
   await pause(3000);

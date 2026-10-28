@@ -71,7 +71,7 @@ export function LaunchpadDiagram() {
 
 export function StreamDeckDiagram() {
   return <figure className={styles.figure}>
-    <svg viewBox="0 0 700 510" role="img" aria-label="Illustrated Stream Deck MK.2 with fifteen LCD keys and a stand. Three session keys show working, approval and success. Approve and Reject act on Review; Stop is disabled.">
+    <svg viewBox="0 0 700 510" role="img" aria-label="Illustrated Stream Deck MK.2. Top keys each represent one Codex session: Implement, Review, and Tests. Press a session key to select it; Review has the white selection border and amber approval glyph. Bottom action keys target only Review. Approve and Reject are enabled; Stop is disabled. Key positions are configurable.">
       <path d="M350 0 V40" stroke="#67747f" strokeWidth="10" />
       <path d="M238 420 L214 488 Q350 510 486 488 L462 420" fill="#252d34" stroke="#49545e" strokeWidth="3" />
       <rect x="44" y="40" width="612" height="414" rx="26" fill="#080b0e" />
@@ -96,12 +96,12 @@ export function StreamDeckDiagram() {
         </g>;
       })}
     </svg>
-    <figcaption>MK.2-style 15-key example, not a tested-hardware claim. You choose the key layout.</figcaption>
+    <figcaption><strong>Top keys select sessions. Bottom keys act on the selected session.</strong><br />MK.2-style example, not physically tested. You choose the key positions.</figcaption>
     <dl className={styles.key}>
-      <div><dt>Session keys</dt><dd>A color strip, the existing state glyph, and a short session label.</dd></div>
-      <div><dt>White border</dt><dd>The selected session. Here, Review is waiting for approval.</dd></div>
-      <div><dt>Action keys</dt><dd>Approve or reject Review. Stop is dim because it is unavailable.</dd></div>
-      <div><dt>Other keys</dt><dd>Keep your other Stream Deck plugins alongside Pad-Lattice.</dd></div>
+      <div><dt>One session per key</dt><dd>Implement, Review, and Tests are three separate Codex conversations. Press one to select it.</dd></div>
+      <div><dt>Identity and state</dt><dd>Magenta identifies Review. Its amber exclamation means approval is needed, even before you select it.</dd></div>
+      <div><dt>White border: selected</dt><dd>Review is selected here. Another session asking for approval does not change that selection.</dd></div>
+      <div><dt>Action keys name their target</dt><dd>Approve and Reject apply only to Review. Stop is dim and unavailable; unused keys can host other plugins.</dd></div>
     </dl>
   </figure>;
 }

@@ -40,16 +40,22 @@ export function liveView(value: unknown): LiveView | null {
 export class Bridge {
   view: LiveView | null = null;
   status = 'Pair device';
+  pairingError = '';
   private socket: WebSocket | null = null;
   private token: string | null = null;
   private origin = '';
   private authenticated = false;
+  private pairedOnce = false;
   private stopped = true;
   private retry: ReturnType<typeof setTimeout> | undefined;
   private watchdog: ReturnType<typeof setTimeout> | undefined;
   private heartbeat: ReturnType<typeof setInterval> | undefined;
   private retryDelay = 1000;
   constructor(private changed: () => void) {}
+
+  get connection(): 'unpaired' | 'connecting' | 'connected' {
+    return this.authenticated ? 'connected' : this.stopped ? 'unpaired' : 'connecting';
+  }
 
   pair(address: string, pin: string) {
     const origin = bridgeOrigin(address);
@@ -61,7 +67,7 @@ export class Bridge {
     this.open();
   }
 
-  disconnect() {
+  disconnect(error = '') {
     this.stopped = true;
     clearTimeout(this.retry);
     clearTimeout(this.watchdog);
@@ -71,8 +77,10 @@ export class Bridge {
     previous?.terminate();
     this.token = null;
     this.authenticated = false;
+    this.pairedOnce = false;
     this.view = null;
     this.status = 'Pair device';
+    this.pairingError = error;
     this.changed();
   }
 
@@ -119,6 +127,7 @@ export class Bridge {
         }
         if (m.session_token) this.token = m.session_token;
         this.authenticated = true;
+        this.pairedOnce = true;
         clearTimeout(this.watchdog);
         this.heartbeat = setInterval(() => {
           this.watchdog = setTimeout(() => socket.terminate(), 5000);
@@ -127,15 +136,14 @@ export class Bridge {
         this.retryDelay = 1000;
         this.status = 'Connected';
       } else if (m.type === 'device_disconnected') {
-        this.stopped = true;
-        this.view = null;
+        this.disconnect();
         this.status = 'Disconnected';
       } else if (m.type === 'surface' && this.authenticated) {
         this.view = m.visual_protocol === 1 ? liveView(m.view) : null;
         this.status = this.view ? 'Connected' : 'No live session';
       } else if (m.type === 'error') {
         if (['forbidden', 'authentication_timeout'].includes(m.code)) {
-          this.disconnect(); return;
+          this.disconnect('PIN expired or rejected. Create a new code in Pad-Lattice.'); return;
         }
         this.view = null;
         this.status = 'Action unavailable';
@@ -151,7 +159,13 @@ export class Bridge {
       this.socket = null;
       this.authenticated = false;
       this.view = null;
-      if (code === 1008) { this.disconnect(); return; }
+      if (code === 1008) {
+        this.disconnect('Pairing expired or revoked. Create a new code in Pad-Lattice.'); return;
+      }
+      // A mistyped address or one-use PIN must not leave setup retrying forever.
+      if (!this.pairedOnce) {
+        this.disconnect('Cannot reach Pad-Lattice. Check the address and network access.'); return;
+      }
       this.status = 'Disconnected';
       this.changed();
       if (!this.stopped) {

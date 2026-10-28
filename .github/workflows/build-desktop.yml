@@ -62,6 +62,34 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write(f'sha={sha}\nversion={version}\nmatrix={json.dumps({"include": chosen})}\n')
           PY
+  stream-deck:
+    name: Stream Deck installer
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: integrations/stream-deck/package-lock.json
+      - name: Build, test, and package plugin
+        working-directory: integrations/stream-deck
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build
+          npm test
+          npm run pack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pad-lattice-stream-deck-${{ needs.prepare.outputs.sha }}
+          path: integrations/stream-deck/dist/
+          if-no-files-found: error
   build:
     needs: prepare
     runs-on: ${{ matrix.os }}

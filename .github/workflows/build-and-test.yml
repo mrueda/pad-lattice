@@ -28,7 +28,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: pad-lattice-stream-deck-experimental
-          path: integrations/stream-deck/*.streamDeckPlugin
+          path: integrations/stream-deck/dist/
           if-no-files-found: error
 
   test:
@@ -57,7 +57,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[schema]"
 
-      - name: Run unit tests
+      - name: Run Python unit and integration tests
         run: python -m unittest discover -s tests
 
       - name: Compile Python files

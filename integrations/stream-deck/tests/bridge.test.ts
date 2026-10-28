@@ -97,9 +97,35 @@ test('authentication rejection never enables actions or retries the PIN', async 
   t.after(async () => { bridge.disconnect(); for (const c of server.clients) c.terminate(); await new Promise<void>(resolve => server.close(() => resolve())); });
   bridge.pair(`http://127.0.0.1:${address.port}`, '000000');
   await until(() => attempts === 1 && bridge.status === 'Pair device');
+  assert.equal(bridge.connection, 'unpaired');
+  assert.match(bridge.pairingError, /PIN expired or rejected/);
   await sleep(1200);
   assert.equal(attempts, 1);
   assert.equal(bridge.view, null);
+});
+
+test('failed first connection stops setup and a fresh pairing can succeed', async t => {
+  const server = new WebSocketServer({host: '127.0.0.1', port: 0});
+  await once(server, 'listening');
+  const address = server.address(); assert.ok(address && typeof address !== 'string');
+  let attempts = 0;
+  server.on('connection', socket => socket.on('message', () => {
+    attempts++;
+    if (attempts === 1) socket.terminate();
+    else socket.send(JSON.stringify({protocol: 1, type: 'authenticated', admin: false, session_token: 'paired-token'}));
+  }));
+  const bridge = new Bridge(() => {});
+  t.after(async () => { bridge.disconnect(); for (const client of server.clients) client.terminate(); await new Promise<void>(resolve => server.close(() => resolve())); });
+  bridge.pair(`http://127.0.0.1:${address.port}`, '123456');
+  assert.equal(bridge.connection, 'connecting');
+  await until(() => bridge.connection === 'unpaired');
+  assert.match(bridge.pairingError, /Cannot reach/);
+  await sleep(1200);
+  assert.equal(attempts, 1);
+  bridge.pair(`http://127.0.0.1:${address.port}`, '654321');
+  await until(() => bridge.connection === 'connected');
+  assert.equal(bridge.pairingError, '');
+  assert.equal(bridge.act('approve', 7), false);
 });
 
 test('administrator disconnect stops automatic reconnection', async t => {

@@ -109,8 +109,9 @@ export function useAudioOutput(): AudioOutput {
   }, [playLiveCue]);
 
   const syncExperience = useCallback((experience: ExperienceStateMessage | null) => {
-    if (!enabledRef.current || !experience || experience.kind !== 'show') {
-      if (!experience || experience.status === 'idle' || experience.status === 'blocked') stop();
+    if (!experience || experience.status === 'idle' || experience.status === 'blocked'
+        || experience.kind !== 'show' || !enabledRef.current) {
+      stop();
       return;
     }
     const soundtrackUrl = experience.audio_asset
@@ -131,14 +132,17 @@ export function useAudioOutput(): AudioOutput {
       const offset = Math.max(0, experience.elapsed_ms / 1000);
       if (experience.status === 'starting') {
         stop();
+        const scheduledEpoch = epochRef.current;
         soundtrack.currentTime = 0;
         timerRef.current = window.setTimeout(() => {
           timerRef.current = null;
-          if (enabledRef.current) void soundtrack.play().catch(reportError);
+          if (enabledRef.current && scheduledEpoch === epochRef.current) void soundtrack.play().catch(reportError);
         }, experience.start_delay_ms);
         return;
       }
       if (experience.status === 'playing') {
+        if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+        timerRef.current = null;
         const drift = Math.abs(soundtrack.currentTime - offset);
         if (soundtrack.paused || drift > 0.75) soundtrack.currentTime = offset;
         if (soundtrack.paused) void soundtrack.play().catch(reportError);

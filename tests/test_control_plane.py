@@ -10,6 +10,22 @@ ACCENTS = ("cyan", "magenta", "lime", "orange")
 
 
 class ControlPlaneTest(TestCase):
+    def test_state_timer_ignores_selection_subscription_and_duplicate_updates(self):
+        plane = self.plane()
+        agent = AgentIdentity("codex", "timing")
+        session = plane.update_agent(agent, AgentState.WAITING_FOR_APPROVAL, now=10)
+        plane.select_slot(0, now=20)
+        plane.subscribe(1, agent, frozenset({ControlAction.APPROVE}), request_id="request", one_shot=True, now=30)
+        plane.update_agent(agent, AgentState.WAITING_FOR_APPROVAL, now=40)
+        plane.update_agent(agent, AgentState.RUNNING, now=50)
+        self.assertEqual(session.state_since, 10)
+        plane.disconnect(1)
+        plane.update_agent(agent, AgentState.SUCCESS, now=60)
+        self.assertEqual(session.state_since, 60)
+        plane.tick(now=62)
+        self.assertEqual(session.state_since, 62)
+        self.assertEqual(session.state, AgentState.WAITING_FOR_REPLY)
+
     def plane(self, **kwargs) -> ControlPlane:
         return ControlPlane(4, ACCENTS, **kwargs)
 

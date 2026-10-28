@@ -15,7 +15,7 @@ Already own hardware? Go directly to [Novation Launchpad](./launchpad.md) or
 | --- | --- | --- |
 | [**Desktop Pad**](./desktop.md) | Connect existing Codex CLI chats and use the pad on your computer. | Linux and macOS |
 | [**Phones, Tablets & Browsers**](./connect-browsers.md) | Pair a browser to the running bridge and control the same sessions. | Live control; trusted-network access requires pairing |
-| [**Public Playground**](pathname:///play/) | Try the glyphs, guided Demo, and Show without installing anything. | Simulation only; no connection to real agents |
+| [**Public Playground**](pathname:///play/) | Watch the Demo, try Sandbox, or play Show without installing anything. | Simulation only; no connection to real agents |
 
 The desktop app also manages the local service. Browser surfaces can connect
 to it or to the independent [CLI service](./cli.md).
@@ -27,7 +27,7 @@ to it or to the independent [CLI service](./cli.md).
 | [**Novation Launchpad Pro Mk1**](./launchpad.md) | Shared 8x8 grid, top action rail, right-side session selectors | Supported: physically tested |
 | [**Novation Launchpad Mini Mk3**](./launchpad.md) | Same visual layout, model-specific MIDI profile | Experimental: hardware testing needed |
 | [**Novation Launchpad Pro Mk3**](./launchpad.md) | Same visual layout, model-specific MIDI profile | Experimental: hardware testing needed |
-| [**Elgato Stream Deck**](./stream-deck.md) | One complete session glyph per LCD key; separate action keys | Experimental source plugin; no physical model validated |
+| [**Elgato Stream Deck**](./stream-deck.md) | One Session key per Codex conversation; separate keys act on the selected session | Experimental plugin installer with a 15-key starter layout; no physical model validated |
 
 For hardware, **supported** means physically tested; **experimental** means an
 implementation exists but still needs an owner's test. These are Pad-Lattice

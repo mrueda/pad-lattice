@@ -37,6 +37,12 @@ pub fn allowed_method(method: &str) -> bool {
             | "revoke_device"
             | "connect_midi"
             | "disconnect_midi"
+            | "attention"
+            | "profile_test_start"
+            | "profile_test_status"
+            | "profile_test_answer"
+            | "profile_test_cancel"
+            | "profile_test_report"
             | "surface"
     )
 }

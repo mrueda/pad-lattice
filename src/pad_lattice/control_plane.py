@@ -44,6 +44,7 @@ class AgentSession:
     accent: str | None = None
     last_seen: int = 0
     last_activity_at: float = 0.0
+    state_since: float = 0.0
     metadata: dict[str, str] = field(default_factory=dict)
     terminal_state_until: float | None = None
 
@@ -168,12 +169,15 @@ class ControlPlane:
         self._sequence += 1
         session.last_seen = self._sequence
         session.last_activity_at = now
-        session.state = (
+        next_state = (
             AgentState.WAITING_FOR_APPROVAL
             if state is not AgentState.WAITING_FOR_APPROVAL
             and self._has_pending_approval(identity)
             else state
         )
+        if session.state != next_state:
+            session.state_since = now
+        session.state = next_state
         if metadata:
             session.metadata.update(metadata)
         session.terminal_state_until = (
@@ -395,6 +399,7 @@ class ControlPlane:
                 and now >= session.terminal_state_until
             ):
                 session.state = AgentState.WAITING_FOR_REPLY
+                session.state_since = now
                 session.terminal_state_until = None
                 changed = True
 
@@ -473,6 +478,7 @@ class ControlPlane:
             identity=identity,
             last_seen=self._sequence,
             last_activity_at=now,
+            state_since=now,
         )
         self._sessions[identity] = session
         self._assign_slot(session)

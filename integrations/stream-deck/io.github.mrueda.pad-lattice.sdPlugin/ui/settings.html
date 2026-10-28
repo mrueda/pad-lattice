@@ -3,10 +3,20 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src ws://127.0.0.1:*">
 <title>Pad-Lattice</title><link rel="stylesheet" href="settings.css"></head>
 <body>
-<label id="sessionLabel">Session<select id="slot"><option value="0">1</option><option value="1">2</option><option value="2">3</option><option value="3">4</option><option value="4">5</option><option value="5">6</option><option value="6">7</option><option value="7">8</option></select></label>
+<label id="sessionLabel">Session slot<select id="slot"><option value="0">1</option><option value="1">2</option><option value="2">3</option><option value="3">4</option><option value="4">5</option><option value="5">6</option><option value="6">7</option><option value="7">8</option></select></label>
+<section aria-labelledby="connectionTitle">
+<header><h1 id="connectionTitle">Pad-Lattice connection</h1><output id="status" role="status">Waiting for Stream Deck</output></header>
+<p class="muted">Shared by all Pad-Lattice keys</p>
 <form id="pairForm">
-<label>Pad-Lattice address<input id="address" type="url" value="http://127.0.0.1:8765" required autocomplete="off" spellcheck="false"></label>
-<label>Pairing PIN<input id="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" required autocomplete="off"></label>
-<div><button type="submit">Pair</button><button id="disconnect" type="button">Disconnect</button></div>
-</form><output id="status" role="status">Not paired</output>
+<fieldset id="pairFields" disabled>
+<label>Address<input id="address" type="url" value="http://127.0.0.1:8765" required autocomplete="off" spellcheck="false"></label>
+<label>One-use PIN<input id="pin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" required autocomplete="off" aria-describedby="pinSource"></label>
+<p id="pinSource" class="muted">Pad-Lattice: Settings &gt; Devices &gt; Stream Deck &gt; Pair device</p>
+<button type="submit">Pair</button>
+</fieldset>
+</form>
+<p id="connectedAddress" hidden></p>
+<button id="disconnect" type="button" hidden>Disconnect</button>
+<p id="error" role="alert" hidden></p>
+</section>
 <script src="settings.js"></script></body></html>

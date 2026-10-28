@@ -29,6 +29,15 @@
   "URL": "https://mrueda.github.io/pad-lattice/",
   "SupportURL": "https://github.com/mrueda/pad-lattice/issues",
   "PropertyInspectorPath": "ui/settings.html",
+  "Profiles": [
+    {
+      "Name": "profiles/pad-lattice-15",
+      "DeviceType": 0,
+      "AutoInstall": true,
+      "DontAutoSwitchWhenInstalled": true,
+      "Readonly": false
+    }
+  ],
   "Actions": [
     {
       "UUID": "io.github.mrueda.pad-lattice.session",

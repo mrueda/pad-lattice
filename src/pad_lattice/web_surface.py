@@ -80,6 +80,7 @@ class PairingCredential:
 class PairedDevice:
     id: str
     name: str = "Browser"
+    kind: str = "browser"
 
 
 @dataclass
@@ -268,7 +269,7 @@ class BrowserSurfaceServer:
 
     def paired_devices(self) -> list[dict[str, Any]]:
         with self._auth_lock, self._clients_lock:
-            return [{"id": device.id, "name": device.name,
+            return [{"id": device.id, "name": device.name, "kind": device.kind,
                      "connected": any(c.device_id == device.id for c in self._clients.values())}
                     for device in self._session_tokens.values()]
 
@@ -488,7 +489,10 @@ class BrowserSurfaceServer:
                     raise WebProtocolError("Device access revoked", code="forbidden")
                 if device is not None:
                     agents = connection.request.headers.get_all("User-Agent")
-                    device.name = _device_name(agents[0] if agents else "")
+                    agent = agents[0] if agents else ""
+                    device.name = _device_name(agent)
+                    # Display category only; client claims never grant permissions.
+                    device.kind = "stream_deck" if "pad-lattice-stream-deck" in agent[:1024].lower() else "browser"
                 client = BrowserClient(connection, admin=admin, remote=not loopback,
                                        device_id=device.id if device else None)
                 with self._clients_lock:

@@ -1,178 +1,127 @@
 # Desktop Architecture
 
-The desktop app uses the same React pad and Python control plane as the browser
-and CLI. Tauri supplies the native window, executable picker, single-instance
-behavior, and ownership of the bundled Python process.
+**Tauri owns the window and bundled Python service.** React displays the pad;
+Python connects Codex sessions and routes actions to physical and virtual surfaces.
+Desktop, browser, and CLI share the same control plane.
 
-| Component | Location | Responsibility |
-| --- | --- | --- |
-| Native shell | `web-app/src-tauri/src/` | Start the engine, relay bounded requests/events, stop its process on exit. |
-| Desktop UI | `web-app/src/DesktopControls.tsx`, `OpenConversations.tsx` | Loaded-conversation discovery and attachment, executable settings, MIDI selection, LAN settings. |
-| Codex discovery | `codex_discovery.py` | Read-only summary metadata from an existing, same-user Codex app-server. |
-| Live attachment | `codex_attachment.py` | Join selected live threads, translate events, and route single-request approvals and turn-specific interruption. |
-| Surface transport | `web-app/src/desktop.ts`, `live.ts` | Deliver the existing surface messages through native IPC or browser WebSockets. |
-| Desktop service | `desktop_service.py` | Adapt private stdio requests to the existing daemon and optional MIDI output. |
-| Runtime helpers | `desktop_tools.py`, `desktop_entry.py` | Inspect the installed Codex version and start the bundled service. |
-| Python bundle | `scripts/build_desktop_engine.py` | Package the interpreter, runtime, profiles, and web/audio assets. |
+For setup, use [Desktop Pad](../usage/desktop.md). For the overall design, see
+the [architecture diagram](./architecture.md).
 
-## Action Coverage
+## Code Map
 
-| Action | Desktop connection | CLI hooks |
-| --- | --- | --- |
-| Approve / Reject | One supported pending command or file-change request | Current permission request |
-| Stop | Known running turn | Not exposed by permission hooks |
-| Retry, typing, ordinary replies | Stay in Codex | Stay in Codex |
+| Layer | Start here |
+| --- | --- |
+| Native window and process ownership | `web-app/src-tauri/src/` |
+| Conversations and settings UI | `web-app/src/DesktopControls.tsx`, `OpenConversations.tsx` |
+| Discovery and live attachment | `codex_discovery.py`, `codex_attachment.py` |
+| Python service and startup | `desktop_service.py`, `desktop_entry.py` |
+| Shared surface transport | `web-app/src/desktop.ts`, `live.ts` |
+| Attention and hardware checks | `web-app/src/AttentionView.tsx`, `HardwareTest.tsx`, `devices/test_run.py` |
+| Bundled interpreter and assets | `scripts/build_desktop_engine.py` |
 
-Resolve multiple simultaneous approvals, special permission changes, and identity
-verification in Codex. The CLI permission-hook path has a 60-second surface-decision
-timeout. See [Codex Integration](./codex-integration.md) for hooks and non-interactive tasks.
+Python modules are under `src/pad_lattice/`. Routing stays in `ControlPlane`,
+not in the native window or individual surfaces.
 
 ## Process Ownership
 
-Tauri starts one engine with piped stdin/stdout. The engine reports readiness
-after acquiring the Unix socket and starting its browser surface. Closing
-stdin requests a graceful shutdown; the shell waits before terminating a stuck
-process. An existing daemon causes startup to fail with an error, rather than
-replacing its socket or controller.
+Tauri starts one engine and exchanges ID-tagged JSON requests and surface events
+over private stdin/stdout. Closing the app stops that engine, **not Codex**.
+If another daemon owns the socket, startup fails rather than replacing it.
 
-The desktop channel carries JSON requests and responses with IDs and streamed
-surface events. It is private to the parent and child processes. Native
-conversation attachment and settings operations are not browser protocol commands.
-The public app and paired devices receive no native shell permissions.
+Discovery runs on a worker so the pad stays responsive. Losing MIDI does not
+disconnect browser surfaces or release session leases. The optional LAN listener
+can stop without resetting the control plane.
 
-Live `audio_cue` events carry the daemon's cue name and session slot through
-native IPC and browser WebSockets. They are not included in reconnect snapshots.
-The client sound preference applies to live cues, Demo, and Show; muting stops
-active playback. Host CLI audio remains independent.
+Native settings and attachment commands are **not exposed to paired browsers**.
+See [Security Model](./security-model.md) for pairing and access boundaries.
 
-Desktop audio is fetched from the bundled assets and played through cached
-blob URLs. WebKit's media pipeline cannot play the `tauri://` asset URLs
-directly. Blob URLs are released when the player closes, and playback failures
-are displayed in the interface. Linux packages require GStreamer's good
-plugins for WAV decoding and audio output.
+Attention queries also run on the worker. The control plane records when a state
+begins using a monotonic clock; duplicate updates and selection do not reset it.
+The list carries the daemon revision so a stale row cannot select a reused slot.
 
-Agent routing remains in `ControlPlane`. Desktop events enter the same daemon
-loop as browser and MIDI events. Slow Codex discovery and attachment
-run on a worker so the pad keeps responding. MIDI output can be replaced in
-the daemon loop; losing it leaves browser state and session leases intact.
-
-The optional LAN listener can start or stop without resetting the control
-plane. Reconfiguration revokes paired clients. It uses the existing pairing,
-host checks, and browser message validation.
-
-Desktop manages paired devices through the native `paired_devices`,
-`disconnect_device`, and `revoke_device` commands. Records use random IDs;
-credentials never appear in the UI. A browser disconnected by Desktop waits
-for manual reconnect. Revocation removes its credential and requires pairing
-again. Device records are cleared when the engine stops.
+The hardware wizard and CLI share a nonblocking `ProfileTestRun`. Desktop owns its
+test ports separately from live MIDI, consumes all test input, and cancels on live
+sessions, playback, device loss, shutdown, or a 30-second interface timeout.
+Reports contain device checks only; a native save dialog controls their destination.
 
 ## Conversation Lifetime
 
-The desktop lists loaded CLI conversations through Codex's
-local WebSocket-over-Unix-socket endpoint under `$CODEX_HOME` (default
-`~/.codex/app-server-control/app-server-control.sock`). It checks socket ownership,
-initializes a short-lived connection, pages `thread/loaded/list`, and fetches
-`thread/read` summaries with `includeTurns: false`. Only IDs, names, working
-folders, and normalized status reach the UI; previews and conversation contents
-are discarded. Discovery is bounded to 64 threads and a six-second request
-budget, and never starts a Codex server.
+1. **Discover:** read summaries of loaded CLI threads from the same user's Codex
+   control socket. Never start a server, resume a thread, or send a turn.
+2. **Connect:** explicitly join a loaded CLI-owned thread. No model, sandbox,
+   or permission overrides are sent.
+3. **Observe and act:** translate events into the shared surface protocol.
+   Each supported pending request gets a one-shot action subscription.
+4. **Disconnect:** release the lease and socket without interrupting Codex.
+   Never silently replay actions or reconnect automatically.
 
-Discovery itself sends no `thread/resume`, turn commands, or approval responses.
-Each refresh replaces the discovered list and discards finished attachment
-workers. Only active attachments can supplement the list during discovery failure. Loaded threads can outlive their
-terminal while Codex retains them.
+**Approve/Reject applies to one supported request; Stop applies to one known
+running turn.** Multiple simultaneous approvals, special permissions, identity
+checks, prompts, and ordinary replies remain in Codex. Resolved requests and
+connection loss clear the controls.
+
+Desktop attachment needs no Pad-Lattice hooks. The independent
+[CLI integration](./codex-integration.md) uses scoped hooks instead.
+
+<details>
+<summary>Discovery and routing safeguards</summary>
+
+Discovery checks ownership of the WebSocket-over-Unix-socket endpoint under
+`$CODEX_HOME` (normally `~/.codex/app-server-control/app-server-control.sock`).
+It pages `thread/loaded/list` and reads summaries with `includeTurns: false`,
+bounded to 64 threads and six seconds. Only IDs, names, folders, and normalized
+states reach the UI. Transcripts and tool output are not retained or forwarded.
+
+Refresh replaces the discovered list; active attachments can supplement it
+during discovery failure. Codex may retain threads after their terminal closes.
+
+Connect sends `thread/resume` with only `threadId` and `excludeTurns: true`.
+An attachment may fetch one metadata-only turn to identify work already running.
+It fails if scoped hooks already own the thread or all eight slots are occupied.
+
+Approve/Reject requires exactly one pending request supporting `accept`/`decline`.
+Each subscription has a fresh capability token. Server events are drained before
+dispatch; Codex decides whether another client already answered. Stop includes
+the current thread and turn IDs.
+
 See the [Codex app-server reference](https://learn.chatgpt.com/docs/app-server).
 
-### Attach to a Running Conversation
+</details>
 
-An explicit desktop **Connect** operation creates a `CodexAttachment`. It checks
-that the thread is loaded and CLI-owned, then calls `thread/resume` with only
-`threadId` and `excludeTurns: true`. For a loaded thread, Codex rejoins the running
-conversation. No model, permission, sandbox, or configuration overrides are sent;
-no `turn/start` is sent. Discovery and attachment are local-only, using the same
-user-owned control socket.
+## Settings and Devices
 
-Each attachment owns one WebSocket reader, a Pad-Lattice session lease, and a
-short-lived action subscription. Thread/turn events update the existing daemon
-through its ordinary protocol, so MIDI and browser surfaces share the same
-selection and routing. `thread/turns/list` may fetch one metadata-only turn to
-identify work already running at attachment time. Tool output and transcript
-content are not retained or forwarded to the desktop.
+Typed preferences are merged and written atomically to `settings.json` in the
+platform app-data directory. They contain no credentials, project data, or saved
+connections. [Installation](../usage/install.md) lists storage and uninstall steps.
 
-The adapter exposes Approve/Reject only when exactly one pending request supports
-the simple `accept`/`decline` decisions. It never grants a session-wide approval,
-changes a saved policy, answers a question, or handles identity verification.
-Stop includes the current `threadId` and `turnId`. Each subscription is one-shot
-and has a fresh capability token; resolved requests, completion, and connection
-loss invalidate controls. Server events are drained before dispatch, and Codex
-remains the final arbiter of requests another client may have answered first.
+The sound preference covers live cues, Demo, and Show. Reconnecting does not
+replay old cues. CLI audio remains independent. Pairing records last only for the
+engine's lifetime; disconnect waits for manual reconnect, while revocation
+requires pairing again.
 
-Closing an attachment releases its lease and socket without interrupting Codex.
-There is no automatic reconnection or silent replay of an action. The desktop
-rejects attachment when the same thread is already connected by scoped hooks,
-or when eight pad slots are occupied. An attached conversation needs no
-Pad-Lattice hooks. The independent Python CLI uses its own scoped hook workflow.
+<details>
+<summary>Audio and pairing implementation</summary>
 
-## Preferences
+Live `audio_cue` events carry a cue name and session slot through IPC and browser
+WebSockets. Muting stops playback. Desktop uses cached blob URLs because WebKit
+cannot play bundled `tauri://` audio URLs directly; they are released when the
+player closes. Linux needs GStreamer's good plugins for WAV playback.
 
-The service accepts only named, typed preferences: the Codex executable,
-MIDI profile and ports, sound, and pad focus. Updates merge with existing values
-and replace `settings.json` atomically using a private temporary file.
-The native shell provides the platform app-data directory. Credentials,
-project data, and connection restoration are not part of these preferences.
+Native `paired_devices`, `disconnect_device`, and `revoke_device` commands use
+random device IDs. Credentials never appear in the UI. LAN reconfiguration
+revokes paired clients and retains the existing host and message checks.
+Device `kind` groups browsers and Stream Deck plugins in Settings. Like the
+display name, it comes from the client and grants no permissions.
 
-## Verification
-
-### Reproduce the Walkthrough
-
-`scripts/render_desktop_demo.mjs` records the desktop renderer using Playwright
-and the real Python desktop service. It substitutes simulated agent events,
-conversation discovery and attachment, and MIDI connection status. The illustrated controller
-mirrors the pad's state and forwards clicks through the native transport
-adapter. Approval routing runs through the daemon's ordinary socket protocol.
-The footage labels these substitutions explicitly.
-
-After installing the project and web dependencies, install Playwright Chromium
-and FFmpeg, then run:
-
-```bash
-npm --prefix web-app run build
-node scripts/render_desktop_demo.mjs
-```
-
-The muted MP4 and poster are written to `docs-site/static/media/`. Set
-`PLAYWRIGHT_CHROMIUM_PATH` to use an existing Chromium executable. The recording
-uses an isolated temporary socket; it does not start real Codex sessions or
-send commands to a connected MIDI controller.
-
-### Automated Checks
-
-`tests/test_desktop.py` exercises stdio startup/shutdown, request validation,
-two-session approval routing, settings validation and persistence, and
-MIDI failure isolation. When Codex is installed, its configuration parser also
-checks the generated hooks without running a model turn.
-`tests/test_codex_discovery.py` covers read-only discovery, pagination, state
-mapping, thread filtering, ownership checks, bounded work, and failure handling.
-`tests/test_codex_attachment.py` uses a local simulated Codex server with the
-real Pad-Lattice daemon to check two-session routing, single-request decisions,
-turn-specific Stop, stale approvals, unsupported prompts, and disconnection.
-A live Codex 0.164.0 join/state/detach check succeeded without starting a turn
-or sending an action. Interactive approval alongside the original terminal
-remains a manual acceptance check.
-
-Set `PAD_LATTICE_TEST_ENGINE` to the bundled engine to run relocation tests,
-including service startup from a path containing spaces and rejection of removed helpers. Native smoke builds
-exercise the actual WebView, render Demo/Show messages, and capture Linux
-screenshots. They use a separate socket and settings directory.
-
-Public installer publication, signing/notarization, physical hardware checks,
-and an interactive end-to-end Codex approval remain release acceptance steps.
+</details>
 
 ## Build From Source
 
+<details>
+<summary>Build from source</summary>
+
 Install Python 3.12, Node.js 24, Rust 1.90, and the
-[Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform.
-From the repository root:
+[Tauri prerequisites](https://v2.tauri.app/start/prerequisites/), then run:
 
 ```bash
 python -m venv .venv
@@ -183,18 +132,49 @@ npm --prefix web-app run build
 npm --prefix web-app run desktop
 ```
 
-For installers, use `npm --prefix web-app run desktop:build` after bundling the
-engine. Linux ARM64 is included for development on ARM virtual machines.
-Native Windows support requires additional backend work.
+Use `npm --prefix web-app run desktop:build` for installers. Linux ARM64 is
+supported; native Windows requires additional backend work.
 
-### Dependency Notices
+The engine build collects Python, npm, and resolved Cargo license notices for
+offline access in About. Missing texts stop the build. `licenses/upstream/`
+provides texts omitted by archives; `sources.json` records provenance.
+Use the collector's `--offline` option when Cargo sources are cached.
+Platform libraries are outside this inventory.
 
-The engine build runs `scripts/collect_desktop_notices.py`. It collects Python
-runtime dependencies, production npm packages, and the target's resolved Cargo
-graph, including build dependencies. Shared license texts are deduplicated in
-`web-app/public/third-party-notices.txt` and bundled for offline access in About.
+</details>
 
-Version-specific upstream texts in `licenses/upstream/` cover archives that omit
-their license files; `sources.json` records their provenance. Missing texts stop
-the installer build. Regenerate with `--offline` when Cargo sources are cached.
-Platform-provided libraries are outside this inventory.
+<details>
+<summary>Tests and acceptance checks</summary>
+
+- `tests/test_desktop.py`: lifecycle, validation, settings, routing, and MIDI failures.
+- `tests/test_codex_discovery.py`: read-only discovery, ownership, limits, and failures.
+- `tests/test_codex_attachment.py`: a simulated Codex server with the real daemon,
+  covering stale approvals, unsupported prompts, turn-specific Stop, and disconnect.
+
+Set `PAD_LATTICE_TEST_ENGINE` to test the bundled engine, including relocation.
+Native smoke builds exercise the WebView with isolated sockets and settings.
+
+A live Codex 0.164.0 join/state/detach check succeeded without starting a turn.
+Interactive approval, physical hardware, installer publication, and
+signing/notarization remain separate release acceptance checks.
+
+</details>
+
+<details>
+<summary>Reproduce the documentation walkthrough</summary>
+
+With project dependencies, Playwright Chromium, and FFmpeg installed:
+
+```bash
+npm --prefix web-app run build
+node scripts/render_desktop_demo.mjs
+```
+
+This records the real renderer and Python service with **simulated discovery,
+attachment, agent events, and MIDI status**. Approval uses the ordinary socket
+protocol. No live Codex session or physical controller receives commands.
+
+The muted MP4 and poster go to `docs-site/static/media/`.
+`PLAYWRIGHT_CHROMIUM_PATH` selects an existing browser executable.
+
+</details>

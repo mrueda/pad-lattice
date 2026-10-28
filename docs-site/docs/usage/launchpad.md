@@ -6,6 +6,9 @@ Launchpad profiles use the **8x8 grid**, top action buttons, and right-side
 session selectors. Extra controls, where present, remain reserved. Pad-Lattice
 uses Programmer mode without modifying the device's firmware.
 
+[Try the Pro Mk1 layout in your browser](pathname:///play/?surface=launchpad)
+with simulated sessions. No controller is needed.
+
 <LaunchpadDiagram />
 
 ## Models
@@ -19,7 +22,7 @@ uses Programmer mode without modifying the device's firmware.
 ## Connect
 
 1. Connect the controller over USB.
-2. Open **Settings > MIDI controller** in Pad-Lattice.
+2. Open **Settings > Devices > MIDI controllers** in Pad-Lattice.
 3. Select the profile and press **Connect**.
 
 Automatic detection only considers supported profiles; choose either Mk3

@@ -3,5 +3,7 @@ io.github.mrueda.pad-lattice.sdPlugin/bin/
 io.github.mrueda.pad-lattice.sdPlugin/logs/
 io.github.mrueda.pad-lattice.sdPlugin/images/
 io.github.mrueda.pad-lattice.sdPlugin/licenses/
+io.github.mrueda.pad-lattice.sdPlugin/profiles/
+dist/
 *.streamDeckPlugin
 preview/

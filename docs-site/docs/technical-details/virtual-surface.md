@@ -18,10 +18,51 @@ configuration endpoint selects live transport; the public build cannot discover
 or control a daemon.
 
 The public surface presents three modes with distinct roles: **Demo** is the
-guided interaction, **Sandbox** is free protocol exploration, and **Show** is
+35-second autoplay walkthrough, **Sandbox** offers repeatable scenarios and editable states, and **Show** is
 authored audiovisual playback. In live mode, **Start Demo** and **Start Show**
 are administrator commands, matching the `pad-lattice demo` and
 `pad-lattice show` CLI experiences.
+
+The public Demo demonstrates session selection, approval, and rejection with a
+visible pointer. Pause or replay it, then choose **Try it yourself** to enter
+Sandbox. Playback pauses outside its tab and when the browser page is hidden.
+It follows the shared Demo graph; only this public presentation advances
+automatically. CLI and live demos remain interactive. No real agent actions
+are sent. Light/dark appearance is saved in this browser; sound is opt-in.
+
+### Device Layouts
+
+The public **Surface** selector offers Virtual Pad, Launchpad Pro Mk1, and a
+15-key Stream Deck example. Switching keeps the same sessions, selection,
+scenario history, and Demo playback position. The Demo pointer follows the
+matching control in each layout. Links can select a view with
+`?surface=launchpad` or `?surface=stream-deck`.
+
+`VirtualSurface.tsx` renders both grid layouts; `StreamDeckSurface.tsx` puts one
+session glyph in each LCD key. Both use `surfaceModel.ts`, the visual compiler
+and palette also used by the real Stream Deck plugin. The preview exposes only
+its three plugin actions: Approve, Reject, and Stop. It does not add Retry or
+Show support to the plugin. Show remains available on grid layouts.
+
+These are interactive illustrations, not MIDI/USB emulators or hardware tests.
+The surface selector is absent in live mode; pairing and device ownership are
+unchanged. The actual plugin's key positions are user-configurable.
+
+### Playground Scenarios
+
+Sandbox starts with Builder running, Reviewer waiting for approval, and Tests
+in an error state. Other scenarios cover a request answered in Codex, a selected
+session disconnecting, and the vocabulary across eight sessions. Background
+events advance only when requested; restarting restores the same initial state.
+Approve and Retry resume simulated work rather than declaring it successful.
+
+`web-app/src/playground.ts` contains the fixtures and a pure reducer. Inputs
+carry the displayed revision, so stale presses cannot act on a changed target.
+Tests cover repeated actions, selection, disconnects, reset, and deterministic
+replay. The renderer uses the normal visual compiler, but **the scenario engine
+is a teaching model, not the Python control plane or a hardware emulator**.
+It opens no agent or device connections. Real integrations expose only actions
+their backend supports; simulated Retry does not imply Codex supports it.
 
 ## Local Live Control
 

@@ -9,6 +9,7 @@ from unittest import TestCase
 from pad_lattice.devices.base import ActionPressed, SessionSelected
 from pad_lattice.devices.profiles import ProfileCatalog
 from pad_lattice.devices.testing import run_profile_test
+from pad_lattice.devices.test_run import ProfileTestRun
 from pad_lattice.events import ControlAction
 
 
@@ -79,7 +80,7 @@ class ProfileTestingTest(TestCase):
         self.assertTrue(report["passed"])
         self.assertEqual(saved, report)
         self.assertTrue(surface.closed)
-        self.assertEqual(len(surface.views), 18)
+        self.assertEqual(len(surface.views), 21)
         serialized = json.dumps(report)
         self.assertNotIn("prompt", serialized.lower())
         self.assertNotIn("session_id", serialized)
@@ -104,3 +105,54 @@ class ProfileTestingTest(TestCase):
         self.assertFalse(saved["passed"])
         self.assertEqual(saved["results"]["failure_stage"], "initialize")
         self.assertNotIn("private/path", json.dumps(saved))
+
+    def test_answers_are_step_scoped_and_inputs_require_hardware(self):
+        surface = FakeSurface()
+        run = ProfileTestRun(surface, self.profile)
+        run.start()
+        run.answer("visual:idle", True)
+        with self.assertRaisesRegex(ValueError, "another step"):
+            run.answer("visual:idle", True)
+        while run.step.group == "visual":
+            run.answer(run.step.id, True)
+        with self.assertRaisesRegex(ValueError, "controller"):
+            run.answer(run.step.id, True)
+        surface.events = [ActionPressed(ControlAction.REJECT)]
+        run.tick()
+        self.assertEqual(run.step.key, "approve")
+        surface.events = [ActionPressed(ControlAction.APPROVE)]
+        run.tick()
+        self.assertTrue(run.checks["actions"]["approve"])
+        run.cancel()
+        self.assertTrue(surface.closed)
+        self.assertEqual(run.status, "cancelled")
+
+    def test_input_timeout_and_driver_failure_are_reported(self):
+        from unittest.mock import patch
+        now = [100.0]
+        surface = FakeSurface()
+        surface.events = []
+        run = ProfileTestRun(surface, self.profile, clock=lambda: now[0])
+        run.start()
+        while run.step.group == "visual":
+            run.answer(run.step.id, True)
+        now[0] += 16
+        run.tick()
+        self.assertFalse(run.checks["actions"]["approve"])
+        self.assertEqual(run.step.key, "reject")
+        with patch.object(surface, "poll_events", side_effect=OSError("private driver detail")):
+            run.tick()
+        self.assertEqual(run.failure_stage, "input")
+        self.assertTrue(surface.closed)
+        self.assertNotIn("private", json.dumps(run.snapshot()))
+
+    def test_one_input_batch_cannot_advance_multiple_steps(self):
+        from unittest.mock import patch
+        run = ProfileTestRun(FakeSurface(), self.profile)
+        run.start()
+        while run.step.group == "visual":
+            run.answer(run.step.id, True)
+        with patch.object(run.surface, "poll_events", return_value=[ActionPressed(action) for action in ControlAction]):
+            run.tick()
+        self.assertEqual(run.step.key, "reject")
+        run.cancel()

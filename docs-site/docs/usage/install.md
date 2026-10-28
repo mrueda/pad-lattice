@@ -119,6 +119,6 @@ removing the CLI. This removes Pad-Lattice entries, not other tools' hooks.
 
 ## Try Without Installing
 
-The [public virtual pad](pathname:///play/) has a guided Demo, Sandbox, and
+The [public virtual pad](pathname:///play/) has an autoplay Demo, Sandbox, and
 audiovisual Show. It uses simulated agents and never connects to your local
 Codex conversations.

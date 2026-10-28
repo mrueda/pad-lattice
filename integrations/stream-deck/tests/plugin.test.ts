@@ -14,7 +14,7 @@ test('bundled SDK plugin registers, renders keys, pairs, and sends a guarded act
   const received: any[] = [], commands: any[] = [];
   let socket: WebSocket;
   const info = {application: {version: '7.1.0', platform: 'mac', language: 'en'},
-    plugin: {uuid: 'io.github.mrueda.pad-lattice', version: '0.1.0.0'},
+    plugin: {uuid: 'io.github.mrueda.pad-lattice', version: '0.2.0.0'},
     devices: [{id: 'test-device', name: 'Test Deck', size: {columns: 5, rows: 3}, type: 0}]};
   elgato.on('connection', ws => {
     socket = ws;
@@ -55,10 +55,11 @@ test('bundled SDK plugin registers, renders keys, pairs, and sends a guarded act
   event('sendToPlugin', 'session', {type: 'pair', address: `http://127.0.0.1:${port(lattice)}`, pin: '123456'});
   const decoded = (m: any) => Buffer.from(m.payload.image.split(',')[1], 'base64').toString();
   await until(() => received.some(m => m.event === 'setImage' && m.context === 'approve' && decoded(m).includes('#55c76a')));
+  await until(() => received.some(m => m.event === 'sendToPropertyInspector' && m.payload.connection === 'connected'));
   event('keyDown', 'approve', {controller: 'Keypad', settings: {}});
   await until(() => commands.some(m => m.type === 'action'));
   assert.deepEqual(commands.find(m => m.type === 'action'), {protocol: 1, type: 'action', action: 'approve', expected_revision: 42});
-  for (const m of received.filter(m => ['setSettings', 'setGlobalSettings'].includes(m.event))) {
+  for (const m of received.filter(m => ['setSettings', 'setGlobalSettings', 'sendToPropertyInspector'].includes(m.event))) {
     assert.ok(!JSON.stringify(m).includes('123456'));
     assert.ok(!JSON.stringify(m).includes('private-token'));
   }

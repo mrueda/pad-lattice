@@ -76,7 +76,7 @@ class DemoAgentTest(TestCase):
                 [SessionSelected(1)],
                 [ActionPressed(ControlAction.APPROVE)],
                 [SessionSelected(2)],
-                [ActionPressed(ControlAction.RETRY)],
+                [ActionPressed(ControlAction.REJECT)],
             )
         )
         output = io.StringIO()
@@ -91,17 +91,17 @@ class DemoAgentTest(TestCase):
             sleep=lambda _: None,
         )
 
-        self.assertEqual(actions, (ControlAction.APPROVE, ControlAction.RETRY))
+        self.assertEqual(actions, (ControlAction.APPROVE, ControlAction.REJECT))
         self.assertTrue(surface.initialized)
         self.assertTrue(surface.closed)
         self.assertEqual(len(surface.views), 5)
         self.assertEqual(surface.views[0].sessions[0].label, "Builder")
         self.assertEqual(surface.views[1].selected_state, AgentState.WAITING_FOR_APPROVAL)
-        self.assertEqual(surface.views[-1].selected_state, AgentState.SUCCESS)
+        self.assertEqual(surface.views[-1].selected_state, AgentState.CANCELLED)
         self.assertEqual(surface.experiences[0].kind, "demo")
         self.assertEqual(surface.experiences[-1].status, "idle")
-        self.assertIn("The Reviewer needs you.", output.getvalue())
-        self.assertIn("The agents form a constellation.", output.getvalue())
+        self.assertIn("Reviewer needs permission.", output.getvalue())
+        self.assertIn("Two decisions. The right agents.", output.getvalue())
         self.assertTrue(audio_feedback.calls)
         self.assertTrue(audio_feedback.closed)
 
@@ -111,4 +111,17 @@ class DemoAgentTest(TestCase):
         with self.assertRaisesRegex(OSError, "initialization failed"):
             run_demo_surface(surface, sleep=lambda _: None)
 
+        self.assertTrue(surface.closed)
+
+    def test_rejecting_the_first_request_ends_without_affecting_other_agents(self) -> None:
+        surface = FakeSurface((
+            [SessionSelected(1)],
+            [ActionPressed(ControlAction.REJECT)],
+        ))
+        run_demo_surface(surface, poll_interval=0, clock=IncrementingClock(), sleep=lambda _: None)
+
+        self.assertEqual(surface.views[2].selected_state, AgentState.CANCELLED)
+        self.assertEqual(surface.views[2].available_actions, frozenset())
+        self.assertEqual(surface.views[2].sessions[0].state, AgentState.RUNNING)
+        self.assertEqual(surface.views[2].sessions[2].state, AgentState.RUNNING)
         self.assertTrue(surface.closed)

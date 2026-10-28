@@ -32,7 +32,7 @@ requests must be handled in Codex. See [Control Codex](./control-codex.md).
   reloads the window without disconnecting conversations.
 - In **Demo & Show > Demo** or **Demo & Show > Show**, enable **Sound** and check the
   computer's output device. In a VM, check the guest's audio output too.
-- For MIDI, use **Settings > MIDI controller** to refresh ports and reconnect.
+- For MIDI, use **Settings > Devices > MIDI controllers** to refresh ports and reconnect.
   The controller must be attached to the same computer or VM, not occupied by a DAW.
 - For phone pairing, follow [Connect Screens](./connect-browsers.md).
 

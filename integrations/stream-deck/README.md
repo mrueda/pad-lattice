@@ -1,11 +1,24 @@
 # Pad-Lattice Stream Deck Plugin
 
 **Experimental; not physically tested or published to the Elgato Marketplace.**
-The official Elgato SDK plugin presents one session glyph per LCD key, with
-separate Approve, Reject, and Stop keys. It does not emulate an 8x8 controller
-across the keys or run Demo/Show.
+**One Session key represents one Codex conversation.** Its name and color strip
+identify the session; its glyph shows the state. Press it to select. The white
+border marks which session the separate **Approve**, **Reject**, and **Stop**
+keys control; those action keys also show its name.
 
-## Build and Install
+An editable **Pad-Lattice - 15 keys** starter profile places eight sessions
+above Approve, Reject, and Stop. It installs separately without switching your
+current profile. Other deck sizes need a manual layout. The plugin does not emulate an
+8x8 controller across the keys or run Demo/Show.
+
+## Install
+
+Download `io.github.mrueda.pad-lattice.streamDeckPlugin` from the
+[release assets](https://github.com/mrueda/pad-lattice/releases), then open it on
+the computer running Elgato Stream Deck. No Node.js installation is needed to
+use the packaged plugin. Requires Stream Deck 7.1+ and Pad-Lattice 0.2.0+.
+
+## Build from Source
 
 Use Node.js 24 and Stream Deck 7.1 or newer on macOS or Windows. From this folder:
 
@@ -17,19 +30,18 @@ npm test
 npm run pack
 ```
 
-Open the generated `.streamDeckPlugin` file on the machine running Elgato's
+Open the generated `dist/*.streamDeckPlugin` file on the machine running Elgato's
 Stream Deck software. The source build, tests, and packaging can also run on
 Linux, but the official Stream Deck host application cannot.
 
 ## Pair and Use
 
-1. Run the current Pad-Lattice desktop preview (or `pad-lattice web` from this
-   checkout) and connect your Codex CLI sessions. Released 0.1.0 predates this plugin.
-2. Choose **Pair device** beside the pad. Note its address and six-digit PIN.
-3. In Stream Deck, drag **Pad-Lattice > Session** onto a key. Choose its session
-   number, enter the address and PIN, and press **Pair**.
-4. Add more Session keys and assign different numbers. Add **Approve**, **Reject**,
-   and **Stop** keys. Pairing is shared across the plugin; do not pair every key.
+1. Run Pad-Lattice Desktop (or `pad-lattice web`) and connect your Codex sessions.
+2. Choose **Settings > Devices > Stream Deck > Pair device**. Note its address and PIN.
+3. In Elgato's profile menu, choose **Pad-Lattice - 15 keys**. Select any
+   Pad-Lattice key, enter the address and PIN, and press **Pair**.
+4. For a custom layout, add **Session** keys with different slot numbers and
+   **Approve**, **Reject**, and **Stop** keys. Pairing is shared; do not pair every key.
 5. Press a session key to select it. A white border identifies the selection.
    Action keys show its label and only become available when the bridge permits it.
 
@@ -57,6 +69,12 @@ Never enable trace logging while pairing or share logs containing credentials.
 - `ui/settings.*` inside the plugin: local property inspector; no external scripts.
 - `tests/`: rendering/transport checks and a bundled-plugin test with simulated
   Elgato and Pad-Lattice WebSocket hosts. These do not prove hardware compatibility.
+- `scripts/profiles.mjs`: generates the editable starter profile, with fixed
+  identifiers and no connection credentials. Its archive structure follows
+  [Elgato's exported Lights Out profiles](https://github.com/elgatosf/streamdeck/tree/b6e9b3923495ef3b729734dbda7b23a88dd5de2d/examples/lights-out/com.elgato.lightsout.sdPlugin)
+  and [official profile bundling](https://docs.elgato.com/streamdeck/sdk/guides/profiles/).
+  Archive generation uses the CLI's existing zip.js dependency at build time,
+  declared explicitly; it is not bundled into the plugin runtime.
 
 Every plugin selection/action carries the control revision shown on the key.
 The daemon checks it immediately before routing the queued event. A changed
@@ -71,8 +89,10 @@ credentials are required. LAN traffic is unencrypted and requires a trusted
 network. The plugin does not provide Windows support for the Python engine:
 its bridge must run on a platform supported by Pad-Lattice.
 
-`npm run pack` uses Elgato's official validator and packaging CLI. Generated
-bundles/installers are ignored by Git. The narrowly scoped Zod override updates
+`npm run pack` uses Elgato's official validator and packaging CLI, producing the
+installer, SHA-256 checksum, and source revision in `dist/`. Both manual build
+workflows upload these; desktop builds use the same commit for app and plugin.
+Generated bundles/installers are ignored by Git. The narrowly scoped Zod override updates
 the SDK utility's `zod/v4-mini` implementation to its security-fixed release;
 the bundled SDK test covers startup and message handling with that override.
 

@@ -1,8 +1,8 @@
 import {useCallback, useEffect, useState} from 'react';
-import {MonitorSmartphone, RefreshCw, Unplug, ShieldOff} from 'lucide-react';
+import {Grid2X2, MonitorSmartphone, RefreshCw, Unplug, ShieldOff} from 'lucide-react';
 import {desktopRequest} from './desktop';
 
-export interface Device {id: string; name: string; connected: boolean}
+export interface Device {id: string; name: string; kind: 'browser' | 'stream_deck'; connected: boolean}
 
 export function usePairedDevices() {
   const [devices, setDevices] = useState<Device[] | null>(null);
@@ -28,10 +28,11 @@ export function usePairedDevices() {
   return {devices, setDevices, error, setError, refresh};
 }
 
-export function PairedDevices({state}: {state: ReturnType<typeof usePairedDevices>}) {
+export function PairedDevices({state, kind}: {state: ReturnType<typeof usePairedDevices>; kind?: Device['kind']}) {
   const {devices, setDevices, error, setError, refresh} = state;
   const [busy, setBusy] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const visible = devices?.filter(device => !kind || device.kind === kind);
   const manage = async (device: Device, revoke: boolean) => {
     setBusy(true);
     try {
@@ -48,10 +49,10 @@ export function PairedDevices({state}: {state: ReturnType<typeof usePairedDevice
         onClick={() => void refresh().catch(reason => setError(String(reason)))}><RefreshCw /></button>
     </div>
     {error ? <p className="desktopError" role="alert">{error}</p> : null}
-    {!devices ? <p className="desktopNotice">Checking paired devices...</p>
-      : !devices.length ? <p className="desktopNotice">No paired devices</p> : <ul className="pairedDeviceList">
-      {devices.map(device => <li key={device.id}>
-        <MonitorSmartphone aria-hidden="true" />
+    {!visible ? <p className="desktopNotice">Checking paired devices...</p>
+      : !visible.length ? <p className="desktopNotice">{kind === 'stream_deck' ? 'No Stream Deck paired' : kind === 'browser' ? 'No browsers paired' : 'No paired devices'}</p> : <ul className="pairedDeviceList">
+      {visible.map(device => <li key={device.id}>
+        {device.kind === 'stream_deck' ? <Grid2X2 aria-hidden="true" /> : <MonitorSmartphone aria-hidden="true" />}
         <div className="pairedDeviceIdentity"><strong>{device.name}</strong>
           <small className={device.connected ? 'deviceOnline' : ''}>{device.connected ? 'Connected' : 'Offline'} · {device.id.slice(-6)}</small></div>
         <div className="desktopActions">

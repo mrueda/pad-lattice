@@ -57,11 +57,11 @@ test('live Demo accepts the same scene and action controls', async ({page}) => {
   await page.goto('http://127.0.0.1:4175/#admin=pad-lattice-e2e-admin');
   await page.getByRole('button', {name: 'Start Demo'}).click();
 
-  await expect(page.getByText('The Reviewer needs you.')).toBeVisible();
+  await expect(page.getByText('Reviewer needs permission.')).toBeVisible();
   await page.getByRole('button', {name: 'Select Reviewer'}).first().click();
-  await expect(page.getByText('Approve the review.')).toBeVisible();
+  await expect(page.getByText('Allow the test command?')).toBeVisible();
   await page.getByRole('button', {name: 'Approve'}).click();
-  await expect(page.getByText('The Tests need attention.')).toBeVisible();
+  await expect(page.getByText('Now Tests needs a decision.')).toBeVisible();
 });
 
 test('a disconnected phone waits for manual reconnect and revocation asks for a new PIN', async ({page}) => {
@@ -106,6 +106,7 @@ test('connection loss clears stale controls and waits for manual reconnect', asy
   let connections = 0;
   let available = true;
   const view: SurfaceView = {selected_state: 'waiting_for_approval', frame: 0,
+    control_revision: 1,
     sessions: [{slot: 0, state: 'waiting_for_approval', selected: true, accent: 'cyan', label: 'Recovery test'}],
     available_actions: ['approve', 'reject'], overflow_count: 0, activity_motion: false};
   await page.routeWebSocket('**/ws', route => {

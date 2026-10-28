@@ -1,17 +1,12 @@
 # Desktop Pad
 
-import useBaseUrl from '@docusaurus/useBaseUrl';
+import DesktopWalkthrough from '@site/src/components/DesktopWalkthrough';
 
 Connect your open Codex CLI chats and control them from the on-screen pad.
 [Install](./install.md) includes Python and the local service; install and
 authenticate Codex CLI separately on the same computer.
 
-<video controls preload="none" playsInline style={{width: '100%', borderRadius: 8}}
-  poster={useBaseUrl('/media/desktop-workflow-poster.png')}
-  src={useBaseUrl('/media/desktop-workflow.mp4')}
-  aria-label="Desktop walkthrough: select a Codex session and approve its request" />
-
-Illustrated walkthrough with **simulated chats**, not a physical hardware recording.
+<DesktopWalkthrough />
 
 ## Find Open Conversations
 
@@ -22,6 +17,11 @@ terminal; no restart or hooks are needed.
 Use **Refresh chats** to update the list. It shows conversations loaded by Codex
 on this computer and OS account, not saved history or chats on another host.
 Resume a saved chat in Codex first. A VM cannot discover chats on its Mac host.
+
+The list separates **open** conversations from those **connected to the pad**.
+If Codex is unavailable, click its status at the top to open settings, check the
+executable, and select **Check again**. An empty conversation list is not an
+installation error. Connection errors link to **Diagnostics** for a shareable report.
 
 **Disconnect** releases the pad slot without stopping Codex. Codex may keep a
 thread loaded after its terminal closes; see [Troubleshooting](./troubleshooting.md)
@@ -36,6 +36,10 @@ if the list differs from your open windows.
 Only supported actions light up. Ordinary replies stay in Codex.
 [How It Works](./control-codex.md#read-the-surface) shows the glyphs and controls.
 
+**Needs attention** lists approvals first, then errors and conversations waiting
+for a reply, with time in that state. Select a row to bring that chat onto the pad;
+selection does not approve anything. **All conversations** keeps the usual Scene order.
+
 | Control | What it does |
 | --- | --- |
 | **Maximize pad** | Hides setup panels and enlarges the pad. |
@@ -45,16 +49,34 @@ Only supported actions light up. Ordinary replies stay in Codex.
 
 ## Connect a Launchpad
 
-Connect it over USB, then choose **Settings > MIDI controller > Connect**.
+**Settings > Devices** groups connections into **Browsers**, **MIDI controllers**,
+and **Stream Deck**, with a connected count for each. Browser and Stream Deck
+pairing share one network configuration.
+
+Connect it over USB, then choose **Settings > Devices > MIDI controllers > Connect**.
 If automatic detection cannot choose a device, select its profile and ports.
 Experimental profiles must be selected explicitly.
 
 See [Novation Launchpad](./launchpad.md) for models and the control diagram.
 Disconnecting MIDI does not end your chats; the virtual pad keeps working.
 
+To check an unfamiliar controller, disconnect chats and MIDI, then select explicit
+ports and use **Hardware test** in the same settings page. Compare the lights with
+the preview and press each requested hardware control. You can stop at any time
+and export a report. See [Device Testing](../technical-details/device-testing.md).
+
+## Connect a Stream Deck
+
+Open **Settings > Devices > Stream Deck** for the plugin download, pairing, and
+connected plugins. The plugin includes an editable 15-key starter layout;
+customize keys in Elgato's software, not the MIDI page. On the same computer,
+pair with the displayed address and PIN; network access can stay off.
+The plugin is experimental; a hardware-test wizard is not yet available for it.
+See [Elgato Stream Deck](./stream-deck.md).
+
 ## Connect a Phone
 
-Open **Pair device** in the toolbar, or **Settings > Phones & tablets**.
+Open **Pair device** in the toolbar, or **Settings > Devices > Browsers**.
 Enable network access; a fresh QR/PIN window opens automatically.
 Both devices must be on the same trusted network. The paired-device list lets
 you disconnect a device or revoke its access without affecting the others.

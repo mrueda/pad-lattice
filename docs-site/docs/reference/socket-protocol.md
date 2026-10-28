@@ -209,6 +209,10 @@ transfers ownership safely.
 
 ## Inspection and Previews
 
+Status includes `control_revision` and each session's `state_age_seconds`.
+The age measures time in the current state, not time since its latest update or
+selection. It resets on a state change or a new session registration.
+
 `{"protocol":1,"type":"status"}` returns selection, sessions, visible slots,
 accents, leases, overflow, TTL, preview status, optional-audio status, and a
 `surfaces` array. Each surface entry identifies its kind (`web` or `midi`),

@@ -19,17 +19,20 @@ import {
   Minimize2,
   ArrowLeft,
   Unplug,
+  Sun,
+  Moon,
+  ShieldAlert,
+  CircleHelp,
+  CircleAlert,
+  Copy,
 } from 'lucide-react';
 import {
-  createDemoState,
-  demoGuidance,
   demoPrompt,
-  demoReducer,
   demoSurfaceView,
   stateLabels,
-  validDemoState,
-  type DemoGuidance,
 } from './demo';
+import {useDemoPlayback} from './demoPlayback';
+import {DemoPlaybackControls} from './DemoPlaybackControls';
 import {useAudioOutput} from './audio';
 import {
   cueIndexAt,
@@ -39,7 +42,10 @@ import {
   type ExperienceAssets,
 } from './experiences';
 import {useLiveSurface} from './live';
-import {compileVisualFrame, tokenColor} from './surfaceModel';
+import {compileVisualFrame, isAgentState, tokenColor} from './surfaceModel';
+import {AttentionView} from './AttentionView';
+import {createPlaygroundState, playgroundReducer, playgroundView} from './playground';
+import {PlaygroundAgentPicker, PlaygroundControls, PlaygroundHistory} from './PlaygroundControls';
 import type {
   AgentState,
   ControlAction,
@@ -49,6 +55,7 @@ import type {
   VisualFrame,
 } from './types';
 import {VirtualSurface} from './VirtualSurface';
+import {StreamDeckSurface} from './StreamDeckSurface';
 import {isDesktop, openProjectLink} from './desktop';
 import {DesktopControls} from './DesktopControls';
 import {ExploreMenu} from './ExploreMenu';
@@ -56,6 +63,7 @@ import {PairingDialog} from './PairingDialog';
 import {useDesktopPreference} from './useDesktopPreference';
 
 type AppMode = 'loading' | 'demo' | 'live';
+type PlaygroundSurface = 'virtual' | 'launchpad' | 'stream-deck';
 
 export default function App() {
   const [mode, setMode] = useState<AppMode>('loading');
@@ -87,28 +95,56 @@ function DemoApp() {
 }
 
 function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
-  const [demo, dispatch] = useReducer(demoReducer, assets.demo, createDemoState);
+  const [surface, setSurface] = useState<PlaygroundSurface>(() => {
+    const requested = new URLSearchParams(window.location.search).get('surface');
+    return requested === 'launchpad' || requested === 'stream-deck' ? requested : 'virtual';
+  });
+  const [lightTheme, setLightTheme] = useState(() => {
+    try { return localStorage.getItem('pad-lattice-playground-theme') === 'light'; }
+    catch { return false; }
+  });
+  useEffect(() => {
+    const theme = lightTheme ? 'light' : 'dark';
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem('pad-lattice-playground-theme', theme); }
+    catch { /* Theme switching also works when browser storage is blocked. */ }
+    return () => { delete document.documentElement.dataset.theme; };
+  }, [lightTheme]);
+  const [sandbox, sandboxDispatch] = useReducer(playgroundReducer, undefined, () => createPlaygroundState());
   const [mode, setMode] = useState<'demo' | 'sandbox' | 'show'>('demo');
+  const playback = useDemoPlayback(assets.demo, mode === 'demo');
+  const demo = playback.state;
   const [showStatus, setShowStatus] = useState<'idle' | 'starting' | 'playing'>('idle');
   const [showElapsed, setShowElapsed] = useState(0);
   const showStartRef = useRef(0);
   const audio = useAudioOutput();
-  const view = demoSurfaceView(demo);
+  const view = mode === 'sandbox' ? playgroundView(sandbox) : demoSurfaceView(demo);
   const frame = useMemo(() => compileVisualFrame(view), [view]);
   const prompt = demoPrompt(demo);
-  const guidance = mode === 'demo' ? demoGuidance(demo) : null;
+  const guidance = mode === 'demo' ? playback.target : null;
   const showCueIndex = cueIndexAt(assets.performance, showElapsed);
   const showCue = assets.performance.cues[showCueIndex];
   const showAct = assets.performance.acts[showCue.act];
   const showCaption = performanceCaptionAt(assets.performance, showCueIndex);
   const showActive = mode === 'show' && showStatus !== 'idle';
+  const selected = view.sessions.find((item) => item.selected);
+  const selectSession = (slot: number) => {
+    if (mode === 'sandbox') sandboxDispatch({type: 'select', slot, expectedRevision: sandbox.revision});
+  };
+  const pressAction = (action: ControlAction) => {
+    if (mode === 'sandbox') sandboxDispatch({type: 'action', action, expectedRevision: sandbox.revision});
+  };
   const fullFrame = mode === 'show' && showStatus === 'playing'
     ? performanceFrame(assets.performance, showCueIndex)
     : null;
 
+  const playedCues = useRef({demo: 0, sandbox: 0});
+  const cue = mode === 'sandbox' ? sandbox : demo;
   useEffect(() => {
-    if (mode !== 'show') audio.playCue(demo.audioCue, demo.audioSlot, demo.audioSequence);
-  }, [audio, demo.audioCue, demo.audioSequence, demo.audioSlot, mode]);
+    if (mode === 'show' || cue.audioSequence === playedCues.current[mode]) return;
+    playedCues.current[mode] = cue.audioSequence;
+    if (cue.audioCue) audio.playLiveCue(cue.audioCue, cue.audioSlot);
+  }, [audio, cue.audioCue, cue.audioSequence, cue.audioSlot, mode]);
 
   useEffect(() => {
     if (showStatus === 'idle') return;
@@ -129,7 +165,8 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
   }, [assets.performance.duration_ms, audio, showStatus]);
 
   useEffect(() => {
-    if (mode !== 'show' || showStatus === 'idle') return;
+    if (mode !== 'show') return;
+    if (showStatus === 'idle') { audio.syncExperience(null); return; }
     if (showStatus === 'starting') {
       const remaining = Math.max(0, showStartRef.current - performance.now());
       audio.syncExperience(publicShowState(assets, 'starting', 0, remaining));
@@ -139,15 +176,10 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
   }, [assets, audio, mode, showElapsed, showStatus]);
 
   const chooseMode = (next: 'demo' | 'sandbox' | 'show') => {
-    if (next !== 'show') {
-      setShowStatus('idle');
-      audio.stop();
-      dispatch({type: 'mode', mode: next});
-    }
+    if (next === mode || next === 'show' && surface === 'stream-deck') return;
+    setShowStatus('idle');
+    audio.stop();
     setMode(next);
-  };
-  const resetSimulation = () => {
-    dispatch({type: 'mode', mode: mode === 'sandbox' ? 'sandbox' : 'demo'});
   };
   const startShow = () => {
     const delay = 500;
@@ -161,44 +193,87 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
   };
 
   return (
-    <PageFrame modeLabel="PUBLIC SIMULATION" connected>
+    <PageFrame modeLabel="SIMULATION ONLY" connected={false} headerActions={
+      <button className="textButton themeToggle" onClick={() => setLightTheme(!lightTheme)}
+        title={lightTheme ? 'Switch to dark theme' : 'Switch to light theme'}
+        aria-label={lightTheme ? 'Switch to dark theme' : 'Switch to light theme'}>
+        {lightTheme ? <Moon aria-hidden="true" /> : <Sun aria-hidden="true" />}
+      </button>
+    }>
       {audio.error ? <p className="desktopError" role="alert">{audio.error}</p> : null}
-      <div className="workspace">
+      <nav className="publicToolbar" aria-label="Playground">
+        <div className="modeSwitch" aria-label="Public experience">
+          {(['demo', 'sandbox', 'show'] as const).map((item) => <button key={item}
+            className={mode === item ? 'active' : ''} aria-pressed={mode === item}
+            disabled={item === 'show' && surface === 'stream-deck'}
+            title={item === 'show' && surface === 'stream-deck' ? 'Show requires Virtual Pad or Launchpad Pro' : undefined}
+            onClick={() => chooseMode(item)}>{item === 'demo' ? 'Demo' : item === 'sandbox' ? 'Sandbox' : 'Show'}</button>)}
+        </div>
+        <div className="surfacePicker"><label htmlFor="playground-surface">Surface</label>
+          <select id="playground-surface" value={surface} onChange={event => setSurface(event.target.value as PlaygroundSurface)}>
+            <option value="virtual">Virtual Pad</option>
+            <option value="launchpad">Launchpad Pro Mk1</option>
+            <option value="stream-deck" disabled={mode === 'show'}>Stream Deck{mode === 'show' ? ' (Demo / Sandbox)' : ''}</option>
+          </select>
+        </div>
+        <span>Browser simulation. No hardware or Codex connection required.</span>
+      </nav>
+      <div className={`workspace publicWorkspace ${mode === 'sandbox' ? 'sandboxWorkspace' : mode === 'demo' ? 'demoWorkspace' : ''}`}>
+        {mode === 'sandbox' ? <PlaygroundControls state={sandbox} dispatch={sandboxDispatch} /> : null}
         <section className={`surfaceWorkspace ${mode === 'show' ? 'performanceWorkspace' : ''}`}>
-          <VirtualSurface
-            frame={frame}
-            performanceFrame={fullFrame}
-            performanceAct={showAct}
-            performanceCaption={showCaption}
-            guidedAction={guidance?.action}
-            guidedSlot={guidance?.slot}
-            view={view}
-            onAction={(action) => dispatch({type: 'action', action})}
-            onSelect={(slot) => dispatch({type: 'select', slot})}
-          />
+          <div className="publicPadGroup">
+            {mode === 'sandbox' ? <PlaygroundAgentPicker state={sandbox} dispatch={sandboxDispatch} grid={surface !== 'stream-deck'} /> : null}
+            {mode === 'demo' ? <DemoPlaybackControls playback={{...playback,
+              toggle: () => {audio.stop(); playback.toggle();},
+              replay: () => {audio.stop(); playback.replay();},
+            }} onTry={() => chooseMode('sandbox')} /> : null}
+            {mode === 'demo' ? <section className="narrative demoNarrative" aria-live="polite">
+              <span>{prompt.eyebrow}</span>
+              <h1>{prompt.title}</h1>
+              <p>{prompt.detail}</p>
+            </section> : null}
+            {surface === 'stream-deck' ? <StreamDeckSurface
+              view={view}
+              disabled={mode !== 'sandbox'}
+              guidedAction={guidance?.action}
+              guidedSlot={guidance?.slot}
+              demonstration={mode === 'demo' ? playback.pointer : null}
+              onAction={pressAction}
+              onSelect={selectSession}
+            /> : <VirtualSurface
+              variant={surface}
+              frame={frame}
+              performanceFrame={fullFrame}
+              performanceAct={showAct}
+              performanceCaption={showCaption}
+              guidedAction={guidance?.action}
+              guidedSlot={guidance?.slot}
+              demonstration={mode === 'demo' ? playback.pointer : null}
+              view={view}
+              disabled={mode !== 'sandbox'}
+              onAction={pressAction}
+              onSelect={selectSession}
+            />}
+            {mode !== 'show' ? <div className="selectedReadout" role="status">
+              <span className="sessionAccent" aria-hidden="true" style={{background: selected ? tokenColor(`accent:${selected.accent}:selected`) : undefined}} />
+              <strong>{selected ? `${surface === 'stream-deck' ? 'Session' : 'Scene'} ${selected.slot + 1} / ${selected.label}` : 'No session selected'}</strong>
+              <span>{selected ? stateLabels[selected.state] : 'No action target'}</span>
+            </div> : null}
+            {surface !== 'virtual' ? <p className="hardwarePreviewNote">
+              <a href={`https://mrueda.github.io/pad-lattice/docs/usage/${surface === 'launchpad' ? 'launchpad' : 'stream-deck'}`} target="_top">
+                {surface === 'launchpad' ? 'Launchpad Pro Mk1' : 'Stream Deck (experimental)'}</a>
+              {' '}&middot; Illustrated layout
+            </p> : null}
+          </div>
         </section>
         <aside className="contextPane">
-          <div className="modeSwitch" aria-label="Public experience">
-            <button
-              className={mode === 'demo' ? 'active' : ''}
-              onClick={() => chooseMode('demo')}>Demo</button>
-            <button
-              className={mode === 'sandbox' ? 'active' : ''}
-              onClick={() => chooseMode('sandbox')}>Sandbox</button>
-            <button
-              className={mode === 'show' ? 'active' : ''}
-              onClick={() => chooseMode('show')}>Show</button>
-          </div>
-
-          <section className={`narrative ${mode === 'show' ? 'showNarrative' : ''}`} aria-live="polite">
-            <span>{mode === 'show' ? (showActive ? showAct : 'Visual show') : prompt.eyebrow}</span>
-            <h1>{mode === 'show' ? (showActive ? showCaption : assets.performance.title) : prompt.title}</h1>
-            <p>{mode === 'show'
-              ? (showActive ? assets.performance.title : 'An audiovisual story across the complete pad surface.')
-              : prompt.detail}</p>
-          </section>
-
-          {guidance ? <GuidedAction guidance={guidance} /> : null}
+          {mode === 'show' ? (
+            <section className={`narrative ${mode === 'show' ? 'showNarrative' : ''}`} aria-live="polite">
+              <span>{showActive ? showAct : 'Visual show'}</span>
+              <h1>{showActive ? showCaption : assets.performance.title}</h1>
+              <p>{showActive ? assets.performance.title : 'An audiovisual story across the complete pad surface.'}</p>
+            </section>
+          ) : null}
 
           {mode === 'show' ? (
             <ExperienceControls
@@ -212,24 +287,21 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
           ) : (
             <SessionList
               sessions={view.sessions}
-              sandbox={demo.mode === 'sandbox'}
+              title="SIMULATED AGENTS"
+              sandbox={mode === 'sandbox'}
+              readOnly={mode === 'demo'}
               guidedSlot={guidance?.slot}
-              onSelect={(slot) => dispatch({type: 'select', slot})}
-              onState={(slot, state) => dispatch({type: 'set_state', slot, state})}
+              onSelect={selectSession}
+              onState={(slot, state) => sandboxDispatch({type: 'set_state', slot, state})}
             />
           )}
+          {mode === 'sandbox' ? <PlaygroundHistory state={sandbox} /> : null}
 
           <div className="paneActions">
             {mode !== 'show' ? (
               <button className="textButton" onClick={audio.toggle} aria-pressed={audio.enabled}>
                 {audio.enabled ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
                 Sound {audio.enabled ? 'on' : 'off'}
-              </button>
-            ) : null}
-            {mode !== 'show' ? (
-              <button className="textButton" onClick={resetSimulation}>
-                <RefreshCw aria-hidden="true" />
-                {mode === 'sandbox' ? 'Reset sandbox' : 'Restart demo'}
               </button>
             ) : null}
             <a
@@ -248,6 +320,7 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
 function LiveApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pairingOpen, setPairingOpen] = useState(false);
+  const [pairingKind, setPairingKind] = useState<'browser' | 'stream_deck'>('browser');
   const themePreference = useDesktopPreference('light_theme');
   useEffect(() => {
     if (!isDesktop()) return;
@@ -333,9 +406,9 @@ function LiveApp() {
       {desktop ? <div className="desktopSetup" hidden={padFocused}><DesktopControls audioEnabled={audio.enabled} onAudio={audio.toggle}
         settingsOpen={settingsOpen} onSettingsChange={setSettingsOpen}
         lightTheme={themePreference.value} onThemeChange={themePreference.save}
-        onPairDevice={() => {setPairingOpen(true); live.createPairing();}} /></div> : null}
-      {desktop ? <PairingDialog open={pairingOpen} onClose={() => setPairingOpen(false)}>
-        {live.pairing ? <PairingPanel pairing={live.pairing} onCreate={live.createPairing} onRevoke={live.revokeRemote} />
+        onPairDevice={kind => {setPairingKind(kind); setPairingOpen(true); live.createPairing();}} /></div> : null}
+      {desktop ? <PairingDialog open={pairingOpen} onClose={() => setPairingOpen(false)} title={pairingKind === 'stream_deck' ? 'Pair Stream Deck' : 'Pair a device'}>
+        {live.pairing ? <PairingPanel kind={pairingKind} pairing={live.pairing} onCreate={live.createPairing} onRevoke={live.revokeRemote} />
           : <p role="status">{live.error || 'Creating pairing code...'}</p>}
       </PairingDialog> : null}
       {audio.error ? <p className="desktopError" role="alert">{audio.error}</p> : null}
@@ -363,7 +436,7 @@ function LiveApp() {
         style={settingsOpen ? {display: 'none'} : undefined}>
         <section className={`surfaceWorkspace ${performance ? 'performanceWorkspace' : ''}`}>
           <VirtualSurface
-            disabled={live.connection !== 'connected'}
+            disabled={!live.controlsReady}
             frame={frame}
             performanceFrame={performance}
             performanceAct={live.experience?.detail}
@@ -386,7 +459,7 @@ function LiveApp() {
               detail={live.experience?.detail}
               onStartDemo={() => live.startExperience('demo')}
               onStartShow={() => live.startExperience('show')}
-              onStop={live.stopExperience}
+              onStop={() => { audio.stop(); live.stopExperience(); }}
             />
           ) : null}
 
@@ -412,9 +485,11 @@ function LiveApp() {
 
           {live.connection === 'connected' ? (
             <>
-              {desktop && !exploring ? <SelectedConversation view={view} onAction={live.sendAction} /> : null}
-              <SessionList sessions={view.sessions} onSelect={live.selectSession}
-                title={desktop ? (exploring && live.experience?.kind === 'demo' ? 'Demo sessions' : 'Codex conversations') : undefined} />
+              {desktop && !exploring ? <SelectedConversation view={view} disabled={!live.controlsReady} onAction={live.sendAction} /> : null}
+              {desktop && !exploring && agentsConnected ? <AttentionView disabled={!live.controlsReady} revision={view.control_revision}>
+                <SessionList sessions={view.sessions} readOnly={!live.controlsReady} onSelect={live.selectSession} title="Codex conversations" />
+              </AttentionView> : <SessionList sessions={view.sessions} readOnly={!live.controlsReady} onSelect={live.selectSession}
+                title={desktop ? (live.experience?.kind === 'demo' ? 'Demo sessions' : 'Codex conversations') : undefined} />}
             </>
           ) : null}
 
@@ -431,7 +506,7 @@ function LiveApp() {
   );
 }
 
-function SelectedConversation({view, onAction}: {view: SurfaceView; onAction: (action: ControlAction) => void}) {
+function SelectedConversation({view, disabled, onAction}: {view: SurfaceView; disabled: boolean; onAction: (action: ControlAction) => void}) {
   const selected = view.sessions.find(session => session.selected);
   const actions = [
     {action: 'approve' as const, label: 'Approve', Icon: Check},
@@ -440,15 +515,15 @@ function SelectedConversation({view, onAction}: {view: SurfaceView; onAction: (a
     {action: 'retry' as const, label: 'Retry', Icon: RefreshCw},
   ];
   return <section className="selectedConversation" aria-label="Selected Codex conversation" aria-live="polite">
-    <div className="sectionTitle"><span>SELECTED CONVERSATION</span></div>
+    <div className="sectionTitle"><span>SELECTED CONVERSATION</span>{selected ? <span>Scene {selected.slot + 1}</span> : null}</div>
     {selected ? <>
       <h2><i aria-hidden="true" style={{backgroundColor: tokenColor(`accent:${selected.accent}:selected`)}} />{selected.label}</h2>
       <p>{stateLabels[selected.state]}</p>
       <div className="conversationActions">
         {actions.filter(({action}) => view.available_actions.includes(action)).map(({action, label, Icon}) =>
-          <button key={action} className={`textButton action-${action}`} onClick={() => onAction(action)}><Icon />{label}</button>)}
+          <button key={action} disabled={disabled} className={`textButton action-${action}`} onClick={() => onAction(action)}><Icon />{label}</button>)}
       </div>
-    </> : <h2>No Codex conversation connected</h2>}
+    </> : <h2>{view.sessions.length ? 'No conversation selected' : 'No Codex conversation connected'}</h2>}
   </section>;
 }
 
@@ -587,10 +662,20 @@ function PageFrame({
   );
 }
 
+const attentionIcons = {waiting_for_approval: ShieldAlert, waiting_for_reply: CircleHelp, error: CircleAlert};
+
+function SessionState({state}: {state: AgentState}) {
+  const Icon = state in attentionIcons ? attentionIcons[state as keyof typeof attentionIcons] : null;
+  return <span className={`stateLabel ${Icon ? `attentionState ${state}` : ''}`}>
+    {Icon ? <Icon aria-hidden="true" /> : null}{stateLabels[state]}
+  </span>;
+}
+
 function SessionList({
   sessions,
   title = 'AGENT SCENES',
   sandbox = false,
+  readOnly = false,
   guidedSlot = null,
   onSelect,
   onState,
@@ -598,6 +683,7 @@ function SessionList({
   sessions: SessionView[];
   title?: string;
   sandbox?: boolean;
+  readOnly?: boolean;
   guidedSlot?: number | null;
   onSelect: (slot: number) => void;
   onState?: (slot: number, state: AgentState) => void;
@@ -610,21 +696,21 @@ function SessionList({
           <div
             className={`sessionRow ${session.selected ? 'selected' : ''} ${guidedSlot === session.slot ? 'guidedRow' : ''}`}
             key={session.slot}>
-            <button onClick={() => onSelect(session.slot)} title={`Select ${session.label}`}>
+            <button disabled={readOnly} onClick={() => onSelect(session.slot)} title={`Select ${session.label}`} aria-pressed={session.selected}>
               <i aria-hidden="true" style={{backgroundColor: tokenColor(`accent:${session.accent}:selected`)}} />
               <span><strong>{session.label}</strong><small>Scene {session.slot + 1}</small></span>
             </button>
             {sandbox && onState ? (
               <select
                 aria-label={`${session.label} state`}
-                onChange={(event) => validDemoState(event.target.value) && onState(session.slot, event.target.value)}
+                onChange={(event) => isAgentState(event.target.value) && onState(session.slot, event.target.value)}
                 value={session.state}>
                 {Object.entries(stateLabels).map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
             ) : (
-              <span className="stateLabel">{stateLabels[session.state]}</span>
+              <SessionState state={session.state} />
             )}
           </div>
         ))}
@@ -635,16 +721,6 @@ function SessionList({
           </div>
         ) : null}
       </div>
-    </section>
-  );
-}
-
-function GuidedAction({guidance}: {guidance: DemoGuidance}) {
-  return (
-    <section className="guideCallout" aria-label="Next action">
-      <span>NEXT ACTION</span>
-      <strong>{guidance.title}</strong>
-      <small>{guidance.detail}</small>
     </section>
   );
 }
@@ -666,28 +742,48 @@ function PairingPanel({
   pairing,
   onCreate,
   onRevoke,
+  kind = 'browser',
 }: {
   pairing: ReturnType<typeof useLiveSurface>['pairing'];
   onCreate: () => void;
   onRevoke: () => void;
+  kind?: 'browser' | 'stream_deck';
 }) {
+  const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
+  const streamDeck = kind === 'stream_deck';
+  const origin = pairing ? new URL(pairing.pairing_url).origin : '';
+  useEffect(() => {setCopied(false); setCopyError(false);}, [origin]);
+  async function copyAddress() {
+    try {await navigator.clipboard.writeText(origin); setCopied(true); setCopyError(false);}
+    catch {setCopyError(true);}
+  }
   const pairingHost = pairing ? new URL(pairing.pairing_url).hostname : '';
   const localOnly = pairingHost === 'localhost' || pairingHost.startsWith('127.') || pairingHost === '[::1]';
   return (
     <section className="pairingPanel">
       <div className="sectionTitle"><span>PAIR A SURFACE</span><ShieldCheck aria-hidden="true" /></div>
       {pairing ? (
-        <div className={`pairingContent${localOnly ? ' localPairing' : ''}`}>
-          {!localOnly ? <img src={pairing.qr_data_uri} alt="Scan to pair automatically without entering a PIN" /> : null}
+        <div className={`pairingContent${localOnly || streamDeck ? ' localPairing' : ''}`}>
+          {!localOnly && !streamDeck ? <img src={pairing.qr_data_uri} alt="Scan to pair automatically without entering a PIN" /> : null}
           <div>
-            {!localOnly ? <><h3>Scan to pair</h3><small className="pairingScanNote">No PIN needed</small></> : null}
-            <span>{localOnly ? 'LOCAL PAIRING PIN' : 'OR PAIR MANUALLY'}</span>
-            {!localOnly ? <small>{new URL(pairing.pairing_url).origin}</small> : null}
+            {streamDeck ? <>
+              <label className="pairingAddress">Pad-Lattice address
+                <div><input readOnly aria-label="Pad-Lattice address" value={origin} onFocus={e => e.target.select()} />
+                  <button className="textButton" aria-label={copied ? 'Address copied' : 'Copy address'} title={copied ? 'Address copied' : 'Copy address'} onClick={() => void copyAddress()}>
+                    {copied ? <Check /> : <Copy />}</button></div>
+              </label>
+              {copyError ? <small role="status">Clipboard unavailable. Select and copy the address above.</small> : null}
+            </> : null}
+            {!localOnly && !streamDeck ? <><h3>Scan to pair</h3><small className="pairingScanNote">No PIN needed</small></> : null}
+            <span>{streamDeck ? 'ONE-USE PIN' : localOnly ? 'LOCAL PAIRING PIN' : 'OR PAIR MANUALLY'}</span>
+            {!localOnly && !streamDeck ? <small>{origin}</small> : null}
             <strong>{pairing.pin}</strong>
-            {!localOnly ? <small>Manual pairing PIN</small> : null}
+            {!localOnly && !streamDeck ? <small>Manual pairing PIN</small> : null}
             <small>One use · expires in five minutes</small>
-            {localOnly ? <small>{new URL(pairing.pairing_url).origin}</small> : null}
-            {localOnly ? <small>This computer only. Phone pairing is off.</small> : null}
+            {localOnly && !streamDeck ? <small>{origin}</small> : null}
+            {localOnly ? <small>{streamDeck ? 'Same computer only. No network setup needed.' : 'This computer only. Phone pairing is off.'}</small> : null}
+            {streamDeck ? <small>Elgato software: select a Pad-Lattice key, enter address and PIN, then Pair. All keys share the connection.</small> : null}
           </div>
         </div>
       ) : (

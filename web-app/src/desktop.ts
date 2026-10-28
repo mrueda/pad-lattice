@@ -13,7 +13,12 @@ export async function choosePath(): Promise<string | null> {
   return invoke<string | null>('choose_path');
 }
 
-export async function openProjectLink(destination: 'docs' | 'github'): Promise<void> {
+export async function saveProfileReport(runId: string): Promise<boolean> {
+  const {invoke} = await import('@tauri-apps/api/core');
+  return invoke<boolean>('save_profile_report', {runId});
+}
+
+export async function openProjectLink(destination: 'docs' | 'github' | 'downloads' | 'stream-deck' | 'connect-browsers'): Promise<void> {
   const {invoke} = await import('@tauri-apps/api/core');
   await invoke('open_project_link', {destination});
 }

@@ -1,8 +1,24 @@
 # Device Testing
 
 Community hardware testing is the practical path to supporting more MIDI
-controllers. The guided command verifies both LED output and pad input, then
-writes a small JSON report suitable for a GitHub issue.
+controllers. Desktop and the CLI check both LED output and pad input, then
+write a small JSON report suitable for a GitHub issue.
+
+## Desktop Test
+
+1. Disconnect Codex conversations and stop Demo/Show. Disconnect MIDI in
+   **Settings > Devices > MIDI controllers**; leave the USB cable attached.
+2. Select the exact **Profile**, **Input**, and **Output**, and confirm those ports
+   belong to your controller. Start **Hardware test**.
+3. Compare each light pattern with the preview and choose **Matches** or
+   **Does not match**. Then press the requested action buttons and Scene selectors
+   on the controller. Each input check has 15 seconds; **Skip check** records a failure.
+4. **Export report** saves JSON through the native file picker. Nothing is uploaded.
+
+The [Launchpad diagram](../usage/launchpad.md) locates the controls.
+All 21 checks must pass. Test presses never reach agents. Leaving the MIDI settings,
+losing the controller, connecting a conversation, or starting playback cancels the
+test and releases its ports. An unresponsive interface is cancelled after 30 seconds.
 
 ## What the Report Contains
 
@@ -86,7 +102,7 @@ can be corrected without guessing.
 - Disconnect photosensitive lighting or other MIDI-controlled equipment from
   the selected output port.
 - Confirm the exact input and output when several devices are attached.
-- Stop the daemon or demo before running the test; only one process can own a
+- For the CLI test, stop Desktop, the daemon, or demo first; only one process can own a
   MIDI port.
-- Press `Ctrl-C` to abort. The command still attempts profile shutdown and port
-  closure before returning control to the terminal.
+- Use **Stop test** in Desktop or `Ctrl-C` in the terminal. The test attempts
+  profile shutdown and port closure before exiting.

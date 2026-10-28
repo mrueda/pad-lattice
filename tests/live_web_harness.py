@@ -78,6 +78,7 @@ def main() -> int:
                             ),
                         ),
                         available_actions=frozenset() if args.empty else actions,
+                        control_revision=0,
                     )
                 )
             stopped.wait(0.03)

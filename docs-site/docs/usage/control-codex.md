@@ -1,6 +1,7 @@
 # How It Works
 
 import {StateLegend} from '@site/src/components/SurfaceVisuals';
+import DesktopWalkthrough from '@site/src/components/DesktopWalkthrough';
 
 Pad-Lattice shows what Codex is doing and gives you physical or browser
 controls for actions that Codex makes available.
@@ -9,10 +10,14 @@ controls for actions that Codex makes available.
 sessions; glyphs show their states. Prompts, ordinary replies, and the actual
 permission request stay in Codex, where you review them before deciding.
 
+<DesktopWalkthrough />
+
 Choose a virtual or physical surface in the [Device Catalog](./device-catalog.md).
 All connected surfaces share the same selected conversation. On the desktop,
 browser, and Launchpad, the main grid shows the selected session and the right
-rail selects sessions. On Stream Deck, each session has its own glyph key.
+rail selects sessions. On [Stream Deck](./stream-deck.md), **one Session key
+represents one Codex conversation**: its name and color identify it, and its
+glyph shows its state. Press it to select; separate action keys name their target.
 
 ## Connect Your Chats
 
@@ -38,9 +43,11 @@ for the complete color and symbol reference.
 
 When Codex requests permission:
 
-1. Find the Agent Scene with the amber status.
-2. Select that Scene if another agent is selected.
-3. Tap or press the lit green **Approve** or red **Reject** control.
+1. Find the session with an amber approval status: a right-side Agent Scene on
+   a grid surface, or a Stream Deck Session key showing an amber **!**.
+2. Select that session. On Stream Deck, its key gains a white border.
+3. Read its request in Codex, then press the lit green **Approve** or red
+   **Reject** control. Stream Deck action keys also show the selected session's name.
 4. Confirm that the amber request clears.
 
 The decision applies only to that selected, current request. It does not create
@@ -62,6 +69,6 @@ Open the Codex chats you need and connect each from the desktop list.
 Names and working folders come from Codex. Match each chat to its Scene number
 and color; new connections use an available slot without renumbering existing ones.
 
-Up to eight sessions remain visible as Agent Scenes. Selecting a Scene on a
-Launchpad, phone, or laptop updates every other connected surface. A background
-agent may change its status, but it never steals selection.
+Up to eight session slots are available. Selecting an Agent Scene or a Stream
+Deck Session key updates every connected surface. A background agent may change
+its status, but it never steals selection.

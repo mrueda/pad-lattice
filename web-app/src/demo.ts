@@ -1,45 +1,29 @@
 import {
-  accentNames,
-  agentStates,
   type AgentState,
   type ControlAction,
   type DemoManifest,
   type DemoStage,
-  type SessionView,
   type SurfaceView,
 } from './types';
 
 export interface DemoState {
   manifest: DemoManifest;
-  mode: 'demo' | 'sandbox';
   stage: string;
-  sessions: SessionView[];
   frame: number;
   audioCue: string | null;
   audioSlot: number | null;
   audioSequence: number;
 }
 
-export interface DemoGuidance {
-  title: string;
-  detail: string;
-  slot: number | null;
-  action: ControlAction | null;
-}
-
 export type DemoEvent =
   | {type: 'select'; slot: number}
   | {type: 'action'; action: ControlAction}
-  | {type: 'mode'; mode: 'demo' | 'sandbox'}
-  | {type: 'set_state'; slot: number; state: AgentState}
   | {type: 'reset'};
 
 export function createDemoState(manifest: DemoManifest): DemoState {
   return {
     manifest,
-    mode: 'demo',
     stage: manifest.initial_stage,
-    sessions: [],
     frame: 0,
     audioCue: stage(manifest, manifest.initial_stage).enter_audio,
     audioSlot: null,
@@ -48,20 +32,7 @@ export function createDemoState(manifest: DemoManifest): DemoState {
 }
 
 export function demoReducer(state: DemoState, event: DemoEvent): DemoState {
-  if (event.type === 'reset') return createDemoState(state.manifest);
-  if (event.type === 'mode') {
-    return event.mode === 'sandbox'
-      ? {
-          ...state,
-          mode: 'sandbox',
-          sessions: sandboxSessions(),
-          frame: state.frame + 1,
-          audioCue: null,
-          audioSlot: null,
-        }
-      : createDemoState(state.manifest);
-  }
-  if (state.mode === 'sandbox') return sandboxReducer(state, event);
+  if (event.type === 'reset') return {...createDemoState(state.manifest), audioSequence: state.audioSequence + 1};
   if (event.type !== 'select' && event.type !== 'action') return state;
   const active = currentStage(state);
   const transition = active.transitions.find((candidate) => (
@@ -83,89 +54,24 @@ export function demoReducer(state: DemoState, event: DemoEvent): DemoState {
 }
 
 export function demoSurfaceView(state: DemoState): SurfaceView {
-  const sessions = state.mode === 'sandbox' ? state.sessions : currentStage(state).view.sessions;
+  const sessions = currentStage(state).view.sessions;
   const selected = sessions.find((item) => item.selected) ?? null;
   return {
     selected_state: selected?.state ?? null,
     frame: state.frame,
     sessions,
-    available_actions: state.mode === 'sandbox'
-      ? sandboxActions(selected?.state)
-      : currentStage(state).view.available_actions,
+    available_actions: currentStage(state).view.available_actions,
     overflow_count: 0,
     activity_motion: false,
   };
 }
 
 export function demoPrompt(state: DemoState): {eyebrow: string; title: string; detail: string} {
-  if (state.mode === 'sandbox') {
-    return {
-      eyebrow: 'Protocol sandbox',
-      title: 'Every scene is yours.',
-      detail: 'Change an agent state, select its Scene, and use any action that lights up.',
-    };
-  }
   return currentStage(state).prompt;
 }
 
-export function demoGuidance(state: DemoState): DemoGuidance | null {
-  if (state.mode === 'sandbox') return null;
-  const active = currentStage(state);
-  const target = active.guide_target;
-  if (target === null) return null;
-  if (target.event === 'select' && target.slot !== null) {
-    const session = active.view.sessions.find((item) => item.slot === target.slot);
-    if (!session) return null;
-    return {
-      title: `Select ${session.label} - Scene ${target.slot + 1}`,
-      detail: `Press Scene ${target.slot + 1} on the right, or choose ${session.label} in Agent Scenes.`,
-      slot: target.slot,
-      action: null,
-    };
-  }
-  if (target.event === 'action' && target.action !== null) {
-    const selected = active.view.sessions.find((item) => item.selected);
-    const action = guideActionLabels[target.action];
-    return {
-      title: `${action} ${selected?.label ?? 'selected agent'}`,
-      detail: guideActionDetails[target.action],
-      slot: null,
-      action: target.action,
-    };
-  }
-  return null;
-}
-
-function sandboxReducer(state: DemoState, event: DemoEvent): DemoState {
-  if (event.type === 'set_state') {
-    return updateSession(state, event.slot, {state: event.state});
-  }
-  if (event.type === 'select') {
-    if (!state.sessions.some((item) => item.slot === event.slot)) return state;
-    return {
-      ...state,
-      frame: state.frame + 1,
-      sessions: state.sessions.map((item) => ({...item, selected: item.slot === event.slot})),
-      audioCue: 'session_selected',
-      audioSlot: event.slot,
-      audioSequence: state.audioSequence + 1,
-    };
-  }
-  if (event.type !== 'action') return state;
-  const selected = state.sessions.find((item) => item.selected);
-  if (!selected || !sandboxActions(selected.state).includes(event.action)) return state;
-  const nextState = ({
-    approve: 'success',
-    reject: 'cancelled',
-    stop: 'cancelled',
-    retry: 'success',
-  } satisfies Record<ControlAction, AgentState>)[event.action];
-  return {
-    ...updateSession(state, selected.slot, {state: nextState}),
-    audioCue: event.action,
-    audioSlot: selected.slot,
-    audioSequence: state.audioSequence + 1,
-  };
+export function demoTarget(state: DemoState): DemoStage['guide_target'] {
+  return currentStage(state).guide_target;
 }
 
 function currentStage(state: DemoState): DemoStage {
@@ -178,48 +84,6 @@ function stage(manifest: DemoManifest, id: string): DemoStage {
   return selected;
 }
 
-function sandboxActions(state: AgentState | undefined): ControlAction[] {
-  if (state === 'waiting_for_approval') return ['approve', 'reject'];
-  if (state === 'running') return ['stop'];
-  if (state === 'error' || state === 'cancelled') return ['retry'];
-  return [];
-}
-
-function updateSession(
-  state: DemoState,
-  slot: number,
-  patch: Partial<SessionView>,
-): DemoState {
-  return {
-    ...state,
-    frame: state.frame + 1,
-    sessions: state.sessions.map((item) => item.slot === slot ? {...item, ...patch} : item),
-  };
-}
-
-function session(
-  slot: number,
-  state: AgentState,
-  selected: boolean,
-  label: string,
-): SessionView {
-  return {slot, state, selected, label, accent: accentNames[slot]};
-}
-
-function sandboxSessions(): SessionView[] {
-  const states: AgentState[] = [
-    'waiting_for_reply',
-    'running',
-    'user_typing',
-    'waiting_for_approval',
-    'success',
-    'error',
-    'cancelled',
-    'waiting_for_reply',
-  ];
-  return states.map((state, slot) => session(slot, state, slot === 0, `Agent ${slot + 1}`));
-}
-
 export const stateLabels: Record<AgentState, string> = {
   running: 'Running',
   waiting_for_reply: 'Waiting for reply',
@@ -229,21 +93,3 @@ export const stateLabels: Record<AgentState, string> = {
   error: 'Error',
   cancelled: 'Cancelled',
 };
-
-const guideActionLabels: Record<ControlAction, string> = {
-  approve: 'Approve',
-  reject: 'Reject',
-  retry: 'Retry',
-  stop: 'Stop',
-};
-
-const guideActionDetails: Record<ControlAction, string> = {
-  approve: 'Press the green Approve check on the top rail.',
-  reject: 'Press the red Reject cross on the top rail.',
-  retry: 'Press the blue Retry arrow on the top rail.',
-  stop: 'Press the red Stop square on the top rail.',
-};
-
-export function validDemoState(value: string): value is AgentState {
-  return agentStates.includes(value as AgentState);
-}

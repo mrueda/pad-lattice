@@ -7,8 +7,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/*.test.ts",
-    "pack": "streamdeck pack io.github.mrueda.pad-lattice.sdPlugin"
+    "test": "tsx --test tests/*.test.*",
+    "pack": "node scripts/pack.mjs"
   },
   "dependencies": {
     "@elgato/streamdeck": "3.0.3",
@@ -21,6 +21,7 @@
     "@resvg/resvg-js": "2.6.2",
     "@types/node": "^24.0.0",
     "@types/ws": "^8.18.1",
+    "@zip.js/zip.js": "2.24.0",
     "esbuild": "^0.25.0",
     "tsx": "^4.20.0",
     "typescript": "~5.9.3"

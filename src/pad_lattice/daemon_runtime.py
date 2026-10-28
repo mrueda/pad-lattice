@@ -269,6 +269,7 @@ class PadLatticeDaemon:
         raise AssertionError(f"unhandled protocol command: {command!r}")
 
     def status_snapshot(self) -> dict[str, Any]:
+        now = time.monotonic()
         sessions = sorted(
             self.control.sessions,
             key=lambda session: (
@@ -289,6 +290,7 @@ class PadLatticeDaemon:
                 else None
             ),
             overflow_count=self.control.overflow_count,
+            control_revision=self.control.revision,
             activity_motion=self.activity_motion,
             audio_feedback=self.audio_feedback is not None,
             experience=self.experience.kind,
@@ -298,6 +300,7 @@ class PadLatticeDaemon:
                 {
                     **_identity_payload(session.identity),
                     "state": session.state.value,
+                    "state_age_seconds": max(0.0, now - session.state_since),
                     "slot": session.slot,
                     "accent": session.accent,
                     "selected": session.identity == self.control.selected_agent,
@@ -434,7 +437,7 @@ class PadLatticeDaemon:
         # replacement approval requests may have changed the target meanwhile.
         if isinstance(event, (ActionPressed, SessionSelected)) and event.expected_revision is not None:
             self._rendered_revision = -1
-            if event.expected_revision != self.control.revision or self.experience.active:
+            if event.expected_revision != self.control.revision:
                 return
         if isinstance(event, ExperienceRequested):
             if self.control.sessions:
@@ -447,6 +450,7 @@ class PadLatticeDaemon:
                 event.kind,
                 now=now,
                 host_show_audio=self.audio_feedback is not None,
+                control_revision=self.control.revision,
             )
             return
         if isinstance(event, ExperienceStopRequested):

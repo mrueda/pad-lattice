@@ -10,7 +10,8 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   let connected = false;
   let networkUrl: string | null = null;
   let failNetwork = true;
-  let devices = [{id: 'phone-123456', name: 'Android / Chrome', connected: true}];
+  let testedCodexVersion = '0.164.0';
+  let devices = [{id: 'phone-123456', name: 'Android / Chrome', kind: 'browser', connected: true}];
   const surfaceMessage = () => {
     const view: SurfaceView = {selected_state: connected ? 'running' : null, frame: 0,
       sessions: connected ? [{slot: 0, state: 'running', selected: true, accent: 'cyan', label: 'Review implementation'}] : [],
@@ -19,6 +20,7 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   };
   await page.exposeFunction('__discoveryTestRequest', async (method: string, params: Record<string, unknown>) => {
     methods.push(method);
+    if (method === 'attention') return {revision: 0, sessions: [], overflow_count: 0};
     if (method === 'list_conversations') return unavailable
       ? {available: false, conversations: [], error: 'Codex disconnected'}
       : {available: true, conversations: empty ? [] : [
@@ -62,7 +64,7 @@ test('desktop discovers then explicitly connects and disconnects without launchi
     }
     if (method === 'status') return {version: '0.1.0', settings: preferences, inputs: [], outputs: [], profiles: [], midi: null,
       lan_host: networkUrl ? '10.211.55.4' : '127.0.0.1', network_url: networkUrl};
-    if (method === 'inspect_codex') return {available: true, version: '0.164.0', tested: true};
+    if (method === 'inspect_codex') return {available: true, version: '0.165.0', tested: testedCodexVersion === '0.165.0', tested_version: testedCodexVersion};
     if (method === 'snapshot') return {messages: [{protocol: 1, type: 'authenticated', admin: true, lan_enabled: false}, surfaceMessage()]};
     throw Error(`Unexpected desktop method: ${method}`);
   });
@@ -100,9 +102,13 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   await expect(list.getByText('Not connected', {exact: true})).toHaveCount(2);
   expect(methods).not.toContain('attach_conversation');
   await expect(page.getByText('No chats connected', {exact: true})).toBeVisible();
+  await expect(page.getByText('Codex CLI 0.165.0', {exact: true})).toBeVisible();
+  await expect(page.getByText(/Integration tested with/)).not.toBeVisible();
   await expect(page.getByRole('button', {name: '1 device connected', exact: true})).toHaveClass(/online/);
   await expect(page.getByRole('button', {name: 'MIDI: not connected', exact: true})).not.toHaveClass(/online/);
   await page.getByRole('button', {name: '1 device connected', exact: true}).click();
+  const backToPad = page.getByRole('button', {name: 'Back to pad', exact: true});
+  await expect(backToPad).toBeFocused();
   await expect(page.getByRole('region', {name: 'Paired devices'}).getByText('Android / Chrome')).toBeVisible();
   await page.getByRole('tab', {name: 'About', exact: true}).click();
   await expect(page.getByRole('region', {name: 'About Pad-Lattice'})).toContainText('Version 0.1.0');
@@ -119,8 +125,12 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   await expect(page.locator('.desktopAbout pre').last()).toContainText('PAD-LATTICE THIRD-PARTY NOTICES');
   await page.getByText('Dependency notices', {exact: true}).click();
   await page.screenshot({path: test.info().outputPath('about.png'), fullPage: true});
+  await page.locator('.desktopSetup').evaluate(element => { element.scrollTop = element.scrollHeight; });
+  await expect(backToPad).toBeInViewport();
+  await page.screenshot({path: test.info().outputPath('settings-scrolled.png'), fullPage: true});
   await page.getByRole('tab', {name: 'Appearance & sound', exact: true}).click();
-  await page.getByRole('button', {name: 'Close settings', exact: true}).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', {name: '1 device connected', exact: true})).toBeFocused();
   await expect(page.getByRole('button', {name: 'Pair device', exact: true})).toBeEnabled();
   await expect(page.locator('.contextPane .pairingPanel')).toHaveCount(0);
   const explore = page.getByRole('button', {name: 'Demo & Show', exact: true});
@@ -170,20 +180,26 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   expect(await page.evaluate(() => document.dispatchEvent(new MouseEvent('contextmenu', {bubbles: true, cancelable: true})))).toBe(false);
   await expect(page.getByRole('button', {name: 'Reload interface', exact: true})).toHaveCount(0);
   await page.getByRole('button', {name: 'Settings', exact: true}).click();
+  await page.getByRole('tab', {name: 'Codex', exact: true}).click();
+  await expect(page.getByText('Installed Codex 0.165.0. Integration tested with 0.164.0.')).toBeVisible();
+  await page.getByRole('tab', {name: 'Appearance & sound', exact: true}).click();
+  await expect(page.getByText(/Integration tested with/)).not.toBeVisible();
   await page.getByRole('button', {name: 'Light', exact: true}).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect.poll(() => preferences.light_theme).toBe(true);
   await page.screenshot({path: test.info().outputPath('settings-light.png'), fullPage: true});
   await expect(page.locator('.virtualSurface')).not.toBeVisible();
   await expect(list).not.toBeVisible();
-  await page.getByRole('button', {name: 'Close settings', exact: true}).click();
+  await backToPad.click();
+  await expect(page.getByRole('button', {name: 'Settings', exact: true})).toBeFocused();
   await expect(page.locator('.virtualSurface')).toBeVisible();
   await expect(page.locator('.virtualSurface')).toHaveCSS('background-color', 'rgb(23, 29, 34)');
   await page.screenshot({path: test.info().outputPath('workspace-light.png'), fullPage: true});
   await expect(list.getByText('Connected, Scene 1', {exact: true})).toBeVisible();
   await page.getByRole('button', {name: 'Settings', exact: true}).click();
   const sound = page.getByRole('checkbox', {name: 'Enable sound'});
-  await page.getByRole('tab', {name: 'Phones & tablets'}).click();
+  await page.getByRole('tab', {name: 'Devices', exact: true}).click();
+  await page.getByRole('tab', {name: 'Browsers', exact: true}).click();
   await page.getByRole('checkbox', {name: 'VM shared network'}).check();
   const enableNetwork = page.getByRole('button', {name: 'Enable network access', exact: true});
   await enableNetwork.click();
@@ -211,7 +227,7 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   await expect(page.getByRole('button', {name: '0 devices connected', exact: true})).not.toHaveClass(/online/);
   await page.getByRole('button', {name: 'Revoke access for Android / Chrome'}).click();
   await page.getByRole('button', {name: 'Revoke access', exact: true}).click();
-  await expect(page.getByText('No paired devices', {exact: true})).toBeVisible();
+  await expect(page.getByText('No browsers paired', {exact: true})).toBeVisible();
   await page.screenshot({path: test.info().outputPath('phone-settings.png'), fullPage: true});
   await page.getByRole('tab', {name: 'Appearance & sound'}).click();
   const soundBounds = await sound.boundingBox();
@@ -234,6 +250,7 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   await page.waitForTimeout(200);
   expect(await page.evaluate(() => (window as unknown as {__audioPlays: number}).__audioPlays)).toBe(1);
   await expect(page.getByRole('button', {name: 'Save', exact: true})).toHaveCount(0);
+  testedCodexVersion = '0.165.0';
   await page.getByRole('button', {name: 'Reload interface', exact: true}).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect(list.getByText('Connected, Scene 1', {exact: true})).toBeVisible();
@@ -256,6 +273,7 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   expect(methods.filter(method => method === 'attach_conversation')).toHaveLength(1);
   await page.getByRole('button', {name: 'Codex settings', exact: true}).click();
   await expect(page.getByRole('tab', {name: 'Codex', exact: true})).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByText(/Integration tested with/)).not.toBeVisible();
   await page.getByRole('tab', {name: 'Appearance & sound', exact: true}).click();
   await page.getByRole('button', {name: 'Dark', exact: true}).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');

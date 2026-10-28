@@ -29,6 +29,7 @@ export interface LiveSurfaceState {
   admin: boolean;
   lanEnabled: boolean;
   paused: boolean;
+  controlsReady: boolean;
   reconnect: () => void;
   disconnect: () => void;
   error: string | null;
@@ -64,10 +65,15 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
     setPaused(false);
     if (credential !== undefined) credentialRef.current = credential;
     if (socketRef.current) {
-      socketRef.current.onclose = null;
+      socketRef.current.onopen = socketRef.current.onmessage = socketRef.current.onerror = socketRef.current.onclose = null;
       socketRef.current.close();
     }
     setConnection('connecting');
+    setSurface(null);
+    setExperience(null);
+    setPerformanceFrame(null);
+    setPairing(null);
+    setAdmin(false);
     setError(null);
     authenticatedRef.current = false;
     authenticationRejectedRef.current = false;
@@ -75,6 +81,7 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
     const socket = surfaceSocket(`${scheme}://${window.location.host}/ws`);
     socketRef.current = socket;
     socket.onopen = () => {
+      if (socketRef.current !== socket || stoppedRef.current) return;
       const credentialValue = credentialRef.current;
       socket.send(JSON.stringify({
         protocol: 1,
@@ -83,6 +90,7 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
       }));
     };
     socket.onmessage = (event) => {
+      if (socketRef.current !== socket || stoppedRef.current) return;
       let message: ServerMessage;
       try {
         message = JSON.parse(String(event.data)) as ServerMessage;
@@ -152,6 +160,7 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
     };
     socket.onerror = () => setError('Cannot reach the local Pad-Lattice bridge.');
     socket.onclose = () => {
+      if (socketRef.current !== socket) return;
       socketRef.current = null;
       setSurface(null);
       setExperience(null);
@@ -188,7 +197,12 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
     connect();
     return () => {
       stoppedRef.current = true;
-      socketRef.current?.close();
+      const socket = socketRef.current;
+      socketRef.current = null;
+      if (socket) {
+        socket.onopen = socket.onmessage = socket.onerror = socket.onclose = null;
+        socket.close();
+      }
     };
   }, [connect]);
 
@@ -197,6 +211,18 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
       socketRef.current.send(JSON.stringify({protocol: 1, ...message}));
     }
   }, []);
+
+  const revision = surface?.view.control_revision;
+  const hasRevision = typeof revision === 'number' && Number.isSafeInteger(revision) && revision >= 0;
+  // Standalone Demo has no agent control plane. Daemon-hosted Demo carries
+  // its starting revision so a late Demo click cannot reach a newly joined agent.
+  const standaloneDemo = revision == null && experience?.kind === 'demo'
+    && experience.status === 'playing';
+  const controlsReady = connection === 'connected' && surface !== null && (hasRevision || standaloneDemo);
+  const sendControl = (message: object) => {
+    if (!controlsReady || !authenticatedRef.current || stoppedRef.current) return;
+    send({...message, ...(hasRevision ? {expected_revision: revision} : {})});
+  };
 
   return {
     connection,
@@ -207,6 +233,7 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
     admin,
     lanEnabled,
     paused,
+    controlsReady,
     reconnect: () => connect(),
     disconnect: () => {
       stoppedRef.current = true;
@@ -228,8 +255,8 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
     },
     error,
     pair: (pin) => connect(pin.replace(/\s/g, '')),
-    selectSession: (slot) => send({type: 'select_session', slot}),
-    sendAction: (action) => send({type: 'action', action}),
+    selectSession: (slot) => sendControl({type: 'select_session', slot}),
+    sendAction: (action) => sendControl({type: 'action', action}),
     createPairing: () => {setPairing(null); setError(null); send({type: 'create_pairing'});},
     revokeRemote: () => send({type: 'revoke_remote'}),
     startExperience: (kind) => send({type: 'start_experience', kind}),

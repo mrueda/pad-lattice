@@ -1,6 +1,6 @@
 import streamDeck, {action, SingletonAction, type DidReceiveSettingsEvent,
   type KeyDownEvent, type WillAppearEvent, type WillDisappearEvent} from '@elgato/streamdeck';
-import {Bridge, type ActionName} from './bridge';
+import {Bridge, bridgeOrigin, type ActionName} from './bridge';
 import {actionImage, dataImage, sessionImage} from './render';
 
 type Settings = {slot?: number};
@@ -10,8 +10,13 @@ const actions: PadAction[] = [];
 let address = 'http://127.0.0.1:8765';
 const bridge = new Bridge(() => {
   for (const handler of actions) handler.refresh();
-  void streamDeck.ui.sendToPropertyInspector({status: bridge.status, address}).catch(() => {});
+  void sendStatus().catch(() => {});
 });
+
+function sendStatus(error = bridge.pairingError) {
+  return streamDeck.ui.sendToPropertyInspector({status: bridge.status, address,
+    connection: bridge.connection, error});
+}
 
 class PadAction extends SingletonAction<Settings> {
   private entries = new Map<string, Entry>();
@@ -80,14 +85,16 @@ streamDeck.ui.onSendToPlugin(async ev => {
   if (!message || typeof message !== 'object' || Array.isArray(message)) return;
   try {
     if (message.type === 'pair' && typeof message.address === 'string' && typeof message.pin === 'string') {
-      bridge.pair(message.address, message.pin);
-      address = message.address;
+      const next = bridgeOrigin(message.address);
+      if (!/^\d{6}$/.test(message.pin)) throw Error('Invalid PIN');
+      address = next;
+      bridge.pair(address, message.pin);
       // Only the address persists. PINs and reconnect tokens never enter profiles or settings.
       await streamDeck.settings.setGlobalSettings({address});
     } else if (message.type === 'disconnect') bridge.disconnect();
-    await streamDeck.ui.sendToPropertyInspector({status: bridge.status, address});
+    await sendStatus();
   } catch {
-    await streamDeck.ui.sendToPropertyInspector({status: 'Check the address and six-digit PIN.', address});
+    await sendStatus('Use the local/private HTTP address and six-digit PIN shown in Pad-Lattice.');
   }
 });
 

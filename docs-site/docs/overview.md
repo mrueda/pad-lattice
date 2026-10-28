@@ -13,8 +13,9 @@ read its request in Codex, and use the available Approve, Reject, or Stop contro
 :::info One visual language
 
 The symbols mean the same thing on screen and on hardware. A Launchpad draws
-the selected session's glyph across its grid; Stream Deck shows a glyph inside
-each session key.
+the selected session's glyph across its grid. On [Stream Deck](./usage/stream-deck.md),
+**one Session key represents one Codex conversation**. Press it to select;
+separate action keys control only that selected conversation.
 
 :::
 
@@ -42,8 +43,12 @@ plugin. The virtual pad provides the same controls without buying hardware.
 
 ## Try It First
 
-The [public playground](pathname:///play/) includes a guided Demo, Sandbox, and
+The [public playground](pathname:///play/) includes an autoplay Demo, Sandbox, and
 audiovisual Show. **It is a simulation**, not a connection to your local agents.
+Choose Virtual Pad, Launchpad Pro, or Stream Deck in **Surface** to compare
+layouts without resetting the Demo or Sandbox. Show uses the grid layouts only.
+Sandbox includes parallel work, requests answered elsewhere, and disconnected
+sessions. Each scenario can be restarted; its activity list records what changed.
 
 For terminal-based use, see [CLI Setup](./usage/cli.md). For implementation
 details, start with [Architecture](./technical-details/architecture.md).

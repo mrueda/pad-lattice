@@ -120,6 +120,11 @@ oldest matching request receives the action. A one-shot subscription is
 disabled before delivery, so one tap or press cannot resolve two requests.
 Actions are never broadcast.
 
+Desktop and browser inputs carry the displayed `control_revision`. The daemon
+checks it when dispatching, so a delayed click cannot answer a different request
+or follow a changed selection. Daemon-hosted Demo frames carry a revision too;
+their inputs cannot reach an agent that connects during playback.
+
 `CompositeSurface` does not duplicate input. It concatenates child event
 queues, and each semantic event is processed once by the same method. Browser
 clients never send an agent identity with an action; the control plane adds the
@@ -293,24 +298,53 @@ overflow while retaining its identity and preferred accent.
 | Goal | Start here | Primary tests |
 | --- | --- | --- |
 | Add an agent backend | New adapter using `PadLatticeClient` and `events.py` | Adapter tests, `test_client.py` |
-| Change session selection or routing | `control_plane.py` | `test_control_plane.py` |
+| Change session selection or routing | `control_plane.py` | `test_control_plane.py`, `test_runtime_integration.py` |
 | Change a glyph or semantic color role | `visual_protocol.py` | `test_visual_protocol.py`, `test_midi_grid.py` |
 | Change browser commands or rendering | `web_protocol.py`, `web_surface.py`, `web-app/src/` | `test_web_protocol.py`, `test_web_surface.py`, Vitest, Playwright |
 | Change multi-surface fan-out | `devices/composite.py` | `test_composite_surface.py`, `test_daemon.py` |
 | Change an earcon or Show score | `audio.py`, then run the experience compiler | `test_audio.py`, compiler check, browser tests |
 | Change the visual story | `show.py`, then run the experience compiler | `test_show.py`, manifest tests, real-device performance test |
 | Change the guided Demo | `web-app/public/experiences/demo-v1.json` | manifest tests, `test_demo_agent.py`, Vitest, Playwright |
+| Change browser Demo timing or pointer | `web-app/src/demoPlayback.ts`, `DemoPointer.tsx` | playback unit tests and public Demo Playwright tests |
+| Change playground device layouts | `VirtualSurface.tsx`, `StreamDeckSurface.tsx`, shared `surfaceModel.ts` | `playground-devices.spec.ts`, public Demo Playwright tests |
 | Change experience playback | `experience_runtime.py` | `test_demo_agent.py`, `test_show.py`, `test_daemon.py` |
 | Add a palette-grid controller | A profile JSON file | `test_device_profiles.py`, guided profile test |
 | Add a new hardware driver | `devices/base.py`, `devices/factory.py`, new trusted driver | Driver tests and profile validation tests |
 | Change Codex lifecycle mapping | `codex_hooks.py` or `codex_exec.py` | Matching Codex adapter tests |
-| Change socket or surface adaptation | `daemon_runtime.py` | `test_daemon.py` |
+| Change socket or surface adaptation | `daemon_runtime.py` | `test_daemon.py`, `test_runtime_integration.py` |
 | Change launcher cleanup or reconnect behavior | `codex_session.py`, lease handling in `control_plane.py` | `test_codex_session.py`, `test_control_plane.py` |
 
 Adding a new state or action is intentionally cross-cutting. It changes agent
 semantics, daemon gating, the visual protocol, every conforming profile, tests,
 and documentation. Treat it as a protocol change rather than a local enum
 addition.
+
+## Minimal Agent Adapter
+
+The runnable [adapter example](https://github.com/mrueda/pad-lattice/blob/main/examples/agent_adapter.py)
+registers one session, requests approval, performs a small calculation only if
+approved, and reports the result. It uses the real daemon but needs no Codex,
+model API, or MIDI hardware.
+
+From a checkout with Pad-Lattice installed, start a browser surface:
+
+```bash
+pad-lattice web
+```
+
+In another terminal:
+
+```bash
+.venv/bin/python examples/agent_adapter.py --label "Example adapter"
+```
+
+Use `--socket PATH` for another daemon. The example shows a connection-bound
+session lease, a unique request ID, a one-shot action subscription, and cleanup.
+Rejection or an approval timeout never runs the work. Replace `sample_work()`
+with your backend's operation, not its authorization checks.
+
+`tests/test_adapter_example.py` runs approval, rejection, timeout, and failure
+paths against the real daemon.
 
 ## Validate a Change
 
@@ -320,6 +354,18 @@ Run the hardware-independent suite:
 .venv/bin/python -m unittest discover -s tests
 .venv/bin/python -m pad_lattice.experience_compiler --check
 ```
+
+For routing changes, run the focused integration suite:
+
+```bash
+.venv/bin/python -m unittest discover -s tests -p test_runtime_integration.py -v
+```
+
+It starts the **real daemon**, test agents on a temporary Unix socket, and
+authenticated browser connections on a random loopback port. It checks targeted
+and duplicate actions, withdrawn and replaced requests, competing surfaces,
+lease and browser reconnects, and Demo preemption. No MIDI hardware or Codex
+session is needed. The normal Python CI suite includes these tests.
 
 Validate the documentation:
 
@@ -339,9 +385,10 @@ npm run build
 npm run test:e2e
 ```
 
-Unit tests use fake surfaces and MIDI ports. A profile intended for real
-hardware also needs the guided physical test described in [Device
-Testing](./device-testing.md).
+The Playwright `live_web_harness.py` supplies controlled UI fixtures; it does
+not test daemon routing. The integration suite above covers that boundary.
+Neither replaces the [physical device test](./device-testing.md) needed to
+verify a controller's actual buttons and LEDs.
 
 ## Recommended Reading Order
 

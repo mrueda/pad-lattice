@@ -179,7 +179,8 @@
         "selected": {"type": "boolean"},
         "leased": {"type": "boolean"},
         "label": {"type": "string"},
-        "metadata": {"$ref": "#/$defs/metadata"}
+        "metadata": {"$ref": "#/$defs/metadata"},
+        "state_age_seconds": {"type": "number", "minimum": 0}
       }
     },
     "surfaceStatus": {
@@ -213,6 +214,7 @@
           "oneOf": [{"$ref": "#/$defs/agent"}, {"type": "null"}]
         },
         "overflow_count": {"type": "integer", "minimum": 0},
+        "control_revision": {"type": "integer", "minimum": 0},
         "activity_motion": {"type": "boolean"},
         "audio_feedback": {"type": "boolean"},
         "experience": {"type": ["string", "null"], "enum": ["demo", "show", null]},

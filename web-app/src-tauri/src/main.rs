@@ -17,6 +17,11 @@ fn project_link(destination: &str) -> Result<&'static str, String> {
     match destination {
         "docs" => Ok("https://mrueda.github.io/pad-lattice/"),
         "github" => Ok("https://github.com/mrueda/pad-lattice"),
+        "stream-deck" => Ok("https://mrueda.github.io/pad-lattice/docs/usage/stream-deck"),
+        "downloads" => Ok("https://github.com/mrueda/pad-lattice/releases"),
+        "connect-browsers" => {
+            Ok("https://mrueda.github.io/pad-lattice/docs/usage/connect-browsers")
+        }
         _ => Err("Unknown project link".into()),
     }
 }
@@ -73,6 +78,30 @@ async fn choose_path(app: tauri::AppHandle) -> Result<Option<String>, String> {
     .map_err(|e| e.to_string())?
 }
 
+#[tauri::command]
+async fn save_profile_report(app: tauri::AppHandle, run_id: String) -> Result<bool, String> {
+    let engine = app.state::<Desktop>().engine.clone()?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let report =
+            engine.request("profile_test_report", serde_json::json!({"run_id": run_id}))?;
+        let selected = app
+            .dialog()
+            .file()
+            .set_file_name("pad-lattice-hardware-test.json")
+            .add_filter("JSON report", &["json"])
+            .blocking_save_file();
+        let Some(selected) = selected else {
+            return Ok(false);
+        };
+        let path = selected.into_path().map_err(|e| e.to_string())?;
+        let data = serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?;
+        std::fs::write(path, format!("{data}\n")).map_err(|e| e.to_string())?;
+        Ok(true)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 fn main() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
@@ -87,6 +116,7 @@ fn main() {
     let builder = builder.invoke_handler(tauri::generate_handler![
         desktop_request,
         choose_path,
+        save_profile_report,
         open_project_link
     ]);
     #[cfg(feature = "native-smoke")]
@@ -94,6 +124,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             desktop_request,
             choose_path,
+            save_profile_report,
             open_project_link,
             smoke::smoke_checkpoint,
             smoke::smoke_finish
@@ -141,6 +172,16 @@ mod tests {
     fn project_links_are_fixed_not_arbitrary_urls() {
         assert!(super::project_link("docs").unwrap().starts_with("https://"));
         assert!(super::project_link("github").is_ok());
+        assert_eq!(
+            super::project_link("downloads").unwrap(),
+            "https://github.com/mrueda/pad-lattice/releases"
+        );
+        assert!(super::project_link("stream-deck")
+            .unwrap()
+            .ends_with("/stream-deck"));
+        assert!(super::project_link("connect-browsers")
+            .unwrap()
+            .ends_with("/connect-browsers"));
         assert!(super::project_link("file:///etc/passwd").is_err());
         assert!(super::project_link("https://example.com").is_err());
     }

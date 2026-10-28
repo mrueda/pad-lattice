@@ -12,6 +12,7 @@ import sys
 import threading
 import time
 import tempfile
+import uuid
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -26,6 +27,8 @@ from pad_lattice.devices.base import (ActionPressed, SessionSelected, Experience
 from pad_lattice.devices.factory import resolve_device, open_resolved_surface
 from pad_lattice.devices.midi_grid import list_midi_ports
 from pad_lattice.devices.profiles import ProfileCatalog
+from pad_lattice.devices.test_run import ProfileTestRun
+from pad_lattice.devices.testing import profile_test_report
 from pad_lattice.protocol import default_socket_path
 from pad_lattice.web_protocol import (parse_web_command, ActionCommand, SelectSessionCommand,
     CreatePairingCommand, RevokeRemoteCommand, StartExperienceCommand, StopExperienceCommand,
@@ -54,6 +57,9 @@ class DesktopSurface(WebSurface):
         self.workers = ThreadPoolExecutor(max_workers=1, thread_name_prefix="desktop-tools")
         self.tool_pending = False
         self.discovery_future = None
+        self.attention_future = None
+        self.inspection_future = None
+        self.inspection_path = None
         self.attachments = AttachmentManager(socket_path)
         self.midi = None
         self.midi_error = None
@@ -61,6 +67,10 @@ class DesktopSurface(WebSurface):
         self.last_experience = ExperienceView("idle")
         self.last_frame = None
         self.last_port_check = 0.0
+        self.profile_test = None
+        self.profile_test_id = None
+        self.profile_test_seen = 0.0
+        self.profile_test_ports_checked = 0.0
 
     def initialize(self):
         super().initialize()
@@ -74,6 +84,8 @@ class DesktopSurface(WebSurface):
         self.notify(web_message("audio_cue", cue=cue, slot=slot))
 
     def render(self, view):
+        if view.sessions or view.overflow_count:
+            self.cancel_profile_test("live_session")
         self.last_view = view
         super().render(view)
         self.notify(surface_message(view, self.selector_capacity))
@@ -86,6 +98,8 @@ class DesktopSurface(WebSurface):
         self._midi_call("render_show_frame", frame)
 
     def set_experience(self, view):
+        if view.status in {"starting", "playing"}:
+            self.cancel_profile_test("playback")
         self.last_experience = view
         if view.status in {"idle", "blocked"}:
             self.last_frame = None
@@ -145,6 +159,8 @@ class DesktopSurface(WebSurface):
                 "port": self.server.actual_port, "socket": self.socket_path}
 
     def command(self, method: str, params: dict):
+        if method.startswith("profile_test_"):
+            return self.profile_test_command(method, params)
         if method == "snapshot":
             return self.snapshot()
         if method == "status":
@@ -188,6 +204,8 @@ class DesktopSurface(WebSurface):
             self.disconnect_midi()
             return self.status()
         if method == "connect_midi":
+            if self.profile_test and self.profile_test.active:
+                raise ValueError("Stop the hardware test before connecting MIDI.")
             self.disconnect_midi()
             device = resolve_device(profile_id=params.get("profile") or None,
                                     input_name=params.get("input") or None, output_name=params.get("output") or None)
@@ -225,6 +243,71 @@ class DesktopSurface(WebSurface):
             return {}
         raise ValueError("Unknown desktop operation")
 
+    def cancel_profile_test(self, reason):
+        if self.profile_test:
+            self.profile_test.cancel(reason)
+
+    def profile_test_command(self, method, params):
+        if method == "profile_test_start":
+            if self.profile_test and self.profile_test.active:
+                raise ValueError("A hardware test is already running.")
+            if self.midi:
+                raise ValueError("Disconnect the MIDI controller in Settings before testing it.")
+            if self.tool_pending or self.last_view.sessions or self.last_view.overflow_count:
+                raise ValueError("Disconnect Codex conversations before testing hardware.")
+            if self.last_experience.status in {"starting", "playing"}:
+                raise ValueError("Stop Demo or Show before testing hardware.")
+            if params.get("confirmed") is not True:
+                raise ValueError("Confirm that the selected ports belong to your controller.")
+            if not all(isinstance(params.get(key), str) and params[key] for key in ("profile", "input", "output")):
+                raise ValueError("Choose an explicit device profile, input and output.")
+            inputs, outputs = list_midi_ports()
+            if params["input"] not in inputs or params["output"] not in outputs:
+                raise ValueError("The selected MIDI ports are no longer available. Refresh devices.")
+            device = resolve_device(profile_id=params["profile"], input_name=params["input"],
+                                    output_name=params["output"])
+            self.profile_test = ProfileTestRun(open_resolved_surface(device, startup_greeting=None,
+                                                                     scroll_delay=0.1), device.profile)
+            self.profile_test_id = uuid.uuid4().hex
+            self.profile_test_seen = time.monotonic()
+            self.profile_test_ports_checked = self.profile_test_seen
+            try:
+                self.profile_test.start()
+            except (OSError, RuntimeError, ValueError):
+                # The report identifies the failing stage, not device-driver exception details.
+                self.profile_test.cancel("output")
+        elif method == "profile_test_status":
+            self.profile_test_seen = time.monotonic()
+        else:
+            if self.profile_test is None or params.get("run_id") != self.profile_test_id:
+                raise ValueError("This hardware test is no longer current.")
+            if method == "profile_test_answer":
+                self.profile_test.answer(params.get("step_id"), params.get("passed"))
+            elif method == "profile_test_cancel":
+                self.profile_test.cancel()
+            elif method == "profile_test_report":
+                if self.profile_test.active:
+                    raise ValueError("Finish or stop the test before exporting its report.")
+                return profile_test_report(self.profile_test)
+            else:
+                raise ValueError("Unknown hardware test operation")
+        if self.profile_test is None:
+            return None
+        return {"run_id": self.profile_test_id, **self.profile_test.snapshot(),
+                "surface": surface_message(self.profile_test.step.view, self.profile_test.surface.selector_capacity)
+                if self.profile_test.step else None}
+
+    def attention(self):
+        snapshot = PadLatticeClient(self.socket_path).status()
+        priority = {"waiting_for_approval": 0, "error": 1, "waiting_for_reply": 2}
+        sessions = [{"slot": item["slot"], "label": item["label"][:80], "accent": item["accent"],
+                     "state": item["state"], "selected": item["selected"],
+                     "age_seconds": item["state_age_seconds"]}
+                    for item in snapshot["sessions"] if item["state"] in priority and item["slot"] is not None]
+        sessions.sort(key=lambda item: (priority[item["state"]], -item["age_seconds"], item["slot"]))
+        return {"revision": snapshot["control_revision"], "sessions": sessions,
+                "overflow_count": snapshot["overflow_count"]}
+
     def respond(self, request, work):
         try:
             self.emit({"id": request["id"], "result": work()})
@@ -259,31 +342,62 @@ class DesktopSurface(WebSurface):
             except queue.Empty:
                 break
             method, params = request["method"], request["params"]
+            if method == "attention":
+                if self.attention_future is None or self.attention_future.done():
+                    self.attention_future = self.workers.submit(self.attention)
+                self.attention_future.add_done_callback(
+                    lambda future, request=request: self.respond(request, future.result))
+                continue
             if method == "list_conversations":
                 if self.discovery_future is None or self.discovery_future.done():
                     self.discovery_future = self.workers.submit(self.discover)
                 self.discovery_future.add_done_callback(
                     lambda future, request=request: self.respond(request, future.result))
                 continue
-            if method in {"inspect_codex", "attach_conversation", "detach_conversation"}:
+            if method == "inspect_codex":
+                configured = (self.settings() | params).get("codex", "")
+                # Startup, diagnostics, and interface reloads can request the same check.
+                if (self.inspection_future is None or self.inspection_future.done()
+                        or self.inspection_path != configured):
+                    self.inspection_path = configured
+                    self.inspection_future = self.workers.submit(inspect_codex, configured)
+                self.inspection_future.add_done_callback(
+                    lambda future, request=request: self.respond(request, future.result))
+                continue
+            if method in {"attach_conversation", "detach_conversation"}:
+                if method == "attach_conversation" and self.profile_test and self.profile_test.active:
+                    self.emit({"id": request["id"], "error": "Stop the hardware test before connecting a conversation."})
+                    continue
                 if self.tool_pending:
                     self.emit({"id": request["id"], "error": "A session operation is already running."})
                     continue
                 self.tool_pending = True
                 def task(request=request, method=method, params=params):
                     try:
-                        options = self.settings() | params
                         if method == "attach_conversation":
                             self.respond(request, lambda: self.attachments.attach(params.get("thread_id")))
-                        elif method == "detach_conversation":
-                            self.respond(request, lambda: self.attachments.detach(params.get("thread_id")))
                         else:
-                            self.respond(request, lambda: inspect_codex(options.get("codex", "")))
+                            self.respond(request, lambda: self.attachments.detach(params.get("thread_id")))
                     finally:
                         self.tool_pending = False
                 self.workers.submit(task)
             else:
                 self.respond(request, lambda: self.command(method, params))
+        if self.profile_test and self.profile_test.active:
+            if time.monotonic() - self.profile_test_seen > 30:
+                self.profile_test.cancel("interface_timeout")
+            else:
+                try:
+                    now = time.monotonic()
+                    if now - self.profile_test_ports_checked > 2:
+                        self.profile_test_ports_checked = now
+                        inputs, outputs = list_midi_ports()
+                        hardware = self.profile_test.surface
+                        if hardware.input_name not in inputs or hardware.output_name not in outputs:
+                            self.profile_test.cancel("disconnected")
+                    self.profile_test.tick()
+                except (OSError, RuntimeError, ValueError):
+                    self.profile_test.cancel("output")
         if self.midi and time.monotonic() - self.last_port_check > 2:
             self.last_port_check = time.monotonic()
             try:
@@ -298,6 +412,7 @@ class DesktopSurface(WebSurface):
 
     def close(self):
         self.stop.set()
+        self.cancel_profile_test("shutdown")
         self.attachments.close()
         self.disconnect_midi()
         self.workers.shutdown(wait=False, cancel_futures=True)

@@ -9,7 +9,7 @@ another agent: every surface shares the same selected conversation.
 
 1. Keep Pad-Lattice open on the computer running Codex. Connect both computers
    or devices to the same **trusted private network**.
-2. Open **Settings > Phones & tablets > Network setup**, enter the computer's private IPv4
+2. Open **Settings > Devices > Browsers > Network setup**, enter the computer's private IPv4
    address, and choose **Enable network access**.
 3. The pairing window opens automatically with a fresh QR code and PIN.
 4. Scan the QR code, or open the displayed address and enter its PIN.
@@ -29,7 +29,7 @@ encrypted. Do not expose the service to the internet or use public Wi-Fi.
 ## Add More Browsers
 
 Up to **eight remote browser connections** can use the service at once.
-Open **Settings > Phones & tablets > Pair device** for each additional device;
+Open **Settings > Devices > Browsers > Pair device** for each additional device;
 a used PIN cannot pair another one.
 
 Selection is shared. Check the selected chat before acting, especially if
@@ -52,7 +52,7 @@ On the phone or tablet, the unplug icon in the toolbar is **Disconnect this devi
 It disconnects only that browser tab and keeps its pairing. Select **Reconnect**
 to return; other devices and Codex sessions keep running. Reloading the page also reconnects.
 
-**Settings > Phones & tablets** lists paired devices and their connection status.
+**Settings > Devices > Browsers** lists paired devices and their connection status.
 **Disconnect** closes a device's connection; it can reconnect without pairing again.
 **Revoke access** removes its permission and requires a new PIN or QR code.
 Device labels come from the browser and are not verified identities.
@@ -68,7 +68,7 @@ connection to the VM. Both addresses are needed.
 
 1. Find the VM address with `hostname -I` inside Linux.
 2. On the Mac, find its LAN address in **System Settings > Wi-Fi > Details > TCP/IP**.
-3. In Pad-Lattice, open **Settings > Phones & tablets > Network setup** and enable
+3. In Pad-Lattice, open **Settings > Devices > Browsers > Network setup** and enable
    **VM shared network**. Enter the VM address, the Mac address, and port **8001**.
 4. In Parallels Shared Network settings, add a **TCP** forwarding rule:
    Mac port **8001** to the VM address, destination port **8001**.

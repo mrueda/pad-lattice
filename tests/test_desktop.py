@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import Future
 import io
 import json
 import os
@@ -134,6 +135,18 @@ class DesktopServiceTest(TestCase):
         self.assertEqual(snapshot["messages"][2]["kind"], "demo")
         self.engine.request("surface", {"protocol": 1, "type": "stop_experience"})
 
+    def test_attention_reads_daemon_without_blocking_and_rejects_reused_slots(self):
+        client = PadLatticeClient(self.engine.socket)
+        first, second = AgentIdentity("codex", "attention-first"), AgentIdentity("codex", "attention-second")
+        client.report_state(AgentState.WAITING_FOR_APPROVAL, agent=first, reply=True)
+        snapshot = self.engine.request("attention")
+        self.assertEqual(snapshot["sessions"][0]["state"], "waiting_for_approval")
+        self.assertGreaterEqual(snapshot["sessions"][0]["age_seconds"], 0)
+        client.report_state(AgentState.RUNNING, agent=second, reply=True)
+        self.engine.request("surface", {"protocol": 1, "type": "select_session", "slot": 1,
+                                        "expected_revision": snapshot["revision"]})
+        self.assertEqual(client.status()["selected"]["session_id"], first.session_id)
+
 
 class DesktopToolsTest(TestCase):
     def test_theme_preference_persists_and_rejects_non_boolean_values(self):
@@ -237,6 +250,70 @@ class DesktopToolsTest(TestCase):
         # Parse every hook definition through Codex itself, without starting a model turn.
         parsed = subprocess.run(command + ["features", "list"], capture_output=True, text=True, timeout=10)
         self.assertEqual(parsed.returncode, 0, parsed.stderr)
+
+
+class DesktopOperationsTest(TestCase):
+    def setUp(self):
+        self.temp = TemporaryDirectory(prefix="pl-operations-")
+        self.addCleanup(self.temp.cleanup)
+        self.messages = []
+        self.surface = DesktopSurface(Path(self.temp.name), "/tmp/pad.sock",
+                                      self.messages.append, threading.Event())
+        self.addCleanup(self.surface.close)
+
+    def request(self, request_id, method, **params):
+        self.surface.requests.put_nowait({"id": request_id, "method": method, "params": params})
+        self.surface.poll_events()
+
+    def test_overlapping_inspections_share_result_and_allow_a_session_operation(self):
+        inspection = Future()
+        with patch.object(self.surface.workers, "submit", return_value=inspection) as submit, \
+                patch.object(self.surface.attachments, "attach", return_value={"slot": 0}) as attach:
+            self.request(1, "inspect_codex")
+            self.request(2, "inspect_codex")
+            submit.assert_called_once_with(inspect_codex, "")
+            self.assertFalse(self.surface.tool_pending)
+            self.request(3, "attach_conversation", thread_id="example")
+            self.assertEqual(submit.call_count, 2)
+            self.assertEqual(self.messages, [])
+            inspection.set_result({"available": True, "version": "0.165.0"})
+            submit.call_args.args[0]()
+            attach.assert_called_once_with("example")
+            self.assertEqual([message["id"] for message in self.messages], [1, 2, 3])
+            self.assertTrue(all("result" in message for message in self.messages))
+            self.assertEqual(self.messages[0]["result"], self.messages[1]["result"])
+            self.assertFalse(self.surface.tool_pending)
+
+    def test_changed_executable_is_checked_separately_and_failed_checks_can_retry(self):
+        first, second, retry = Future(), Future(), Future()
+        with patch.object(self.surface.workers, "submit", side_effect=[first, second, retry]) as submit:
+            self.request(1, "inspect_codex", codex="/first/codex")
+            self.request(2, "inspect_codex", codex="/second/codex")
+            self.assertEqual([call.args for call in submit.call_args_list],
+                             [(inspect_codex, "/first/codex"), (inspect_codex, "/second/codex")])
+            first.set_result({"version": "0.164.0"})
+            second.set_exception(OSError("Unavailable executable"))
+            self.assertEqual(self.messages[1], {"id": 2, "error": "Unavailable executable"})
+            self.request(3, "inspect_codex", codex="/second/codex")
+            retry.set_result({"version": "0.165.0"})
+            self.assertEqual(self.messages[2], {"id": 3, "result": {"version": "0.165.0"}})
+
+    def test_inspection_does_not_bypass_duplicate_session_operation_guard(self):
+        inspection = Future()
+        with patch.object(self.surface.workers, "submit", return_value=inspection) as submit, \
+                patch.object(self.surface.attachments, "attach", return_value={"slot": 0}) as attach, \
+                patch.object(self.surface.attachments, "detach") as detach:
+            self.request(1, "attach_conversation", thread_id="example")
+            task = submit.call_args.args[0]
+            self.request(2, "inspect_codex")
+            self.request(3, "detach_conversation", thread_id="example")
+            self.assertEqual(submit.call_count, 2)
+            self.assertEqual(self.messages, [{"id": 3, "error": "A session operation is already running."}])
+            task()
+            inspection.set_result({"version": "0.165.0"})
+            attach.assert_called_once_with("example")
+            detach.assert_not_called()
+            self.assertFalse(self.surface.tool_pending)
 
 
 @skipUnless(os.environ.get("PAD_LATTICE_TEST_ENGINE"), "Set PAD_LATTICE_TEST_ENGINE for packaged tests")

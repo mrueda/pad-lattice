@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState} from 'react';
-import {RefreshCw, Terminal, Plug, Unplug} from 'lucide-react';
+import {RefreshCw, Terminal, Plug, Unplug, Stethoscope} from 'lucide-react';
 import {desktopRequest} from './desktop';
 import {tokenColor} from './surfaceModel';
 
@@ -22,12 +22,15 @@ function discover() {
   return discovery;
 }
 
-export function OpenConversations({onSetup}: {onSetup: () => void}) {
+export function OpenConversations({onSetup, onDiagnostics, codexAvailable}: {
+  onSetup: () => void; onDiagnostics: () => void; codexAvailable?: boolean;
+}) {
   const [result, setResult] = useState<Discovery | null>(null);
   const [busy, setBusy] = useState(false);
   const [changing, setChanging] = useState<string | null>(null);
   const [error, setError] = useState('');
   const refresh = useRef<() => void>(() => {});
+  const connectedCount = result?.conversations.filter(c => !c.error && (c.connected || c.launcher)).length ?? 0;
   useEffect(() => {
     let disposed = false;
     let pending = false;
@@ -74,12 +77,16 @@ export function OpenConversations({onSetup}: {onSetup: () => void}) {
     </div>
     {result?.error ? <p className="desktopNotice" role="status">{result.error}</p> : null}
     {error ? <p className="desktopError" role="alert">{error}</p> : null}
+    {result?.error || error ? <button className="textButton" onClick={onDiagnostics}><Stethoscope /> Diagnostics</button> : null}
     {!result ? <p className="desktopNotice">Looking for local conversations...</p> : null}
     {result && !result.conversations.length ? <div className="conversationEmpty">
       <Terminal aria-hidden="true" />
-      <strong>{result.available ? 'No open Codex conversations' : 'Codex discovery unavailable'}</strong>
-      {result.available ? <code>codex</code> : <button className="textButton" onClick={onSetup}>Codex settings</button>}
+      <strong>{codexAvailable === false ? 'Codex CLI not available' : result.available ? 'No open Codex conversations' : 'Codex discovery unavailable'}</strong>
+      {result.available && codexAvailable !== false ? <code>codex</code> : <button className="textButton" onClick={onSetup}>Codex settings</button>}
     </div> : null}
+    {result?.conversations.length ? <p className="desktopNotice conversationCounts" role="status">
+      {result.conversations.length} open · {connectedCount} connected to the pad
+    </p> : null}
     {result?.conversations.length ? <ul className="openConversationList">
       {[...result.conversations].sort((a, b) =>
         (a.slot ?? Number.MAX_SAFE_INTEGER) - (b.slot ?? Number.MAX_SAFE_INTEGER)

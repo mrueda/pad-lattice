@@ -2,22 +2,22 @@
   "schema_version": 1,
   "kind": "demo",
   "id": "multi-agent-guided-demo",
-  "title": "Three Agents, One Surface",
+  "title": "Review a Code Change",
   "initial_stage": "select_reviewer",
   "stages": [
     {
       "id": "select_reviewer",
       "prompt": {
-        "eyebrow": "Three agents, one surface",
-        "title": "The Reviewer needs you.",
-        "detail": "Builder is running while Reviewer waits for a decision."
+        "eyebrow": "Three sessions, one surface",
+        "title": "Reviewer needs permission.",
+        "detail": "Builder and Tests are working. Reviewer needs permission to run a command. Its magenta selector chooses that session."
       },
       "guide_target": {"event": "select", "slot": 1, "action": null},
       "view": {
         "sessions": [
           {"slot": 0, "state": "running", "selected": true, "accent": "cyan", "label": "Builder"},
           {"slot": 1, "state": "waiting_for_approval", "selected": false, "accent": "magenta", "label": "Reviewer"},
-          {"slot": 2, "state": "error", "selected": false, "accent": "lime", "label": "Tests"}
+          {"slot": 2, "state": "running", "selected": false, "accent": "lime", "label": "Tests"}
         ],
         "available_actions": []
       },
@@ -31,109 +31,107 @@
       "id": "approve_reviewer",
       "prompt": {
         "eyebrow": "Permission requested",
-        "title": "Approve the review.",
-        "detail": "Approving lets Reviewer finish; Reject remains available as a recovery path."
+        "title": "Allow the test command?",
+        "detail": "Reviewer asks to run npm test outside the sandbox. The green check approves only this session's request."
       },
       "guide_target": {"event": "action", "slot": null, "action": "approve"},
       "view": {
         "sessions": [
           {"slot": 0, "state": "running", "selected": false, "accent": "cyan", "label": "Builder"},
           {"slot": 1, "state": "waiting_for_approval", "selected": true, "accent": "magenta", "label": "Reviewer"},
-          {"slot": 2, "state": "error", "selected": false, "accent": "lime", "label": "Tests"}
+          {"slot": 2, "state": "running", "selected": false, "accent": "lime", "label": "Tests"}
         ],
         "available_actions": ["approve", "reject"]
       },
       "transitions": [
         {"event": "action", "slot": null, "action": "approve", "next_stage": "select_tests", "audio": "approve"},
-        {"event": "action", "slot": null, "action": "reject", "next_stage": "recover_reviewer", "audio": "reject"}
+        {"event": "action", "slot": null, "action": "reject", "next_stage": "review_declined", "audio": "reject"}
       ],
       "enter_audio": "approval",
       "terminal": false
     },
     {
-      "id": "recover_reviewer",
+      "id": "review_declined",
       "prompt": {
-        "eyebrow": "Decision registered",
-        "title": "The Reviewer was rejected.",
-        "detail": "A cancelled agent can be brought back without changing sessions."
+        "eyebrow": "Request declined",
+        "title": "The command did not run.",
+        "detail": "Reviewer did not receive permission. Builder and Tests were not interrupted."
       },
-      "guide_target": {"event": "action", "slot": null, "action": "retry"},
+      "guide_target": null,
       "view": {
         "sessions": [
           {"slot": 0, "state": "running", "selected": false, "accent": "cyan", "label": "Builder"},
           {"slot": 1, "state": "cancelled", "selected": true, "accent": "magenta", "label": "Reviewer"},
-          {"slot": 2, "state": "error", "selected": false, "accent": "lime", "label": "Tests"}
+          {"slot": 2, "state": "running", "selected": false, "accent": "lime", "label": "Tests"}
         ],
-        "available_actions": ["retry"]
+        "available_actions": []
       },
-      "transitions": [
-        {"event": "action", "slot": null, "action": "retry", "next_stage": "select_tests", "audio": "retry"}
-      ],
+      "transitions": [],
       "enter_audio": "cancelled",
-      "terminal": false
+      "terminal": true
     },
     {
       "id": "select_tests",
       "prompt": {
-        "eyebrow": "Progress continues in parallel",
-        "title": "The Tests need attention.",
-        "detail": "Reviewer is complete, but Tests failed in the background."
+        "eyebrow": "Permission granted",
+        "title": "Now Tests needs a decision.",
+        "detail": "Reviewer is working again. Tests wants to install a dependency. Its lime selector chooses this new request."
       },
       "guide_target": {"event": "select", "slot": 2, "action": null},
       "view": {
         "sessions": [
           {"slot": 0, "state": "running", "selected": false, "accent": "cyan", "label": "Builder"},
-          {"slot": 1, "state": "success", "selected": true, "accent": "magenta", "label": "Reviewer"},
-          {"slot": 2, "state": "error", "selected": false, "accent": "lime", "label": "Tests"}
+          {"slot": 1, "state": "running", "selected": true, "accent": "magenta", "label": "Reviewer"},
+          {"slot": 2, "state": "waiting_for_approval", "selected": false, "accent": "lime", "label": "Tests"}
         ],
         "available_actions": []
       },
       "transitions": [
-        {"event": "select", "slot": 2, "action": null, "next_stage": "retry_tests", "audio": "session_selected"}
+        {"event": "select", "slot": 2, "action": null, "next_stage": "reject_tests", "audio": "session_selected"}
       ],
-      "enter_audio": "success",
+      "enter_audio": null,
       "terminal": false
     },
     {
-      "id": "retry_tests",
+      "id": "reject_tests",
       "prompt": {
-        "eyebrow": "Failure is actionable",
-        "title": "Retry the test agent.",
-        "detail": "The selected failed agent now exposes its recovery action."
+        "eyebrow": "A different session, a different decision",
+        "title": "Decline the installation.",
+        "detail": "Tests requests npm install. The red cross refuses this request without stopping Builder or Reviewer."
       },
-      "guide_target": {"event": "action", "slot": null, "action": "retry"},
+      "guide_target": {"event": "action", "slot": null, "action": "reject"},
       "view": {
         "sessions": [
           {"slot": 0, "state": "running", "selected": false, "accent": "cyan", "label": "Builder"},
-          {"slot": 1, "state": "success", "selected": false, "accent": "magenta", "label": "Reviewer"},
-          {"slot": 2, "state": "error", "selected": true, "accent": "lime", "label": "Tests"}
+          {"slot": 1, "state": "running", "selected": false, "accent": "magenta", "label": "Reviewer"},
+          {"slot": 2, "state": "waiting_for_approval", "selected": true, "accent": "lime", "label": "Tests"}
         ],
-        "available_actions": ["retry"]
+        "available_actions": ["reject"]
       },
       "transitions": [
-        {"event": "action", "slot": null, "action": "retry", "next_stage": "complete", "audio": "retry"}
+        {"event": "action", "slot": null, "action": "reject", "next_stage": "complete", "audio": "reject"}
       ],
-      "enter_audio": "error",
+      "enter_audio": "approval",
       "terminal": false
     },
     {
       "id": "complete",
       "prompt": {
-        "eyebrow": "One visual language",
-        "title": "The agents form a constellation.",
-        "detail": "Every color has an identity. Every shape has a state."
+        "eyebrow": "Demo complete",
+        "title": "Two decisions. The right agents.",
+        "detail": "Reviewer finished. Tests did not install the dependency. Builder kept working. No real commands were run in this demonstration."
       },
       "guide_target": null,
       "view": {
         "sessions": [
-          {"slot": 0, "state": "success", "selected": false, "accent": "cyan", "label": "Builder"},
+          {"slot": 0, "state": "running", "selected": false, "accent": "cyan", "label": "Builder"},
           {"slot": 1, "state": "success", "selected": false, "accent": "magenta", "label": "Reviewer"},
-          {"slot": 2, "state": "success", "selected": true, "accent": "lime", "label": "Tests"}
+          {"slot": 2, "state": "cancelled", "selected": true, "accent": "lime", "label": "Tests"}
         ],
         "available_actions": []
       },
       "transitions": [],
-      "enter_audio": "success",
+      "enter_audio": "cancelled",
       "terminal": true
     }
   ]

@@ -11,25 +11,9 @@ from pathlib import Path
 from typing import Any, TextIO
 
 from pad_lattice import __version__
-from pad_lattice.devices.base import (
-    ActionPressed,
-    ControlSurface,
-    SessionIndicator,
-    SessionSelected,
-    SurfaceView,
-)
+from pad_lattice.devices.base import ControlSurface
 from pad_lattice.devices.profiles import DeviceProfile
-from pad_lattice.events import AgentState, ControlAction
-
-VISUAL_STATES: tuple[tuple[AgentState, str], ...] = (
-    (AgentState.RUNNING, "steady blue ellipsis"),
-    (AgentState.WAITING_FOR_REPLY, "white question mark"),
-    (AgentState.USER_TYPING, "cyan chevron"),
-    (AgentState.WAITING_FOR_APPROVAL, "restrained amber exclamation mark"),
-    (AgentState.SUCCESS, "green happy face"),
-    (AgentState.ERROR, "red X"),
-    (AgentState.CANCELLED, "gray hollow square"),
-)
+from pad_lattice.devices.test_run import ProfileTestRun
 
 
 def run_profile_test(
@@ -43,157 +27,36 @@ def run_profile_test(
     settle_delay: float = 0.15,
 ) -> dict[str, Any]:
     """Exercise output and input mappings and write a sanitized JSON report."""
-
-    visual_checks = {
-        **{state.value: False for state, _ in VISUAL_STATES},
-        "idle": False,
-        "overflow": False,
-    }
-    action_checks = {action.value: False for action in ControlAction}
-    selector_checks = {
-        str(slot + 1): False for slot in range(surface.selector_capacity)
-    }
-    completed = False
-    stage = "initialize"
-    failure: BaseException | None = None
-
+    run = ProfileTestRun(surface, profile, event_timeout=event_timeout)
     try:
-        surface.initialize()
-        stage = "visual"
-        surface.render(SurfaceView(selected_state=None))
-        time.sleep(settle_delay)
-        visual_checks["idle"] = _confirm(
-            "Do you see a dim three-pad idle dash? [y/N] ",
-            input_stream,
-            output_stream,
-        )
-        for state, description in VISUAL_STATES:
-            surface.render(
-                SurfaceView(
-                    selected_state=state,
-                    available_actions=frozenset(ControlAction),
-                )
-            )
-            time.sleep(settle_delay)
-            visual_checks[state.value] = _confirm(
-                f"Do you see a {description}? [y/N] ",
-                input_stream,
-                output_stream,
-            )
-        surface.render(
-            SurfaceView(
-                selected_state=AgentState.WAITING_FOR_REPLY,
-                overflow_count=1,
-            )
-        )
-        time.sleep(settle_delay)
-        visual_checks["overflow"] = _confirm(
-            "Do you see one steady amber overflow indicator? [y/N] ",
-            input_stream,
-            output_stream,
-        )
-
-        stage = "actions"
-        surface.render(
-            SurfaceView(
-                selected_state=AgentState.WAITING_FOR_REPLY,
-                available_actions=frozenset(ControlAction),
-            )
-        )
-        for action in ControlAction:
-            print(
-                f"Press the {action.value.upper()} control.",
-                file=output_stream,
-                flush=True,
-            )
-            action_checks[action.value] = _wait_for_event(
-                surface,
-                ActionPressed(action),
-                event_timeout,
-            )
-
-        stage = "selectors"
-        indicators = tuple(
-            SessionIndicator(
-                slot=slot,
-                state=VISUAL_STATES[slot % len(VISUAL_STATES)][0],
-                accent=surface.accent_names[slot],
-            )
-            for slot in range(surface.selector_capacity)
-        )
-        for slot in range(surface.selector_capacity):
-            surface.render(
-                SurfaceView(
-                    selected_state=AgentState.WAITING_FOR_REPLY,
-                    sessions=tuple(
-                        SessionIndicator(
-                            slot=indicator.slot,
-                            state=indicator.state,
-                            selected=indicator.slot == slot,
-                            accent=indicator.accent,
-                        )
-                        for indicator in indicators
-                    ),
-                    available_actions=frozenset(ControlAction),
-                )
-            )
-            print(
-                f"Press agent selector {slot + 1}.",
-                file=output_stream,
-                flush=True,
-            )
-            selector_checks[str(slot + 1)] = _wait_for_event(
-                surface,
-                SessionSelected(slot),
-                event_timeout,
-            )
-        completed = True
-    except BaseException as exc:
-        failure = exc
+        run.start()
+        while run.active:
+            step = run.step
+            if step.expected is None:
+                time.sleep(settle_delay)
+                print(f"Do you see: {step.prompt}? [y/N] ", end="", file=output_stream, flush=True)
+                run.answer(step.id, input_stream.readline().strip().lower() in {"y", "yes"})
+            else:
+                print(step.prompt, file=output_stream, flush=True)
+                while run.active and run.step.id == step.id:
+                    run.tick()
+                    time.sleep(0.01)
+    except BaseException:
+        run.cancel("interrupted")
+        raise
     finally:
-        try:
-            surface.close()
-        except BaseException as exc:
-            stage = "close"
-            if failure is None:
-                failure = exc
-
-        report = _profile_test_report(
-            surface,
-            profile,
-            completed=completed,
-            failure_stage=None if failure is None else stage,
-            visual_checks=visual_checks,
-            action_checks=action_checks,
-            selector_checks=selector_checks,
-        )
+        report = profile_test_report(run)
         report_path.parent.mkdir(parents=True, exist_ok=True)
-        report_path.write_text(
-            json.dumps(report, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
-
-    if failure is not None:
-        raise failure
+        report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return report
 
 
-def _confirm(prompt: str, input_stream: TextIO, output_stream: TextIO) -> bool:
-    print(prompt, end="", file=output_stream, flush=True)
-    return input_stream.readline().strip().lower() in {"y", "yes"}
-
-
-def _wait_for_event(
-    surface: ControlSurface,
-    expected: ActionPressed | SessionSelected,
-    timeout: float,
-) -> bool:
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        if expected in surface.poll_events():
-            return True
-        time.sleep(0.01)
-    return False
+def profile_test_report(run: ProfileTestRun) -> dict[str, Any]:
+    return _profile_test_report(
+        run.surface, run.profile, completed=run.status == "completed",
+        failure_stage=run.failure_stage, visual_checks=dict(run.checks["visual"]),
+        action_checks=dict(run.checks["actions"]), selector_checks=dict(run.checks["selectors"]),
+    )
 
 
 def _profile_test_report(

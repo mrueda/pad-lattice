@@ -1,17 +1,34 @@
-import {useCallback, useEffect, useState} from 'react';
-import {FolderOpen, Settings, RefreshCw, RotateCw, Plug, Unplug, Wifi, X, Sun, Moon, MonitorSmartphone, SlidersHorizontal, Terminal, Info} from 'lucide-react';
-import {choosePath, desktopRequest} from './desktop';
+import {useCallback, useEffect, useRef, useState, type KeyboardEvent} from 'react';
+import {BookOpen, Download, Cable, Grid2X2, FolderOpen, Settings, RefreshCw, RotateCw, Plug, Unplug, Wifi, ArrowLeft, Sun, Moon, MonitorSmartphone, SlidersHorizontal, Terminal, Info, CheckCircle2, CircleAlert, Stethoscope} from 'lucide-react';
+import {choosePath, desktopRequest, openProjectLink} from './desktop';
 import {OpenConversations} from './OpenConversations';
 import {PairedDevices, usePairedDevices} from './PairedDevices';
 import {About} from './About';
+import {HardwareTest} from './HardwareTest';
 
 const settingsPages = [
   {id: 'general', label: 'Appearance & sound', Icon: SlidersHorizontal},
-  {id: 'network', label: 'Phones & tablets', Icon: MonitorSmartphone},
-  {id: 'midi', label: 'MIDI controller', Icon: Plug},
+  {id: 'devices', label: 'Devices', Icon: Cable},
   {id: 'codex', label: 'Codex', Icon: Terminal},
   {id: 'about', label: 'About', Icon: Info},
 ] as const;
+
+const devicePages = [
+  {id: 'browser', label: 'Browsers', Icon: MonitorSmartphone},
+  {id: 'midi', label: 'MIDI controllers', Icon: Plug},
+  {id: 'stream_deck', label: 'Stream Deck', Icon: Grid2X2},
+] as const;
+type DevicePage = typeof devicePages[number]['id'];
+
+function navigateTabs(event: KeyboardEvent<HTMLDivElement>) {
+  if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+  event.preventDefault();
+  const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+  const current = tabs.indexOf(document.activeElement as HTMLButtonElement);
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
+    : (current + (['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : -1) + tabs.length) % tabs.length;
+  tabs[next]?.click(); tabs[next]?.focus();
+}
 
 interface Status {
   version: string;
@@ -33,7 +50,7 @@ export function DesktopControls({audioEnabled, onAudio, settingsOpen, onSettings
   onAudio: () => void;
   settingsOpen: boolean;
   onSettingsChange: (open: boolean) => void;
-  onPairDevice: () => void;
+  onPairDevice: (kind: 'browser' | 'stream_deck') => void;
   lightTheme: boolean;
   onThemeChange: (light: boolean) => void;
 }) {
@@ -41,9 +58,11 @@ export function DesktopControls({audioEnabled, onAudio, settingsOpen, onSettings
   const paired = usePairedDevices();
   const connectedDevices = paired.devices?.filter(device => device.connected).length ?? 0;
   const [page, setPage] = useState<string>('general');
+  const [devicePage, setDevicePage] = useState<DevicePage>('browser');
   const [codex, setCodex] = useState<Codex | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [hardwareTesting, setHardwareTesting] = useState(false);
   const [codexPath, setCodexPath] = useState('');
   const [profile, setProfile] = useState('');
   const [input, setInput] = useState('');
@@ -54,6 +73,14 @@ export function DesktopControls({audioEnabled, onAudio, settingsOpen, onSettings
   const [pairingPort, setPairingPort] = useState('8001');
   const [networkError, setNetworkError] = useState('');
   const [networkBusy, setNetworkBusy] = useState(false);
+  const [checkingCodex, setCheckingCodex] = useState(false);
+  const settingsBack = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const opener = document.activeElement;
+    settingsBack.current?.focus();
+    return () => { if (opener instanceof HTMLElement && opener.isConnected) opener.focus(); };
+  }, [settingsOpen]);
   const refresh = useCallback(async () => {
     const next = await desktopRequest<Status>('status');
     setStatus(next);
@@ -100,6 +127,16 @@ export function DesktopControls({audioEnabled, onAudio, settingsOpen, onSettings
       if (inspect) setCodex(await desktopRequest<Codex>('inspect_codex'));
     } catch (reason) { setError(`Could not save preferences: ${String(reason)}`); }
   };
+  const checkCodex = async () => {
+    setCheckingCodex(true); setError('');
+    try {
+      setCodex(await desktopRequest<Codex>('inspect_codex', {codex: codexPath}));
+    } catch (reason) {
+      setCodex({available: false, tested_version: '', error: String(reason)});
+    } finally { setCheckingCodex(false); }
+  };
+  const openCodex = () => {setPage('codex'); onSettingsChange(true);};
+  const openDiagnostics = () => {setPage('about'); onSettingsChange(true);};
   const enableNetwork = async () => {
     setNetworkError('');
     if (!lan.trim()) {
@@ -120,48 +157,49 @@ export function DesktopControls({audioEnabled, onAudio, settingsOpen, onSettings
       const next = await desktopRequest<Status>('lan', {host: lan.trim(), port,
         advertise_host: sharedNetwork ? advertiseHost.trim() : null});
       setStatus(next);
-      onPairDevice();
+      onPairDevice(devicePage === 'stream_deck' ? 'stream_deck' : 'browser');
     } catch (reason) {
       setNetworkError(String(reason));
     } finally {
       setNetworkBusy(false);
     }
   };
+  const openDevices = (kind: DevicePage) => {
+    setDevicePage(kind); setPage('devices'); onSettingsChange(true);
+  };
   return (
     <section className="desktopControls">
       <div className="desktopToolbar">
         <div className="desktopConnections">
-          <span className="desktopRuntime">{!codex ? 'Checking Codex CLI...' : codex.available ? `Codex CLI ${codex.version}` : 'Codex CLI setup required'}</span>
+          <button className="connectionLink desktopRuntime" title="Codex connection settings" onClick={openCodex}>
+            <Terminal aria-hidden="true" />{!codex ? 'Checking Codex CLI...' : codex.available ? `Codex CLI ${codex.version ?? 'available'}` : 'Codex CLI setup required'}</button>
           <button className={`connectionLink${status?.midi && !status.midi_error ? ' online' : ''}`}
             title={status?.midi_error || status?.midi || 'MIDI controller settings'}
-            onClick={() => {setPage('midi'); onSettingsChange(true);}}><Plug aria-hidden="true" />
+            onClick={() => openDevices('midi')}><Plug aria-hidden="true" />
             MIDI: {!status ? 'checking...' : status.midi_error ? 'unavailable' : status.midi ? 'connected' : 'not connected'}</button>
           <button className={`connectionLink${connectedDevices && !paired.error ? ' online' : ''}`}
-            title="View paired devices" onClick={() => {setPage('network'); onSettingsChange(true);}}>
+            title="View paired devices" onClick={() => openDevices(paired.devices?.some(device => device.kind === 'stream_deck')
+              && !paired.devices?.some(device => device.kind === 'browser') ? 'stream_deck' : 'browser')}>
             <MonitorSmartphone aria-hidden="true" />{paired.error ? 'Device status unavailable' : !paired.devices ? 'Checking devices...'
               : `${connectedDevices} ${connectedDevices === 1 ? 'device' : 'devices'} connected`}</button>
           {status?.network_url ? <span title={status.network_url}><Wifi aria-hidden="true" />Network enabled</span> : null}
         </div>
         <div className="desktopActions">
-          {!settingsOpen ? <button className="textButton" onClick={() => {setPage('network'); onSettingsChange(true);}}><MonitorSmartphone /> Pair device</button> : null}
+          {!settingsOpen ? <button className="textButton" onClick={() => openDevices('browser')}><Cable /> Pair device</button> : null}
           <button className="textButton" title="Settings" aria-label="Settings" aria-expanded={settingsOpen} onClick={() => onSettingsChange(!settingsOpen)}><Settings /></button>
         </div>
       </div>
-      <div hidden={settingsOpen}><OpenConversations onSetup={() => {setPage('codex'); onSettingsChange(true);}} /></div>
+      <div hidden={settingsOpen}><OpenConversations codexAvailable={codex?.available} onSetup={openCodex} onDiagnostics={openDiagnostics} /></div>
       {error || codex?.error ? <p className="desktopError" role="alert">{error || codex?.error}</p> : null}
-      {codex?.available && !codex.tested ? <p className="desktopNotice">Installed Codex {codex.version}. Integration tested with {codex.tested_version}.</p> : null}
-      {settingsOpen ? <div className="desktopSettings">
-        <div className="desktopToolbar"><h2>Settings</h2><button className="textButton" title="Close settings" aria-label="Close settings" onClick={() => onSettingsChange(false)}><X /></button></div>
-        <div className="settingsLayout">
-        <div className="settingsNavigation" role="tablist" aria-label="Settings sections" onKeyDown={event => {
-          if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      {settingsOpen ? <div className="desktopSettings" onKeyDown={event => {
+        if (event.key === 'Escape' && !event.defaultPrevented) {
           event.preventDefault();
-          const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
-          const current = tabs.indexOf(document.activeElement as HTMLButtonElement);
-          const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
-            : (current + (['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : -1) + tabs.length) % tabs.length;
-          tabs[next]?.click(); tabs[next]?.focus();
-        }}>
+          onSettingsChange(false);
+        }
+      }}>
+        <div className="settingsHeader"><button ref={settingsBack} className="textButton" onClick={() => onSettingsChange(false)}><ArrowLeft aria-hidden="true" /> Back to pad</button><h2>Settings</h2></div>
+        <div className="settingsLayout">
+        <div className="settingsNavigation" role="tablist" aria-label="Settings sections" onKeyDown={navigateTabs}>
           {settingsPages.map(({id, label, Icon}) => <button key={id} id={`settings-tab-${id}`} type="button" role="tab"
             aria-selected={page === id} aria-controls="settings-panel" tabIndex={page === id ? 0 : -1}
             onClick={() => setPage(id)}><Icon aria-hidden="true" />{label}</button>)}
@@ -177,25 +215,61 @@ export function DesktopControls({audioEnabled, onAudio, settingsOpen, onSettings
             <label className="desktopCheckbox"><input type="checkbox" checked={audioEnabled} onChange={onAudio} /> Enable sound</label>
           </section>
           <section hidden={page !== 'codex'}><h3>Codex</h3>
+            <div className={`codexCheck${codex?.available ? ' ready' : ''}`} role="status">
+              {codex?.available ? <CheckCircle2 aria-hidden="true" /> : <CircleAlert aria-hidden="true" />}
+              <strong>{checkingCodex || !codex ? 'Checking Codex CLI...' : codex.available ? 'Codex CLI available' : 'Codex CLI not available'}</strong>
+            </div>
             <label>Codex executable<div className="desktopInputGroup"><input value={codexPath} placeholder="Automatic detection" onChange={(e) => setCodexPath(e.target.value)} onBlur={() => void savePreferences({codex: codexPath}, true)} />
               <button className="textButton" title="Choose Codex executable" aria-label="Choose Codex executable" onClick={() => void run(async () => {const path = await choosePath(); if (path) {setCodexPath(path); await savePreferences({codex: path}, true);}})}><FolderOpen /></button></div></label>
+            {codex?.available && codex.version !== codex.tested_version ? <p className="desktopNotice">Installed Codex {codex.version}. Integration tested with {codex.tested_version}.</p> : null}
+            <div className="desktopActions">
+              <button className="textButton" disabled={checkingCodex} onClick={() => void checkCodex()}><RefreshCw />{checkingCodex ? 'Checking...' : 'Check again'}</button>
+              <button className="textButton" onClick={openDiagnostics}><Stethoscope /> Diagnostics</button>
+            </div>
           </section>
-          <section hidden={page !== 'midi'}><h3>MIDI controller</h3>
-            <label>Profile<select value={profile} onChange={(e) => {setProfile(e.target.value); void savePreferences({midi_profile: e.target.value});}}><option value="">Automatic detection</option>{status?.profiles.map((p) => <option key={p.id} value={p.id}>{p.id}{p.status === 'experimental' ? ' (experimental)' : ''}</option>)}</select></label>
-            <label>Input<select value={input} onChange={(e) => {setInput(e.target.value); void savePreferences({midi_input: e.target.value});}}><option value="">Automatic detection</option>{input && !status?.inputs.includes(input) ? <option value={input}>{input} (unavailable)</option> : null}{status?.inputs.map((p) => <option key={p}>{p}</option>)}</select></label>
-            <label>Output<select value={output} onChange={(e) => {setOutput(e.target.value); void savePreferences({midi_output: e.target.value});}}><option value="">Automatic detection</option>{output && !status?.outputs.includes(output) ? <option value={output}>{output} (unavailable)</option> : null}{status?.outputs.map((p) => <option key={p}>{p}</option>)}</select></label>
-            <div className="desktopActions"><button className="textButton" title="Refresh devices" aria-label="Refresh devices" disabled={busy} onClick={() => void run(refresh)}><RefreshCw /></button>
-              <button className="textButton" disabled={busy} onClick={() => void run(async () => {await desktopRequest(status?.midi ? 'disconnect_midi' : 'connect_midi', {profile, input, output}); await refresh();})}>{status?.midi ? <Unplug /> : <Plug />}{status?.midi ? 'Disconnect' : 'Connect'}</button></div>
+          {page === 'devices' ? <div className="deviceSettingsHeading">
+            <h3>Devices</h3>
+            <div className="deviceTabs" role="tablist" aria-label="Device types" onKeyDown={navigateTabs}>
+              {devicePages.map(({id, label, Icon}) => <button key={id} id={`device-tab-${id}`} role="tab"
+                aria-selected={devicePage === id} aria-controls="device-panel" tabIndex={devicePage === id ? 0 : -1}
+                onClick={() => setDevicePage(id)}><Icon aria-hidden="true" />{label}
+                <span className="deviceCount" aria-hidden="true">{id === 'midi' ? Number(Boolean(status?.midi))
+                  : paired.devices?.filter(device => device.kind === id && device.connected).length ?? 0}</span>
+              </button>)}
+            </div>
+          </div> : null}
+          <div hidden={page !== 'devices'} id="device-panel" role="tabpanel" aria-labelledby={`device-tab-${devicePage}`}>
+          <section hidden={devicePage !== 'midi'}><h3>MIDI controller</h3>
+            <div hidden={hardwareTesting}>
+            <label>Profile<select aria-label="Profile" disabled={hardwareTesting} value={profile} onChange={(e) => {setProfile(e.target.value); void savePreferences({midi_profile: e.target.value});}}><option value="">Automatic detection</option>{status?.profiles.map((p) => <option key={p.id} value={p.id}>{p.id}{p.status === 'experimental' ? ' (experimental)' : ''}</option>)}</select></label>
+            <label>Input<select aria-label="Input" disabled={hardwareTesting} value={input} onChange={(e) => {setInput(e.target.value); void savePreferences({midi_input: e.target.value});}}><option value="">Automatic detection</option>{input && !status?.inputs.includes(input) ? <option value={input}>{input} (unavailable)</option> : null}{status?.inputs.map((p) => <option key={p}>{p}</option>)}</select></label>
+            <label>Output<select aria-label="Output" disabled={hardwareTesting} value={output} onChange={(e) => {setOutput(e.target.value); void savePreferences({midi_output: e.target.value});}}><option value="">Automatic detection</option>{output && !status?.outputs.includes(output) ? <option value={output}>{output} (unavailable)</option> : null}{status?.outputs.map((p) => <option key={p}>{p}</option>)}</select></label>
+            <div className="desktopActions"><button className="textButton" title="Refresh devices" aria-label="Refresh devices" disabled={busy || hardwareTesting} onClick={() => void run(refresh)}><RefreshCw /></button>
+              <button className="textButton" disabled={busy || hardwareTesting} onClick={() => void run(async () => {await desktopRequest(status?.midi ? 'disconnect_midi' : 'connect_midi', {profile, input, output}); await refresh();})}>{status?.midi ? <Unplug /> : <Plug />}{status?.midi ? 'Disconnect' : 'Connect'}</button></div>
             <p className="desktopNotice">{status?.midi ?? 'No MIDI controller connected'}</p>
             {status?.midi_error ? <p className="desktopError">{status.midi_error}</p> : null}
+            </div>
+            {page === 'devices' && devicePage === 'midi' ? <HardwareTest profile={profile} input={input} output={output} connected={Boolean(status?.midi)} onActiveChange={setHardwareTesting} /> : null}
           </section>
-          <section hidden={page !== 'network'}>
-            <div className="desktopToolbar"><h3>Phones & tablets</h3>
-              <button className="textButton" onClick={onPairDevice}><MonitorSmartphone /> Pair device</button></div>
-            {page === 'network' ? <PairedDevices state={paired} /> : null}
+          <section hidden={devicePage === 'midi'}>
+            <div className="desktopToolbar"><h3>{devicePage === 'stream_deck' ? 'Elgato Stream Deck' : 'Phones, tablets & computers'}</h3>
+              <button className="textButton" onClick={() => onPairDevice(devicePage === 'stream_deck' ? 'stream_deck' : 'browser')}><Cable /> Pair device</button></div>
+            {devicePage === 'stream_deck' ? <dl className="deviceSetupFacts">
+              <div><dt>Integration</dt><dd>Experimental plugin</dd></div>
+              <div><dt>Key configuration</dt><dd>Elgato Stream Deck software</dd></div>
+              <div><dt>Starter layout</dt><dd>15 keys: 8 sessions + 3 actions</dd></div>
+              <div><dt>Hardware test</dt><dd>Not yet available</dd></div>
+            </dl> : null}
+            <div className="desktopActions">
+            {devicePage === 'stream_deck' ? <button className="textButton deviceGuide" onClick={() => void run(() => openProjectLink('downloads'))}>
+              <Download /> Get plugin</button> : null}
+            <button className="textButton deviceGuide" onClick={() => void run(() => openProjectLink(devicePage === 'stream_deck' ? 'stream-deck' : 'connect-browsers'))}>
+              <BookOpen /> {devicePage === 'stream_deck' ? 'Plugin setup guide' : 'Browser setup guide'}</button>
+            </div>
+            {page === 'devices' && devicePage !== 'midi' ? <PairedDevices key={devicePage} state={paired} kind={devicePage} /> : null}
             {status?.network_url ? <div className="networkReady" role="status"><strong>Network access enabled</strong><span>{status.network_url}</span></div>
               : <p className="desktopNotice">Network access is off. Pairing is available on this computer only.</p>}
-            <details className="networkSetup" open={!status?.network_url}><summary>Network setup</summary>
+            <details className="networkSetup" open={!status?.network_url && devicePage !== 'stream_deck'}><summary>{devicePage === 'stream_deck' ? 'Other computer or VM' : 'Network setup'}</summary>
             <label className="desktopCheckbox"><input type="checkbox" checked={sharedNetwork} onChange={e => setSharedNetwork(e.target.checked)} /> VM shared network</label>
             <label>{sharedNetwork ? 'VM IPv4 address' : 'Computer IPv4 address'}<input value={lan} onChange={(e) => setLan(e.target.value)} placeholder={sharedNetwork ? 'e.g. 10.211.55.4' : 'e.g. 192.168.1.45'} /></label>
             {sharedNetwork ? <label>Mac / host IPv4 address<input value={advertiseHost} onChange={e => setAdvertiseHost(e.target.value)} placeholder="e.g. 192.168.1.45" /></label> : null}
@@ -208,6 +282,7 @@ export function DesktopControls({audioEnabled, onAudio, settingsOpen, onSettings
             </> : null}
             </details>
           </section>
+          </div>
           {page === 'about' ? <About version={status?.version} /> : null}
         </div>
         </div>

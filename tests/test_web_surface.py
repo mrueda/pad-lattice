@@ -187,6 +187,20 @@ class BrowserSurfaceServerTest(TestCase):
 
 
 class WebSurfaceIntegrationTest(TestCase):
+    def test_stream_deck_has_its_own_display_category_but_no_admin_rights(self) -> None:
+        surface = WebSurface(port=0)
+        surface.initialize()
+        self.addCleanup(surface.close)
+        with connect(surface.local_url.replace("http://", "ws://") + "/ws", origin=surface.local_url,
+                     proxy=None, close_timeout=0.1, user_agent_header="pad-lattice-stream-deck") as client:
+            client.send(json.dumps({"protocol": 1, "type": "authenticate", "credential": surface.create_pairing()["pin"]}))
+            authenticated = json.loads(client.recv(timeout=2))
+            self.assertFalse(authenticated["admin"])
+            devices = surface.server.paired_devices()
+            self.assertEqual(devices[0]["name"], "Elgato Stream Deck")
+            self.assertEqual(devices[0]["kind"], "stream_deck")
+            self.assertNotIn(authenticated["session_token"], json.dumps(devices))
+
     def test_device_list_disconnect_and_individual_revocation(self) -> None:
         surface = WebSurface(port=0)
         surface.initialize()
@@ -205,6 +219,7 @@ class WebSurfaceIntegrationTest(TestCase):
         second, other_auth = pair(surface.create_pairing()["pin"], "Macintosh Safari")
         devices = surface.server.paired_devices()
         self.assertEqual([device["name"] for device in devices], ["Android / Chrome", "Mac / Safari"])
+        self.assertEqual([device["kind"] for device in devices], ["browser", "browser"])
         self.assertTrue(all(device["connected"] for device in devices))
         self.assertNotIn(auth["session_token"], json.dumps(devices))
         first_id, second_id = [device["id"] for device in devices]

@@ -2,6 +2,7 @@ import {build} from 'esbuild';
 import {readFileSync, writeFileSync, mkdirSync, copyFileSync} from 'node:fs';
 import {Resvg} from '@resvg/resvg-js';
 import {Grid2X2} from 'lucide';
+import {buildProfiles} from './profiles.mjs';
 const images = 'io.github.mrueda.pad-lattice.sdPlugin/images';
 const licenses = 'io.github.mrueda.pad-lattice.sdPlugin/licenses';
 mkdirSync(images, {recursive: true});
@@ -22,3 +23,4 @@ await build({
   format: 'esm', outfile: 'io.github.mrueda.pad-lattice.sdPlugin/bin/plugin.js',
   banner: {js: 'import {createRequire} from "node:module"; const require = createRequire(import.meta.url);'},
 });
+await buildProfiles('io.github.mrueda.pad-lattice.sdPlugin');

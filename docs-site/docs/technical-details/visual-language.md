@@ -17,10 +17,12 @@ hardware lights; they do not invent new meanings for them.
 
 LCD-key controllers use the same state glyphs inside individual keys rather
 than spreading one glyph across the whole device. The experimental
-[Stream Deck layout](../usage/stream-deck.md) shows one session per key, a
-session-color strip, a white selection border, and separate action keys.
-It does not define a new alphabet. A compact alphabet for smaller LED grids
-has not yet been specified.
+[Stream Deck layout](../usage/stream-deck.md) shows one Codex session per Session
+key: its name and color strip identify it, its glyph reports state whether
+selected or not, and a white border marks selection. Separate action keys name
+and control only the selected session. Key positions are configurable; a top
+row of sessions is an example, not a protocol requirement. No new alphabet is
+defined. A compact alphabet for smaller LED grids has not yet been specified.
 
 The reference topology is the common Launchpad arrangement: an **8x8 matrix,
 eight top controls, and eight right-side controls**. The browser uses the same
@@ -147,11 +149,12 @@ unless the daemon starts with `--activity-motion`.
 | CC 97 | retry | Selected session is failed or cancelled and advertises Retry. |
 | CC 98 | stop | Selected session is running and advertises Stop. |
 
-An enabled action is bright; a mapped but unavailable action is completely
-dark. Color is therefore a strict promise that pressing the control will do
-something now. Presses are debounced and routed only to one pending request
-for the selected identity. They are never broadcast. CC 93, 94, and 96 remain
-unassigned. CC 95 is a steady amber overflow indicator.
+On the reference LED surface, an enabled action is bright and an unavailable
+action is dark. Stream Deck keeps unavailable action keys dim, with their
+labels visible. Only enabled controls can issue actions. Presses are debounced
+and routed only to the selected session's current request or turn, never
+broadcast. CC 93, 94, and 96 remain unassigned. CC 95 is a steady amber overflow
+indicator.
 
 ## Capacity and Device Independence
 
