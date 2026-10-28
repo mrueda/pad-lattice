@@ -13,7 +13,7 @@ current profile. Other deck sizes need a manual layout. The plugin does not emul
 
 ## Install
 
-Download `io.github.mrueda.pad-lattice.streamDeckPlugin` from the
+Download `pad-lattice-0.2.0.streamDeckPlugin` from the
 [release assets](https://github.com/mrueda/pad-lattice/releases), then open it on
 the computer running Elgato Stream Deck. No Node.js installation is needed to
 use the packaged plugin. Requires Stream Deck 7.1+ and Pad-Lattice 0.2.0+.

@@ -33,7 +33,7 @@ currently need a manual layout; up to eight session slots are available.
 
 ## Connect
 
-1. Download `io.github.mrueda.pad-lattice.streamDeckPlugin` from the
+1. Download `pad-lattice-0.2.0.streamDeckPlugin` from the
    [release assets](https://github.com/mrueda/pad-lattice/releases). Open it on the
    computer running **Elgato Stream Deck 7.1+** to install it.
 2. Open Pad-Lattice and connect your Codex conversations.
@@ -46,8 +46,9 @@ currently need a manual layout; up to eight session slots are available.
 The starter layout assigns session numbers already. For a custom layout, set a
 different **Session slot** on each Session key and add the three action keys.
 
-The official Stream Deck application runs on macOS or Windows. The Pad-Lattice
-bridge still runs on a supported Linux or macOS computer. On the same computer,
+The plugin requires **macOS 13 or later** or **Windows 10 or later**, with
+**Elgato Stream Deck 7.1 or later**. The plugin does not target Linux, but the
+Pad-Lattice bridge can run on a supported Linux or macOS computer. On the same computer,
 use the displayed localhost address; no network sharing is needed. If the bridge
 is in a VM or on another computer, follow [Connect Screens](./connect-browsers.md)
 and use its reachable private IPv4 address.
