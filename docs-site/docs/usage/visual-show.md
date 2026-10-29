@@ -18,6 +18,10 @@ A connected Launchpad and paired browsers follow the performance.
 Use **Back to live pad** to stop. Only the administrator can start or stop
 playback; connecting a real agent ends the show.
 
+Switch between **Grid** and the Stream Deck layouts while it plays. The 8-, 15-,
+and 32-key views condense the grid into an animation; the physical Stream Deck plugin
+does not currently play Show.
+
 No hardware is needed. You can also [watch in the public pad](pathname:///play/).
 
 **Demo is different:** Desktop guides you through simulated agent requests;

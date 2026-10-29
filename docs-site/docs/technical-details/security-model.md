@@ -34,6 +34,11 @@ semantic selection or action, and the daemon applies all of these gates:
 6. repeated actions are debounced;
 7. an action is delivered to one matching subscriber, never broadcast.
 
+Desktop groups verified child agents under their connected CLI parent. A
+decision requires one unambiguous request across the whole family; child
+ancestry comes from Codex metadata, not labels or working-folder matches.
+Child agents from another chat cannot receive that Scene's actions.
+
 Approve and Reject therefore apply to the selected, current permission request.
 They do not create a persistent Codex permission rule. Codex still owns its
 sandbox and approval policy.
@@ -55,8 +60,16 @@ TCP port to that listener. The server also provides:
 - browser, remote-client, command-rate, and event-queue limits;
 - disabled WebSocket compression;
 - a restrictive Content Security Policy and no third-party scripts;
-- sanitized browser state without prompts, responses, terminal output, raw
+- sanitized ordinary surface state without prompts, responses, terminal output, raw
   working directories, or full Codex event payloads.
+
+Desktop can optionally share a selected Codex multiple-choice question with
+paired browsers. This setting is off by default and does not disable ordinary
+status, selection, or available action controls. The authenticated browser
+requests the question explicitly; it is not broadcast or stored, and secret or
+free-text-only requests are not shared. Answers are checked against the current
+request, selection, revision, and device authorization. Approval details remain
+local to Desktop.
 
 Desktop's device list uses browser-provided labels, not verified identities.
 It exposes random device IDs, never credentials. Disconnecting closes current
@@ -81,6 +94,8 @@ when this condition is not satisfied.
 - A paired browser can press any action currently exposed by the selected
   integration, including Approve. Revoke remote access when the device is no
   longer under your control.
+- If question sharing is enabled, paired clients and anyone able to observe LAN
+  traffic may read question text and selected answers.
 - A paired browser can answer built-in Demo prompts but cannot start or stop
   Demo or Show. Any connected real agent prevents or stops either experience.
 - The local administrator URL is a bearer credential. Do not paste it into

@@ -21,7 +21,7 @@ glyph shows its state. Press it to select; separate action keys name their targe
 
 ## Connect Your Chats
 
-Open **Pad-Lattice**, find your existing chat under **Open Codex conversations**,
+Open **Pad-Lattice**, find your existing chat under **Codex conversations**,
 and select **Connect**. Codex continues in its original terminal.
 The [Quick Start](./quickstart.md) covers installation and the first connection.
 
@@ -56,7 +56,7 @@ Only available actions light up. Ordinary replies and unsupported requests stay 
 
 ## Resume an Existing Conversation
 
-Resume the conversation in Codex as you normally would, then select
+Resume the conversation in Codex, then select
 **Refresh chats > Connect** in Pad-Lattice. The desktop does not start or resume
 Codex processes for you.
 

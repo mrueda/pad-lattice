@@ -28,6 +28,16 @@ from pad_lattice.web_protocol import (
 
 
 class WebProtocolTest(TestCase):
+    def test_question_commands_validate_identity_and_answers(self):
+        status = parse_web_command({'protocol': 1, 'type': 'question_request', 'request_id': '1', 'operation': 'status'})
+        self.assertEqual(status.operation, 'status')
+        answer = {'protocol': 1, 'type': 'question_request', 'request_id': '2', 'operation': 'answer',
+                  'slot': 0, 'revision': 4, 'token': 'a' * 32, 'answers': {'choice': 1}}
+        self.assertEqual(parse_web_command(answer).answers, {'choice': 1})
+        for change in ({'slot': True}, {'revision': -1}, {'token': 'bad'}, {'answers': {'choice': True}},
+                       {'answers': {'choice': 9}}, {'unexpected': 'data'}):
+            with self.subTest(change=change), self.assertRaises(WebProtocolError):
+                parse_web_command(answer | change)
     def test_guarded_commands_require_nonnegative_integer_revision(self) -> None:
         for kind, fields in (("action", {"action": "approve"}), ("select_session", {"slot": 0})):
             command = parse_web_command({"protocol": 1, "type": kind, **fields, "expected_revision": 12})

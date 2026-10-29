@@ -1,0 +1,20 @@
+{
+  "standard": {
+    "label": "Stream Deck",
+    "columns": 5,
+    "rows": 3,
+    "pages": [[0, 1, 2, 3, 4, 5, 6, 7, null, null, "approve", "reject", "stop", "retry", null]]
+  },
+  "xl": {
+    "label": "Stream Deck XL",
+    "columns": 8,
+    "rows": 4,
+    "pages": [[0, 1, 2, 3, 4, 5, 6, 7, "approve", "reject", "stop", "retry", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]]
+  },
+  "neo": {
+    "label": "Stream Deck Neo",
+    "columns": 4,
+    "rows": 2,
+    "pages": [[0, 1, 2, 3, 4, "approve", "reject", "stop"], [5, 6, 7, null, null, "approve", "reject", "stop"]]
+  }
+}

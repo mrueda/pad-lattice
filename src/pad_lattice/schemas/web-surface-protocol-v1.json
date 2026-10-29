@@ -10,6 +10,8 @@
     {"$ref": "#/$defs/revokeRemote"},
     {"$ref": "#/$defs/startExperience"},
     {"$ref": "#/$defs/stopExperience"},
+    {"$ref": "#/$defs/questionRequest"},
+    {"$ref": "#/$defs/questionResponse"},
     {"$ref": "#/$defs/authenticated"},
     {"$ref": "#/$defs/pairing"},
     {"$ref": "#/$defs/surface"},
@@ -21,6 +23,58 @@
     {"$ref": "#/$defs/error"}
   ],
   "$defs": {
+    "questionRequest": {
+      "oneOf": [
+        {"type": "object", "additionalProperties": false,
+         "required": ["protocol", "type", "request_id", "operation"],
+         "properties": {"protocol": {"const": 1}, "type": {"const": "question_request"},
+           "request_id": {"type": "string", "minLength": 1, "maxLength": 64}, "operation": {"const": "status"}}},
+        {"type": "object", "additionalProperties": false,
+         "required": ["protocol", "type", "request_id", "operation", "slot", "revision", "token", "answers"],
+         "properties": {"protocol": {"const": 1}, "type": {"const": "question_request"},
+           "request_id": {"type": "string", "minLength": 1, "maxLength": 64}, "operation": {"const": "answer"},
+           "slot": {"type": "integer", "minimum": 0, "maximum": 7}, "revision": {"type": "integer", "minimum": 0},
+           "token": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+           "answers": {"type": "object", "minProperties": 1, "maxProperties": 3,
+             "propertyNames": {"minLength": 1, "maxLength": 128},
+             "additionalProperties": {"type": "integer", "minimum": 0, "maximum": 8}}}}
+      ]
+    },
+    "questionResponse": {
+      "type": "object", "additionalProperties": false,
+      "required": ["protocol", "type", "request_id"],
+      "properties": {"protocol": {"const": 1}, "type": {"const": "question_response"},
+        "request_id": {"type": "string", "minLength": 1, "maxLength": 64},
+        "result": {"oneOf": [
+          {"type": "object", "maxProperties": 0},
+          {"type": "object", "additionalProperties": false, "required": ["question", "slot", "revision"],
+            "properties": {
+              "slot": {"type": ["integer", "null"], "minimum": 0, "maximum": 7},
+              "revision": {"type": ["integer", "null"], "minimum": 0},
+              "question": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/pendingQuestion"}]}
+            }}]},
+        "error": {"type": "string"}},
+      "oneOf": [{"required": ["result"]}, {"required": ["error"]}]
+    },
+    "pendingQuestion": {
+      "type": "object", "additionalProperties": false, "required": ["token", "questions"],
+      "properties": {
+        "token": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+        "questions": {"type": "array", "minItems": 1, "maxItems": 3, "items": {
+          "type": "object", "additionalProperties": false, "required": ["id", "header", "question", "options"],
+          "properties": {
+            "id": {"type": "string", "minLength": 1, "maxLength": 128},
+            "header": {"type": "string", "maxLength": 256},
+            "question": {"type": "string", "minLength": 1, "maxLength": 4096},
+            "options": {"type": "array", "minItems": 1, "maxItems": 9, "items": {
+              "type": "object", "additionalProperties": false, "required": ["label", "description"],
+              "properties": {"label": {"type": "string", "minLength": 1, "maxLength": 512},
+                             "description": {"type": "string", "maxLength": 2048}}
+            }}
+          }
+        }}
+      }
+    },
     "deviceDisconnected": {
       "type": "object", "additionalProperties": false,
       "required": ["protocol", "type"],
@@ -41,7 +95,7 @@
     "actionName": {"enum": ["approve", "reject", "stop", "retry"]},
     "stateName": {
       "enum": [
-        "running", "waiting_for_reply", "user_typing",
+        "idle", "running", "waiting_for_reply", "user_typing",
         "waiting_for_approval", "success", "error", "cancelled"
       ]
     },

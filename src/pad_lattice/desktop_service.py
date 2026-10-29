@@ -30,7 +30,7 @@ from pad_lattice.devices.profiles import ProfileCatalog
 from pad_lattice.devices.test_run import ProfileTestRun
 from pad_lattice.devices.testing import profile_test_report
 from pad_lattice.protocol import default_socket_path
-from pad_lattice.web_protocol import (parse_web_command, ActionCommand, SelectSessionCommand,
+from pad_lattice.web_protocol import (parse_web_command, ActionCommand, SelectSessionCommand, QuestionCommand,
     CreatePairingCommand, RevokeRemoteCommand, StartExperienceCommand, StopExperienceCommand,
     surface_message, experience_message, performance_frame_message, web_message)
 from pad_lattice.web_surface import WebSurface
@@ -38,12 +38,15 @@ from pad_lattice.web_surface import WebSurface
 MAX_REQUEST = 64 * 1024
 PREFERENCE_TYPES = {"codex": str, "midi_profile": str, "midi_input": str,
                     "midi_output": str, "pad_focused": bool, "audio_enabled": bool, "light_theme": bool,
+                    "surface_layout": str,
+                    "share_browser_questions": bool,
                     "pairing_host": str, "pairing_port": str, "pairing_advertise_host": str}
 
 
 def valid_preference(key, value):
     return key in PREFERENCE_TYPES and type(value) is PREFERENCE_TYPES[key] and (
-        not isinstance(value, str) or len(value) <= 4096)
+        not isinstance(value, str) or len(value) <= 4096) and (
+        key != "surface_layout" or value in {"grid", "stream-deck", "stream-deck-xl", "stream-deck-neo"})
 
 
 class DesktopSurface(WebSurface):
@@ -60,7 +63,10 @@ class DesktopSurface(WebSurface):
         self.attention_future = None
         self.inspection_future = None
         self.inspection_path = None
-        self.attachments = AttachmentManager(socket_path)
+        self.attachments = AttachmentManager(socket_path, on_disconnect=lambda thread_id:
+            self.emit({"event": "attachment_disconnected", "thread_id": thread_id}))
+        self.remote_questions: queue.Queue = queue.Queue(maxsize=32)
+        self.server.question_handler = self.browser_question
         self.midi = None
         self.midi_error = None
         self.last_view = SurfaceView(None)
@@ -161,6 +167,18 @@ class DesktopSurface(WebSurface):
     def command(self, method: str, params: dict):
         if method.startswith("profile_test_"):
             return self.profile_test_command(method, params)
+        if method in {"question_status", "approval_status", "answer_question"}:
+            selected = next((session for session in self.last_view.sessions if session.selected), None)
+            if method == "approval_status":
+                approval = self.attachments.approval(selected.slot) if selected else None
+                return {"approval": approval, "slot": selected.slot if selected else None,
+                        "revision": self.last_view.control_revision,
+                        **(self.attachments.attention(selected.slot) if selected else {})}
+            if method == "question_status":
+                question = self.attachments.question(selected.slot) if selected else None
+                return {"question": question, "slot": selected.slot if selected else None,
+                        "revision": self.last_view.control_revision}
+            return self.answer_question(params)
         if method == "snapshot":
             return self.snapshot()
         if method == "status":
@@ -243,6 +261,51 @@ class DesktopSurface(WebSurface):
             return {}
         raise ValueError("Unknown desktop operation")
 
+    def answer_question(self, params, authorized=lambda: True):
+        slot, revision = params.get("slot"), params.get("revision")
+        def still_selected():
+            view = self.last_view
+            return (authorized() and self._events.empty() and type(slot) is int and type(revision) is int and view.control_revision == revision
+                    and any(session.selected and session.slot == slot for session in view.sessions))
+        if not still_selected():
+            raise ValueError("The selected conversation has changed or access was revoked")
+        return self.attachments.answer_question(slot, params.get("token"), params.get("answers"), still_selected)
+
+    def browser_question(self, command: QuestionCommand, authorized):
+        reply: queue.Queue = queue.Queue(maxsize=1)
+        deadline = time.monotonic() + 3
+        try:
+            self.remote_questions.put_nowait((command, authorized, deadline, reply))
+            result, error = reply.get(timeout=3)
+        except queue.Full:
+            raise ValueError("Question service is busy") from None
+        except queue.Empty:
+            raise ValueError("Question service timed out") from None
+        if error:
+            raise ValueError(error)
+        return result
+
+    def poll_browser_questions(self):
+        for _ in range(8):
+            try:
+                command, authorized, deadline, reply = self.remote_questions.get_nowait()
+            except queue.Empty:
+                return
+            try:
+                def permitted():
+                    return (time.monotonic() < deadline and authorized()
+                            and self.settings().get("share_browser_questions", False))
+                if not permitted():
+                    raise ValueError("Question sharing is off or device access was revoked")
+                if command.operation == "status":
+                    result = self.command("question_status", {})
+                else:
+                    result = self.answer_question({"slot": command.slot, "revision": command.revision,
+                                                   "token": command.token, "answers": command.answers}, permitted)
+                reply.put_nowait((result, None))
+            except (OSError, ValueError, RuntimeError) as exc:
+                reply.put_nowait((None, str(exc)))
+
     def cancel_profile_test(self, reason):
         if self.profile_test:
             self.profile_test.cancel(reason)
@@ -302,7 +365,8 @@ class DesktopSurface(WebSurface):
         priority = {"waiting_for_approval": 0, "error": 1, "waiting_for_reply": 2}
         sessions = [{"slot": item["slot"], "label": item["label"][:80], "accent": item["accent"],
                      "state": item["state"], "selected": item["selected"],
-                     "age_seconds": item["state_age_seconds"]}
+                     "age_seconds": item["state_age_seconds"],
+                     **self.attachments.attention(item["slot"])}
                     for item in snapshot["sessions"] if item["state"] in priority and item["slot"] is not None]
         sessions.sort(key=lambda item: (priority[item["state"]], -item["age_seconds"], item["slot"]))
         return {"revision": snapshot["control_revision"], "sessions": sessions,
@@ -322,7 +386,7 @@ class DesktopSurface(WebSurface):
                     if item["backend"] == "codex"}
         listed = {item["id"] for item in result["conversations"]}
         for thread_id, attachment in attachments.items():
-            if thread_id not in listed:
+            if thread_id not in listed and (not result["available"] or result.get("truncated")):
                 session = sessions.get(thread_id, {})
                 result["conversations"].append({"id": thread_id, "name": session.get("label", thread_id),
                                               "cwd": session.get("metadata", {}).get("cwd", ""), "state": "unknown"})
@@ -336,6 +400,10 @@ class DesktopSurface(WebSurface):
         return result
 
     def poll_events(self):
+        pending_events = super().poll_events() + (self._midi_call("poll_events") or [])
+        if pending_events:
+            return pending_events
+        self.poll_browser_questions()
         for _ in range(16):
             try:
                 request = self.requests.get_nowait()

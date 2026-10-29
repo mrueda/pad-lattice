@@ -35,6 +35,19 @@ a used PIN cannot pair another one.
 Selection is shared. Check the selected chat before acting, especially if
 someone else is using another surface.
 
+## Answer Codex Questions
+
+**Question sharing is optional and off by default.** Without it, paired browsers
+still show session colors and states, switch chats, and approve, reject, or stop
+when those actions are available. Answer multiple-choice questions in Codex or
+the Pad-Lattice desktop app instead.
+
+To read and answer those questions from a paired browser, enable
+**Settings > Devices > Browsers > Share Codex questions with paired browsers**.
+Question text then travels over the unencrypted local network to paired devices
+that request it. Use only a trusted network. Free-text and secret answers stay
+in Codex; approval details stay in Desktop.
+
 ## Share Demo and Show
 
 Disconnect real sessions, then choose **Demo & Show > Demo** or **Demo & Show > Show**

@@ -85,6 +85,7 @@ metadata, not identity.
 | --- | --- |
 | `running` | `stop` |
 | `waiting_for_reply` | None |
+| `idle` (Ready) | None |
 | `user_typing` | None |
 | `waiting_for_approval` | `approve`, `reject` |
 | `success` | None |

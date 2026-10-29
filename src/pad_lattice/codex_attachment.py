@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from contextlib import ExitStack
-from dataclasses import dataclass, field
 import json
 import os
+import queue
 import stat
 import threading
 import time
@@ -17,113 +17,25 @@ from websockets.sync.client import unix_connect
 from pad_lattice import __version__
 from pad_lattice.client import PadLatticeClient
 from pad_lattice.codex_discovery import control_socket
+from pad_lattice.codex_state import ConversationFamily, LiveConversation
 from pad_lattice.events import AgentIdentity, AgentState, ControlAction
 from pad_lattice.protocol import open_message_connection, session_lease_message, state_message
 
-APPROVAL_METHODS = {"item/commandExecution/requestApproval", "item/fileChange/requestApproval"}
+CHILD_REFRESH_SECONDS = 2.0
+MAX_FAMILY_THREADS = 256
 
 
-@dataclass
-class LiveConversation:
-    """Only live routing data; never retain transcript or tool output."""
-
-    thread_id: str
-    state: AgentState = AgentState.WAITING_FOR_REPLY
-    turn_id: str | None = None
-    pending: dict = field(default_factory=dict)
-    interrupted_turn: str | None = None
-
-    def status(self, status):
-        kind = status.get("type")
-        if kind == "notLoaded":
-            raise ConnectionError("Codex unloaded this conversation")
-        if kind == "idle":
-            self.turn_id = None
-            self.pending.clear()
-            if self.state not in {AgentState.SUCCESS, AgentState.CANCELLED, AgentState.ERROR}:
-                self.state = AgentState.WAITING_FOR_REPLY
-        elif kind == "active":
-            flags = status.get("activeFlags", [])
-            self.state = (AgentState.WAITING_FOR_APPROVAL if "waitingOnApproval" in flags else
-                          AgentState.WAITING_FOR_REPLY if "waitingOnUserInput" in flags else AgentState.RUNNING)
-        elif kind == "systemError":
-            self.state = AgentState.ERROR
-            self.turn_id = None
-            self.pending.clear()
-        else:
-            raise ValueError("Unsupported Codex thread status")
-
-    def event(self, message):
-        method = message.get("method")
-        params = message.get("params", {})
-        if not isinstance(params, dict) or params.get("threadId") != self.thread_id:
-            return
-        if "id" in message:
-            request_id = message["id"]
-            if not isinstance(request_id, (str, int)) or isinstance(request_id, bool):
-                raise ValueError("Invalid Codex request ID")
-            if len(self.pending) >= 64 and request_id not in self.pending:
-                raise ValueError("Too many pending Codex requests")
-            turn_id = params.get("turnId")
-            if isinstance(turn_id, str) and turn_id:
-                if self.turn_id and turn_id != self.turn_id:
-                    return
-                self.turn_id = turn_id
-            supported = method in APPROVAL_METHODS and bool(turn_id)
-            if method == "item/commandExecution/requestApproval" and params.get("kind", "command") != "command":
-                supported = False
-            decisions = params.get("availableDecisions", ["accept", "decline"])
-            actions = tuple(action for action, decision in ((ControlAction.APPROVE, "accept"), (ControlAction.REJECT, "decline"))
-                            if supported and isinstance(decisions, list) and decision in decisions)
-            self.pending[request_id] = (actions, params.get("itemId"))
-            self.state = AgentState.WAITING_FOR_APPROVAL if method in APPROVAL_METHODS else AgentState.WAITING_FOR_REPLY
-        elif method == "serverRequest/resolved":
-            removed = self.pending.pop(params.get("requestId"), None)
-            if removed is not None and not self.pending and self.turn_id:
-                self.state = AgentState.RUNNING
-        elif method == "thread/status/changed":
-            self.status(params["status"])
-        elif method == "thread/closed":
-            raise ConnectionError("Codex closed this conversation")
-        elif method == "turn/started":
-            turn_id = params["turn"]["id"]
-            if self.turn_id != turn_id:
-                self.pending.clear()
-            self.turn_id = turn_id
-            self.state = AgentState.RUNNING
-        elif method == "turn/completed":
-            turn = params["turn"]
-            if self.turn_id and turn["id"] != self.turn_id:
-                return
-            self.turn_id = None
-            self.pending.clear()
-            self.state = {"completed": AgentState.SUCCESS, "interrupted": AgentState.CANCELLED,
-                          "failed": AgentState.ERROR}.get(turn["status"], AgentState.WAITING_FOR_REPLY)
-        elif method == "item/completed":
-            item_id = params.get("item", {}).get("id")
-            if item_id:
-                previous = len(self.pending)
-                self.pending = {key: value for key, value in self.pending.items() if value[1] != item_id}
-                if previous and not self.pending and self.turn_id:
-                    self.state = AgentState.RUNNING
-
-    def controls(self):
-        actions = []
-        request_id = None
-        if len(self.pending) == 1:
-            request_id, (choices, _) = next(iter(self.pending.items()))
-            actions.extend(choices)
-        if self.turn_id and self.turn_id != self.interrupted_turn:
-            actions.append(ControlAction.STOP)
-        return tuple(actions), request_id, self.turn_id
 
 
 class CodexAttachment:
-    def __init__(self, thread_id, socket_path):
+    def __init__(self, thread_id, socket_path, on_disconnect=None):
         self.thread_id = thread_id
         self.client = PadLatticeClient(socket_path)
         self.agent = AgentIdentity("codex", thread_id)
         self.live = LiveConversation(thread_id)
+        self.family = ConversationFamily(self.live)
+        self.thread_sources = {}
+        self.next_child_refresh = 0.0
         self.stop = threading.Event()
         self.ready = threading.Event()
         self.error = None
@@ -132,9 +44,92 @@ class CodexAttachment:
         self.worker = threading.Thread(target=self._run, name="codex-attachment", daemon=True)
         self.sequence = 0
         self.ws = None
+        self.on_disconnect = on_disconnect
+        self.live_lock = threading.Lock()
+        self.question_answers = queue.Queue(maxsize=4)
+
+    def question(self):
+        with self.live_lock:
+            target = self.family.request_target()
+            if not self.connected or not target or len(target.questions) != 1:
+                return None
+            return next(iter(target.questions.values()))
+
+    def approval(self):
+        with self.live_lock:
+            target = self.family.request_target()
+            if not self.connected or not target or len(target.approvals) != 1:
+                return None
+            result = dict(next(iter(target.approvals.values())))
+            if target is not self.live:
+                result["agent_label"] = self.family.labels.get(target.thread_id, "Child agent")
+            return result
+
+    def attention(self):
+        with self.live_lock:
+            return self.family.attention()
+
+    def answer_question(self, token, answers, still_selected):
+        result = queue.Queue(maxsize=1)
+        try:
+            with self.live_lock:
+                if not self.connected or self.stop.is_set():
+                    raise ValueError("Conversation is no longer connected")
+                self.question_answers.put_nowait((token, answers, still_selected, time.monotonic() + 2, result))
+            error = result.get(timeout=2)
+        except queue.Full:
+            raise ValueError("Another answer is being submitted") from None
+        except queue.Empty:
+            raise TimeoutError("Codex did not accept the answer in time") from None
+        if error:
+            raise ValueError(error)
+        return {}
+
+    def _answer_pending(self):
+        try:
+            token, answers, still_selected, deadline, result = self.question_answers.get_nowait()
+        except queue.Empty:
+            return
+        error = None
+        with self.live_lock:
+            target = self.family.request_target()
+            pending = target.questions if target else {}
+            if (time.monotonic() >= deadline or not still_selected() or len(pending) != 1):
+                error = "This question is no longer available"
+            else:
+                request_id, question = next(iter(pending.items()))
+                questions = question["questions"]
+                if (token != question["token"] or not isinstance(answers, dict)
+                        or set(answers) != {q["id"] for q in questions}
+                        or any(type(answers[q["id"]]) is not int or not 0 <= answers[q["id"]] < len(q["options"])
+                               for q in questions)):
+                    error = "Invalid or outdated answer"
+                else:
+                    payload = {q["id"]: {"answers": [q["options"][answers[q["id"]]]["label"]]} for q in questions}
+                    try:
+                        self.ws.send(json.dumps({"id": request_id, "result": {"answers": payload}}))
+                    except (OSError, WebSocketException) as exc:
+                        result.put_nowait(str(exc))
+                        raise
+                    target.pending.pop(request_id, None)
+                    target.pending_states.pop(request_id, None)
+                    pending.pop(request_id, None)
+                    target.state = AgentState.RUNNING
+        result.put_nowait(error)
+
+    def _disconnect_answers(self):
+        with self.live_lock:
+            self.connected = False
+            while True:
+                try:
+                    *_, result = self.question_answers.get_nowait()
+                except queue.Empty:
+                    break
+                result.put_nowait("Conversation is no longer connected")
 
     def close(self):
         self.stop.set()
+        self._disconnect_answers()
         if self.ws is not None:
             self.ws.close()
         if self.worker.is_alive():
@@ -145,7 +140,8 @@ class CodexAttachment:
         if not isinstance(message, dict):
             raise ValueError("Invalid Codex message")
         if "method" in message:
-            self.live.event(message)
+            with self.live_lock:
+                self.family.event(message)
         return message
 
     def _request(self, method, params):
@@ -164,6 +160,97 @@ class CodexAttachment:
                 return message["result"]
         raise ConnectionError("Attachment stopped")
 
+    def _refresh_children(self):
+        """Discover ancestry from Codex metadata, then join only loaded descendants."""
+        revision = self.live.event_revision
+        root = self._request("thread/read", {"threadId": self.thread_id, "includeTurns": False})["thread"]
+        with self.live_lock:
+            # A newer event wins over a status snapshot captured before that event.
+            if self.live.event_revision == revision:
+                self.live.status(root["status"], reconcile=True)
+        loaded = set()
+        cursor = None
+        cursors = set()
+        while True:
+            params = {"limit": 64}
+            if cursor:
+                params["cursor"] = cursor
+            page = self._request("thread/loaded/list", params)
+            ids = page.get("data")
+            if not isinstance(ids, list) or any(not isinstance(ident, str) for ident in ids):
+                raise ValueError("Invalid loaded Codex threads")
+            loaded.update(ids)
+            if len(loaded) > MAX_FAMILY_THREADS:
+                raise ValueError("Too many loaded Codex threads to track safely")
+            cursor = page.get("nextCursor")
+            if not cursor:
+                break
+            if not isinstance(cursor, str) or cursor in cursors:
+                raise ValueError("Invalid loaded Codex thread cursor")
+            cursors.add(cursor)
+
+        summaries = {}
+        for ident in sorted(loaded - self.thread_sources.keys() - {self.thread_id}):
+            thread = self._request("thread/read", {"threadId": ident, "includeTurns": False})["thread"]
+            source = thread.get("source")
+            subagent = source.get("subAgent") if isinstance(source, dict) else None
+            spawn = subagent.get("thread_spawn") if isinstance(subagent, dict) else None
+            self.thread_sources[ident] = spawn if isinstance(spawn, dict) else {}
+            summaries[ident] = thread
+
+        def descendant(ident):
+            seen = set()
+            while ident not in seen:
+                seen.add(ident)
+                parent = self.thread_sources.get(ident, {}).get("parent_thread_id")
+                if parent == self.thread_id:
+                    return True
+                if not isinstance(parent, str):
+                    break
+                ident = parent
+            return False
+
+        descendants = {ident for ident in loaded if descendant(ident)}
+        with self.live_lock:
+            for ident in self.family.children.keys() - descendants:
+                del self.family.children[ident]
+                self.family.labels.pop(ident, None)
+        for ident in sorted(descendants):
+            previous = self.family.children.get(ident)
+            revision = previous.event_revision if previous else None
+            thread = summaries.get(ident)
+            if thread is None:
+                thread = self._request("thread/read", {"threadId": ident, "includeTurns": False})["thread"]
+            if thread.get("status", {}).get("type") == "notLoaded":
+                with self.live_lock:
+                    self.family.children.pop(ident, None)
+                    self.family.labels.pop(ident, None)
+                continue
+            with self.live_lock:
+                joining = ident not in self.family.children
+                child = self.family.children.setdefault(ident, LiveConversation(ident))
+                name = self.thread_sources[ident].get("agent_nickname")
+                self.family.labels[ident] = name[:80] if isinstance(name, str) and name else "Child agent"
+                if joining or child.event_revision == revision:
+                    child.status(thread["status"], reconcile=True)
+            if joining:
+                # Joining a loaded child subscribes to its exact requests; it starts no turn.
+                resumed = self._request("thread/resume", {"threadId": ident, "excludeTurns": True})
+                with self.live_lock:
+                    child.status(resumed["thread"]["status"])
+
+        # Keep unloaded ancestors only while a loaded descendant still references them.
+        keep = set(loaded)
+        for ident in descendants:
+            while ident in self.thread_sources:
+                parent = self.thread_sources[ident].get("parent_thread_id")
+                if not isinstance(parent, str) or parent in keep:
+                    break
+                keep.add(parent)
+                ident = parent
+        self.thread_sources = {ident: source for ident, source in self.thread_sources.items() if ident in keep}
+        self.next_child_refresh = time.monotonic() + CHILD_REFRESH_SECONDS
+
     def _run(self):
         subscription = None
         try:
@@ -174,7 +261,8 @@ class CodexAttachment:
             with ExitStack() as stack:
                 self.ws = stack.enter_context(unix_connect(str(path), uri="ws://localhost/", open_timeout=2,
                     close_timeout=0.2, max_size=4 * 1024 * 1024, compression=None))
-                self._request("initialize", {"clientInfo": {"name": "pad_lattice", "version": __version__}})
+                self._request("initialize", {"clientInfo": {"name": "pad_lattice", "version": __version__},
+                    "capabilities": {"experimentalApi": True, "requestAttestation": False}})
                 self.ws.send(json.dumps({"method": "initialized"}))
                 summary = self._request("thread/read", {"threadId": self.thread_id, "includeTurns": False})["thread"]
                 if summary.get("source") != "cli" or summary.get("status", {}).get("type") == "notLoaded":
@@ -189,6 +277,7 @@ class CodexAttachment:
                     if (self.live.state == AgentState.RUNNING and not self.live.turn_id
                             and turns and turns[0].get("status") == "inProgress"):
                         self.live.turn_id = turns[0]["id"]
+                self._refresh_children()
                 lease = stack.enter_context(open_message_connection(self.client.socket_path))
                 metadata = {"label": (summary.get("name") or "Codex")[:64], "source": "app-server"}
                 if summary.get("cwd"):
@@ -205,18 +294,17 @@ class CodexAttachment:
                 self.connected = True
                 self.ready.set()
                 while not self.stop.is_set():
+                    if time.monotonic() >= self.next_child_refresh:
+                        self._refresh_children()
                     # Drain server events before accepting a physical/browser action.
                     for _ in range(64):
                         try:
                             self._receive(0.001)
                         except TimeoutError:
                             break
-                    controls = self.live.controls()
-                    if self.live.state != published:
-                        reply = lease.request(state_message(self.live.state, agent=self.agent, reply=True))
-                        if reply.get("type") != "state_ack":
-                            raise RuntimeError("Pad-Lattice rejected a state update")
-                        published = self.live.state
+                    self._answer_pending()
+                    controls = self.family.controls()
+                    state = self.family.state
                     if controls != signature:
                         if subscription:
                             subscription.close()
@@ -228,6 +316,13 @@ class CodexAttachment:
                             subscription = self.client.subscribe_actions(self.agent, actions, request_id=token,
                                                                          one_shot=True, timeout=0.02)
                             subscription.__enter__()
+                    if state != published:
+                        reply = lease.request(state_message(state, agent=self.agent, reply=True))
+                        if reply.get("type") != "state_ack":
+                            raise RuntimeError("Pad-Lattice rejected a state update")
+                        # Closing a capability uses another socket. The daemon may still
+                        # see it for this update, so retain the acknowledged state and retry.
+                        published = AgentState(reply["state"])
                     if subscription:
                         try:
                             event = subscription.receive()
@@ -240,14 +335,14 @@ class CodexAttachment:
                             except TimeoutError:
                                 break
                         if (event.agent == self.agent and event.request_id == token
-                                and self.live.controls() == signature and event.action in signature[0]):
-                            _, request_id, turn_id = signature
+                                and self.family.controls() == signature and event.action in signature[0]):
+                            _, request, turn_id = signature
                             if event.action == ControlAction.STOP:
                                 self.live.interrupted_turn = turn_id
                                 self._request("turn/interrupt", {"threadId": self.thread_id, "turnId": turn_id})
-                            elif request_id is not None:
+                            elif request is not None:
                                 decision = "accept" if event.action == ControlAction.APPROVE else "decline"
-                                self.ws.send(json.dumps({"id": request_id, "result": {"decision": decision}}))
+                                self.ws.send(json.dumps({"id": request[1], "result": {"decision": decision}}))
                         subscription.close()
                         subscription = None
                     else:
@@ -255,26 +350,53 @@ class CodexAttachment:
         except (OSError, ValueError, RuntimeError, WebSocketException, KeyError, TypeError, AttributeError) as exc:
             if not self.stop.is_set():
                 self.error = str(exc)
+                if self.connected and self.on_disconnect:
+                    self.on_disconnect(self.thread_id)
         finally:
-            if subscription:
-                subscription.close()
-            self.connected = False
-            self.ready.set()
+            try:
+                if subscription:
+                    subscription.close()
+            finally:
+                self._disconnect_answers()
+                self.ready.set()
 
 
 class AttachmentManager:
     """Desktop operations are serialized by its worker; snapshots use a lock."""
 
-    def __init__(self, socket_path):
+    def __init__(self, socket_path, on_disconnect=None):
         self.socket_path = socket_path
         self.attachments = {}
         self.lock = threading.Lock()
         self.closed = False
+        self.on_disconnect = on_disconnect
 
     def snapshot(self):
         with self.lock:
             return {key: {"connected": value.connected, "error": value.error}
                     for key, value in self.attachments.items()}
+
+    def _connected_at(self, slot):
+        with self.lock:
+            return next((item for item in self.attachments.values() if item.connected and item.slot == slot), None)
+
+    def question(self, slot):
+        attachment = self._connected_at(slot)
+        return attachment.question() if attachment else None
+
+    def approval(self, slot):
+        attachment = self._connected_at(slot)
+        return attachment.approval() if attachment else None
+
+    def attention(self, slot):
+        attachment = self._connected_at(slot)
+        return attachment.attention() if attachment else {"pending_count": 0, "child_attention_count": 0}
+
+    def answer_question(self, slot, token, answers, still_selected):
+        attachment = self._connected_at(slot)
+        if attachment is None:
+            raise ValueError("Conversation is no longer connected")
+        return attachment.answer_question(token, answers, still_selected)
 
     def discard_disconnected(self):
         with self.lock:
@@ -301,7 +423,7 @@ class AttachmentManager:
             raise ValueError("All eight pad slots are occupied")
         if previous:
             previous.close()
-        attachment = CodexAttachment(thread_id, self.socket_path)
+        attachment = CodexAttachment(thread_id, self.socket_path, self.on_disconnect)
         with self.lock:
             if self.closed:
                 raise RuntimeError("Desktop is closing")
@@ -312,6 +434,8 @@ class AttachmentManager:
             raise TimeoutError("Codex did not attach in time")
         if attachment.error:
             raise RuntimeError(attachment.error)
+        if not attachment.connected or attachment.stop.is_set():
+            raise ConnectionError("Conversation disconnected during attachment")
         return {"slot": attachment.slot}
 
     def detach(self, thread_id):

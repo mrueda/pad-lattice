@@ -2,10 +2,12 @@ import React from 'react';
 import {compileVisualFrame, tokenColor} from '../../../web-app/src/surfaceModel';
 import type {AgentState, ControlAction, SessionView, SurfaceView} from '../../../web-app/src/types';
 import styles from './SurfaceVisuals.module.css';
+import deckLayouts from '../../../integrations/stream-deck/layouts.json';
 
 const examples: {state: AgentState; name: string; meaning: string}[] = [
+  {state: 'idle', name: 'Ready', meaning: 'Idle. No reply or approval is requested.'},
   {state: 'running', name: 'Working', meaning: 'The agent is running.'},
-  {state: 'waiting_for_reply', name: 'Your reply', meaning: 'Continue the conversation in Codex.'},
+  {state: 'waiting_for_reply', name: 'Your reply', meaning: 'Codex has asked a question.'},
   {state: 'waiting_for_approval', name: 'Permission needed', meaning: 'Read the request, then approve or reject.'},
   {state: 'success', name: 'Success', meaning: 'The task finished successfully.'},
   {state: 'error', name: 'Error', meaning: 'Check Codex for the details.'},
@@ -25,7 +27,7 @@ function Pixels({state, x = 0, y = 0, step = 10}: {state: AgentState; x?: number
     <rect key={`${r}-${c}`} x={x + c * step} y={y + r * step} width={step - 2} height={step - 2} rx={1} fill={tokenColor(token)} />))}</g>;
 }
 export function StateLegend({all = false}: {all?: boolean}) {
-  return <div className={styles.legend}>{examples.slice(0, all ? 7 : 5).map(e =>
+  return <div className={styles.legend}>{(all ? examples : examples.slice(0, 6)).map(e =>
     <div className={styles.state} key={e.state}>
       <svg viewBox="0 0 86 96" width="86" height="96" role="img" aria-label={e.name}>
         <rect width="86" height="96" rx="6" fill="#10151a" /><Pixels state={e.state} x={9} y={9} />
@@ -104,4 +106,34 @@ export function StreamDeckDiagram() {
       <div><dt>Action keys name their target</dt><dd>Approve and Reject apply only to Review. Stop is dim and unavailable; unused keys can host other plugins.</dd></div>
     </dl>
   </figure>;
+}
+
+export function StreamDeckModelDiagram({model}: {model: 'xl' | 'neo'}) {
+  const layout = deckLayouts[model];
+  const examples: SessionView[] = Array.from({length: 8}, (_, slot) => ({slot,
+    state: slot === 1 ? 'waiting_for_approval' : 'running', selected: slot === 1,
+    accent: (['cyan', 'magenta', 'lime', 'orange', 'violet', 'teal', 'rose', 'sky'] as const)[slot],
+    label: slot === 1 ? 'Review' : `Agent ${slot + 1}`}));
+  return <div>{layout.pages.map((page, pageIndex) => <figure className={styles.figure} key={pageIndex}>
+    <svg viewBox={`0 0 ${layout.columns * 76 + 28} ${layout.rows * 76 + 46}`} role="img"
+      aria-label={`${layout.label}, page ${pageIndex + 1}: session keys and actions for Review`}>
+      <rect width="100%" height="100%" rx="8" fill="#20282f" />
+      <text x="14" y="22" fill="#edf2f5" fontSize="14">{layout.label}{layout.pages.length > 1 ? ` - page ${pageIndex + 1}` : ''}</text>
+      {page.map((value, index) => {
+        const session = typeof value === 'number' ? examples[value] : undefined;
+        const action = typeof value === 'string' && value !== 'retry' ? value : null;
+        const color = action === 'approve' ? '#55c76a' : action === 'reject' ? '#ef5b64' : '#657079';
+        return <g key={index} transform={`translate(${14 + index % layout.columns * 76} ${32 + Math.floor(index / layout.columns) * 76})`}>
+          <rect width="68" height="68" rx="5" fill="#10151a" stroke={session?.selected ? '#ffffff' : action && action !== 'stop' ? '#c83ec9' : '#4b555e'} strokeWidth={session?.selected ? 2 : 1} />
+          {session ? <><rect x="6" y="5" width="56" height="3" rx="1" fill={tokenColor(`accent:${session.accent}:selected`)} />
+            <Pixels state={session.state} x={18} y={10} step={4.5} />
+            <text x="34" y="62" textAnchor="middle" fill="#edf2f5" fontSize="9">{session.label}</text></>
+            : action ? <><text x="34" y="39" textAnchor="middle" fill={color} fontSize="25">{action === 'approve' ? '\u2713' : action === 'reject' ? '\u00d7' : '\u25a0'}</text>
+              <text x="34" y="53" textAnchor="middle" fill={color} fontSize="9">{action[0].toUpperCase() + action.slice(1)}</text>
+              <text x="34" y="63" textAnchor="middle" fill="#d6dde2" fontSize="8">Review</text></> : null}
+        </g>;
+      })}
+    </svg>
+    <figcaption>{layout.label}{layout.pages.length > 1 ? `, page ${pageIndex + 1} of ${layout.pages.length}` : ''}. Editable starter profile; not physically tested.</figcaption>
+  </figure>)}</div>;
 }

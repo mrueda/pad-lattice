@@ -27,7 +27,9 @@ to it or to the independent [CLI service](./cli.md).
 | [**Novation Launchpad Pro Mk1**](./launchpad.md) | Shared 8x8 grid, top action rail, right-side session selectors | Supported: physically tested |
 | [**Novation Launchpad Mini Mk3**](./launchpad.md) | Same visual layout, model-specific MIDI profile | Experimental: hardware testing needed |
 | [**Novation Launchpad Pro Mk3**](./launchpad.md) | Same visual layout, model-specific MIDI profile | Experimental: hardware testing needed |
-| [**Elgato Stream Deck**](./stream-deck.md) | One Session key per Codex conversation; separate keys act on the selected session | Experimental plugin installer with a 15-key starter layout; no physical model validated |
+| [**Elgato Stream Deck (15-key)**](./stream-deck.md) | Eight Session keys and separate actions | Experimental; hardware testing needed |
+| [**Elgato Stream Deck XL**](./stream-deck.md#stream-deck-xl) | Eight Session keys and separate actions, 32 keys total | Experimental; hardware testing needed |
+| [**Elgato Stream Deck Neo**](./stream-deck.md#stream-deck-neo) | Eight sessions across two pages, with actions on each | Experimental; hardware testing needed |
 
 For hardware, **supported** means physically tested; **experimental** means an
 implementation exists but still needs an owner's test. These are Pad-Lattice

@@ -1,6 +1,59 @@
 import {test, expect} from '@playwright/test';
 import {compileVisualFrame} from '../src/surfaceModel';
 import type {SurfaceView} from '../src/types';
+import {desktopBridge} from './desktopTestHarness';
+
+test('picker stays open when connecting several chats and respects manual collapse', async ({page}) => {
+  const connected = new Map<string, number>();
+  const view: SurfaceView = {selected_state: null, frame: 0, control_revision: 1,
+    sessions: [], available_actions: [], overflow_count: 0, activity_motion: false};
+  await desktopBridge(page, (method, params) => {
+    if (method === 'settings' || method === 'surface') return {};
+    if (method === 'status') return {version: '0.2.0', settings: {}, inputs: [], outputs: [], profiles: [], midi: null, lan_host: '127.0.0.1'};
+    if (method === 'inspect_codex') return {available: true, version: '0.165.0', tested_version: '0.165.0'};
+    if (method === 'paired_devices') return {devices: []};
+    if (method === 'snapshot') return {messages: [{protocol: 1, type: 'authenticated', admin: true, lan_enabled: false},
+      {protocol: 1, type: 'surface', visual_protocol: 1, view, visual_frame: compileVisualFrame(view)}]};
+    if (method === 'list_conversations') return {available: true, conversations: ['Builder', 'Reviewer'].map(name => ({
+      id: name, name, cwd: '/project', state: 'running', connected: connected.has(name), managed: connected.has(name),
+      slot: connected.get(name) ?? null}))};
+    if (method === 'attach_conversation') {
+      connected.set(String(params.thread_id), connected.size);
+      return {slot: connected.get(String(params.thread_id))};
+    }
+    if (method === 'detach_conversation') {connected.delete(String(params.thread_id)); return {};}
+    throw Error(`Unexpected request: ${method}`);
+  });
+  await page.goto('/');
+  const picker = page.getByRole('button', {name: /Codex conversations/});
+  await page.getByRole('button', {name: 'Connect Builder', exact: true}).click();
+  await expect(page.getByRole('button', {name: 'Disconnect Builder', exact: true})).toBeVisible();
+  await expect(picker).toHaveAttribute('aria-expanded', 'true');
+  await page.getByRole('button', {name: 'Connect Reviewer', exact: true}).click();
+  await expect(page.getByRole('button', {name: 'Disconnect Reviewer', exact: true})).toBeVisible();
+  await expect(picker).toHaveAttribute('aria-expanded', 'true');
+  await page.getByRole('button', {name: 'Refresh chats', exact: true}).click();
+  await expect(picker).toHaveAttribute('aria-expanded', 'true');
+  await picker.press('Escape');
+  await expect(picker).toHaveAttribute('aria-expanded', 'false');
+  await page.getByRole('button', {name: 'Refresh chats', exact: true}).click();
+  await expect(picker).toHaveAttribute('aria-expanded', 'false');
+  expect([...connected.keys()]).toEqual(['Builder', 'Reviewer']);
+  await picker.click();
+  await page.getByRole('button', {name: 'Remove Builder from Pad-Lattice', exact: true}).click();
+  const dialog = page.getByRole('dialog', {name: 'Remove from Pad-Lattice?'});
+  await expect(dialog).toContainText('Codex history is not deleted');
+  await dialog.getByRole('button', {name: 'Cancel', exact: true}).click();
+  expect(connected.has('Builder')).toBe(true);
+  await page.getByRole('button', {name: 'Remove Builder from Pad-Lattice', exact: true}).click();
+  await dialog.getByRole('button', {name: 'Remove', exact: true}).click();
+  await expect(page.getByRole('button', {name: 'Disconnect Builder', exact: true})).toHaveCount(0);
+  await page.getByRole('button', {name: 'Refresh chats', exact: true}).click();
+  await expect(page.getByRole('button', {name: 'Connect Builder', exact: true})).toHaveCount(0);
+  expect([...connected.keys()]).toEqual(['Reviewer']);
+  await page.getByRole('button', {name: 'Restore removed conversations', exact: true}).click();
+  await expect(page.getByRole('button', {name: 'Connect Builder', exact: true})).toBeVisible();
+});
 
 test('desktop discovers then explicitly connects and disconnects without launching', async ({page}) => {
   const methods: string[] = [];
@@ -96,7 +149,7 @@ test('desktop discovers then explicitly connects and disconnects without launchi
     }});
   });
   await page.goto('/');
-  const list = page.getByRole('region', {name: 'Open Codex conversations'});
+  const list = page.getByRole('region', {name: 'Codex conversations'});
   await expect(list.getByText('Review implementation', {exact: true})).toBeVisible();
   await expect(list.getByText('Approval needed', {exact: true})).toBeVisible();
   await expect(list.getByText('Not connected', {exact: true})).toHaveCount(2);
@@ -153,14 +206,16 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   await page.getByRole('button', {name: 'Back to live pad', exact: true}).click();
   await expect(list).toBeVisible();
   await page.getByRole('button', {name: 'Connect Review implementation', exact: true}).click();
-  await expect(list.getByText('Connected, Scene 1', {exact: true})).toBeVisible();
+  const picker = list.getByRole('button', {name: /Codex conversations/});
+  await expect(picker).toHaveAttribute('aria-expanded', 'true');
+  await expect(list.getByText('On pad, Scene 1', {exact: true})).toBeVisible();
   const swatch = page.locator('.sessionRow > button i').first();
   await expect(swatch).toHaveCSS('width', '12px');
   await expect(swatch).toHaveCSS('height', '12px');
   await expect(swatch).toHaveCSS('box-shadow', 'none');
   await expect(page.locator('.selectedConversation h2 i')).toHaveCSS('border-radius', '2px');
   await expect(explore).toBeDisabled();
-  await expect(page.getByText('1 chat connected', {exact: true})).toBeVisible();
+  await expect(page.getByText('1 chat on pad', {exact: true})).toBeVisible();
   await expect(page.getByText('CODEX CLI', {exact: true})).toBeVisible();
   await expect(page.getByRole('button', {name: 'Back to live pad', exact: true})).toHaveCount(0);
   await page.getByRole('button', {name: 'Maximize pad', exact: true}).click();
@@ -173,6 +228,33 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   const padBounds = await page.locator('.virtualSurface').boundingBox();
   expect(padBounds).not.toBeNull();
   expect(padBounds!.y + padBounds!.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+  const selectedScene = await page.locator('.sceneControl[aria-pressed="true"]').boundingBox();
+  expect(selectedScene!.x + selectedScene!.width + 5).toBeLessThanOrEqual(padBounds!.x + padBounds!.width);
+  const geometry = await page.locator('.surfaceBody').evaluate(body => {
+    const grid = body.querySelector('.matrixGrid')!.getBoundingClientRect();
+    const cells = [...body.querySelectorAll('.matrixPad')].map(el => el.getBoundingClientRect());
+    const scenes = [...body.querySelectorAll('.sceneControl')].map(el => el.getBoundingClientRect());
+    return scenes.map((scene, index) => ({
+      widthDifference: Math.abs(scene.width - cells[index * 8].width),
+      centerDifference: Math.abs((scene.top + scene.height / 2) - (cells[index * 8].top + cells[index * 8].height / 2)),
+      bottomOverflow: scene.bottom - grid.bottom,
+    }));
+  });
+  for (const item of geometry) {
+    expect(item.widthDifference).toBeLessThan(1);
+    expect(item.centerDifference).toBeLessThan(1);
+    expect(item.bottomOverflow).toBeLessThanOrEqual(1);
+  }
+  const originalViewport = page.viewportSize()!;
+  for (const viewport of [{width: 1180, height: 860}, {width: 760, height: 620}]) {
+    await page.setViewportSize(viewport);
+    const pad = await page.locator('.virtualSurface').boundingBox();
+    const selected = await page.locator('.sceneControl[aria-pressed="true"]').boundingBox();
+    expect(selected!.x + selected!.width + 5).toBeLessThanOrEqual(pad!.x + pad!.width);
+    expect(pad!.x + pad!.width).toBeLessThanOrEqual(viewport.width);
+    expect(pad!.y + pad!.height).toBeLessThanOrEqual(viewport.height);
+  }
+  await page.setViewportSize(originalViewport);
   if (page.viewportSize()!.width > page.viewportSize()!.height) {
     expect(padBounds!.height).toBeGreaterThan(page.viewportSize()!.height * 0.9);
   }
@@ -199,9 +281,9 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   await backToPad.click();
   await expect(page.getByRole('button', {name: 'Settings', exact: true})).toBeFocused();
   await expect(page.locator('.virtualSurface')).toBeVisible();
-  await expect(page.locator('.virtualSurface')).toHaveCSS('background-color', 'rgb(23, 29, 34)');
+  await expect(page.locator('.virtualSurface')).toHaveCSS('background-color', 'rgb(197, 208, 208)');
   await page.screenshot({path: test.info().outputPath('workspace-light.png'), fullPage: true});
-  await expect(list.getByText('Connected, Scene 1', {exact: true})).toBeVisible();
+  await expect(list.getByText('On pad, Scene 1', {exact: true})).toBeVisible();
   await page.getByRole('button', {name: 'Settings', exact: true}).click();
   const sound = page.getByRole('checkbox', {name: 'Enable sound'});
   await page.getByRole('tab', {name: 'Devices', exact: true}).click();
@@ -265,7 +347,9 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   testedCodexVersion = '0.165.0';
   await page.getByRole('button', {name: 'Reload interface', exact: true}).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await expect(list.getByText('Connected, Scene 1', {exact: true})).toBeVisible();
+  await expect(picker).toHaveAttribute('aria-expanded', 'false');
+  await picker.click();
+  await expect(list.getByText('On pad, Scene 1', {exact: true})).toBeVisible();
   await expect(explore).toBeDisabled();
   await expect(page.getByLabel('Codex working folder', {exact: false}).first()).not.toBeVisible();
   await page.screenshot({path: test.info().outputPath('desktop-discovery.png'), fullPage: true});
@@ -276,7 +360,7 @@ test('desktop discovers then explicitly connects and disconnects without launchi
   await expect(page.getByText('No chats connected', {exact: true})).toBeVisible();
   empty = true;
   await page.getByRole('button', {name: 'Refresh chats', exact: true}).click();
-  await expect(list.getByText('No open Codex conversations', {exact: true})).toBeVisible();
+  await expect(list.getByText('No available Codex conversations', {exact: true})).toBeVisible();
   unavailable = true;
   await page.getByRole('button', {name: 'Refresh chats', exact: true}).click();
   await expect(list.getByText('Codex disconnected', {exact: true})).toBeVisible();

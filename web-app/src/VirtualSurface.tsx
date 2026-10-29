@@ -61,9 +61,11 @@ export function VirtualSurface({
 }: Props) {
   const performance = showMode || performanceFrame !== null;
   const launchpad = variant === 'launchpad';
+  const selected = performance ? undefined : view.sessions.find(session => session.selected);
   return (
     <div
       className={`virtualSurface ${launchpad ? 'launchpadSurface' : ''} ${performance ? 'performanceSurface' : ''}`}
+      style={selected ? {'--session-accent': tokenColor(`accent:${selected.accent}:selected`)} as React.CSSProperties : undefined}
       aria-label={launchpad ? 'Launchpad Pro Mk1 simulation' : 'Pad-Lattice virtual control surface'}>
       {launchpad ? <div className="hardwareBrand"><span>novation</span><strong>Launchpad Pro Mk1</strong></div> : null}
       {performance ? (
@@ -91,7 +93,7 @@ export function VirtualSurface({
             const Icon = control.icon;
             return (
               <button
-                className={`railControl ${guidedAction === control.action ? 'guidedControl' : ''}`}
+                className={`railControl ${token !== 'off' && !performance ? 'litControl' : ''} ${guidedAction === control.action ? 'guidedControl' : ''}`}
                 disabled={!enabled}
                 key={index}
                 onClick={() => control.action && onAction(control.action)}
@@ -121,7 +123,7 @@ export function VirtualSurface({
                 : undefined;
               return (
                 <span
-                  className={`matrixPad ${status ? 'statusPad' : ''}`}
+                  className={`matrixPad ${status ? 'statusPad' : ''} ${token !== 'off' && !performance ? 'litPad' : ''}`}
                   key={`${row}-${column}`}
                   style={{
                     '--pad-color': performanceFrame?.grid[row]?.[column] ?? tokenColor(token),
@@ -137,7 +139,7 @@ export function VirtualSurface({
             const session = view.sessions.find((item) => item.slot === slot);
             return (
               <button
-                className={`sceneControl ${guidedSlot === slot ? 'guidedControl' : ''}`}
+                className={`sceneControl ${token !== 'off' && !performance ? 'litControl' : ''} ${guidedSlot === slot ? 'guidedControl' : ''}`}
                 disabled={performance || disabled || token === 'off'}
                 key={slot}
                 onClick={() => onSelect(slot)}
@@ -160,8 +162,8 @@ export function VirtualSurface({
         <span aria-hidden="true" />
       </div> : null}
       <div className="surfaceCaption surfaceFooter">
-        <span>{performance ? 'PERFORMANCE' : 'SELECTED AGENT'}</span>
-        <span>{performance ? 'FULL SURFACE' : view.sessions.find((session) => session.selected)?.label ?? 'NO SESSION'}</span>
+        <span>{performance ? 'PERFORMANCE' : selected ? `SCENE ${selected.slot + 1}` : 'SELECTED AGENT'}</span>
+        <span>{performance ? 'FULL SURFACE' : selected?.label ?? 'NO SESSION'}</span>
       </div>
     </div>
   );

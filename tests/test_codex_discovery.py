@@ -43,6 +43,18 @@ def thread(name='Work', kind='active', flags=None, source='cli'):
 
 
 class DiscoveryTest(TestCase):
+    def test_discovery_reports_loaded_threads_without_claiming_terminal_presence(self):
+        connection = Connection([{'data': ['live', 'closed']}],
+                                {'live': thread('Live'), 'closed': thread('Montessori', kind='idle')})
+        with patch('pad_lattice.codex_discovery.control_socket') as socket, \
+                patch('pad_lattice.codex_discovery.unix_connect') as connect:
+            socket.return_value.stat.return_value = SimpleNamespace(st_mode=stat.S_IFSOCK, st_uid=os.getuid())
+            connect.return_value.__enter__.return_value = connection
+            result = discover_conversations()
+        self.assertTrue(result['available'])
+        self.assertCountEqual([c['id'] for c in result['conversations']], ['live', 'closed'])
+        self.assertNotIn('thread/resume', [m['method'] for m in connection.sent])
+
     def test_pagination_deduplication_filtering_and_metadata_only(self):
         connection = Connection([{'data': ['a', 'b'], 'nextCursor': 'more'},
                                  {'data': ['a', 'c', 'd']}],

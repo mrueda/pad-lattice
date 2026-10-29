@@ -31,6 +31,9 @@ pub fn allowed_method(method: &str) -> bool {
             | "list_conversations"
             | "attach_conversation"
             | "detach_conversation"
+            | "question_status"
+            | "approval_status"
+            | "answer_question"
             | "lan"
             | "paired_devices"
             | "disconnect_device"
@@ -111,6 +114,9 @@ impl Engine {
                         }
                         Some("device") => {
                             let _ = app.emit("pad-lattice-device", &message);
+                        }
+                        Some("attachment_disconnected") => {
+                            let _ = app.emit("pad-lattice-attachment", &message);
                         }
                         Some("fatal") => {
                             let reason =

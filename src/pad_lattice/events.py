@@ -9,6 +9,7 @@ from enum import Enum
 class AgentState(str, Enum):
     """High-level states rendered by Pad-Lattice surfaces."""
 
+    IDLE = "idle"
     RUNNING = "running"
     WAITING_FOR_REPLY = "waiting_for_reply"
     USER_TYPING = "user_typing"

@@ -48,7 +48,7 @@ def state_for_codex_hook(event: dict[str, Any]) -> AgentState | None:
     """Map a stable Codex lifecycle hook event to a surface state."""
 
     return {
-        "SessionStart": AgentState.WAITING_FOR_REPLY,
+        "SessionStart": AgentState.IDLE,
         "UserPromptSubmit": AgentState.RUNNING,
         "PermissionRequest": AgentState.WAITING_FOR_APPROVAL,
         "PostToolUse": AgentState.RUNNING,

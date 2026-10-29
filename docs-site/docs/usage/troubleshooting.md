@@ -8,15 +8,15 @@ install the Python CLI or configure hooks** to connect open chats.
 - Codex CLI must be running on the same computer and operating-system account.
   A Linux VM cannot discover chats on its Mac host.
 - Select **Refresh chats**. The list shows loaded CLI conversations, not saved history.
-- Resume saved chats in Codex first, then connect them in Pad-Lattice.
+- Start Codex normally or resume a saved chat, then refresh.
 - Check **Settings > Codex** if the executable is not detected.
 
 ## Desktop Shows a Chat I Closed
 
-Refresh removes ended Pad-Lattice attachments and conversations Codex has
-unloaded. Codex can retain a thread in memory after its terminal closes,
-so the list is not an exact inventory of terminal windows.
-Use **Disconnect** to release a connected Scene without deleting Codex history.
+Codex can retain a conversation after its terminal closes. Use **Disconnect**
+to release its Scene or the **trash icon** to disconnect and hide it. Neither
+deletes Codex history or shifts other Scene numbers. An idle chat shows
+**Ready**, not a question or attention badge.
 
 ## Desktop Controls Are Dark
 

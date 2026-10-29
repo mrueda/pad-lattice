@@ -6,6 +6,25 @@ that implement them. Use it to find where a change belongs.
 Module paths on this page are relative to `src/pad_lattice/`; test paths are
 relative to `tests/`.
 
+For Desktop, `codex_state.py` interprets live events and child-agent requests;
+`codex_attachment.py` owns sockets, subscriptions, and pending answers.
+In `web-app/src/`, `App.tsx` selects `LiveApp.tsx` or the standalone
+`PublicApp.tsx`. Shared panels keep the same controls in both modes.
+
+### Refresh Documentation Images
+
+From `web-app`, run:
+
+```bash
+UPDATE_DOCS_SCREENSHOTS=1 npm run test:e2e -- docs-screenshots.spec.ts --project=desktop
+```
+
+This captures the current renderer with simulated conversations, not live
+prompts or device credentials. It updates the three desktop layout images in
+`docs-site/static/img/`. Ordinary test runs do not overwrite them.
+After building the web app, `node scripts/render_desktop_demo.mjs` from the
+repository root refreshes the illustrated walkthrough and poster.
+
 ## Four Rules
 
 Most of the architecture follows from four rules:

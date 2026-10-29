@@ -46,6 +46,7 @@ from pad_lattice.web_protocol import (
     encode_web_message,
     experience_message,
     parse_web_command,
+    QuestionCommand,
     performance_frame_message,
     surface_message,
     web_error,
@@ -149,6 +150,7 @@ class BrowserSurfaceServer:
         self._advertised_base_url: str | None = None
         self._advertised_hostname: str | None = None
         self._closed = False
+        self.question_handler: Callable[[QuestionCommand, Callable[[], bool]], dict[str, Any]] | None = None
 
     @property
     def actual_port(self) -> int:
@@ -598,6 +600,21 @@ class BrowserSurfaceServer:
                     raise WebProtocolError("Device access revoked or disconnected", code="forbidden")
         if isinstance(command, AuthenticateCommand):
             raise WebProtocolError("client is already authenticated")
+        if isinstance(command, QuestionCommand):
+            try:
+                if self.question_handler is None:
+                    raise ValueError("Questions are not available on this surface")
+                def authorized() -> bool:
+                    with self._auth_lock, self._clients_lock:
+                        return (id(client.connection) in self._clients and (client.admin or
+                            any(device.id == client.device_id for device in self._session_tokens.values())))
+                result = self.question_handler(command, authorized)
+                if not authorized():
+                    raise ValueError("Device access was revoked")
+                client.send(web_message("question_response", request_id=command.request_id, result=result))
+            except (ValueError, OSError, RuntimeError) as exc:
+                client.send(web_message("question_response", request_id=command.request_id, error=str(exc)))
+            return
         if isinstance(command, ActionCommand):
             self.event_sink(ActionPressed(command.action, command.expected_revision))
             return

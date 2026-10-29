@@ -5,6 +5,7 @@ import {OpenConversations} from './OpenConversations';
 import {PairedDevices, usePairedDevices} from './PairedDevices';
 import {About} from './About';
 import {HardwareTest} from './HardwareTest';
+import {DeviceIllustration} from './DeviceIllustration';
 
 const settingsPages = [
   {id: 'general', label: 'Appearance & sound', Icon: SlidersHorizontal},
@@ -33,7 +34,7 @@ function navigateTabs(event: KeyboardEvent<HTMLDivElement>) {
 interface Status {
   version: string;
   settings: {codex?: string; midi_profile?: string; midi_input?: string; midi_output?: string;
-    pairing_host?: string; pairing_port?: string; pairing_advertise_host?: string};
+    pairing_host?: string; pairing_port?: string; pairing_advertise_host?: string; share_browser_questions?: boolean};
   inputs: string[];
   outputs: string[];
   profiles: Array<{id: string; status: string}>;
@@ -240,7 +241,9 @@ export function DesktopControls({audioEnabled, onAudio, settingsOpen, onSettings
             </div>
           </div> : null}
           <div hidden={page !== 'devices'} id="device-panel" role="tabpanel" aria-labelledby={`device-tab-${devicePage}`}>
-          <section hidden={devicePage !== 'midi'}><h3>MIDI controller</h3>
+          <section hidden={devicePage !== 'midi'}>
+            {!hardwareTesting ? <div className="deviceIntro"><DeviceIllustration kind="midi" /><div><h3>MIDI controller</h3>
+              <p>USB MIDI · Grid and scene controls</p></div></div> : <h3>MIDI controller</h3>}
             <div hidden={hardwareTesting}>
             <label>Profile<select aria-label="Profile" disabled={hardwareTesting} value={profile} onChange={(e) => {setProfile(e.target.value); void savePreferences({midi_profile: e.target.value});}}><option value="">Automatic detection</option>{status?.profiles.map((p) => <option key={p.id} value={p.id}>{p.id}{p.status === 'experimental' ? ' (experimental)' : ''}</option>)}</select></label>
             <label>Input<select aria-label="Input" disabled={hardwareTesting} value={input} onChange={(e) => {setInput(e.target.value); void savePreferences({midi_input: e.target.value});}}><option value="">Automatic detection</option>{input && !status?.inputs.includes(input) ? <option value={input}>{input} (unavailable)</option> : null}{status?.inputs.map((p) => <option key={p}>{p}</option>)}</select></label>
@@ -253,12 +256,15 @@ export function DesktopControls({audioEnabled, onAudio, settingsOpen, onSettings
             {page === 'devices' && devicePage === 'midi' ? <HardwareTest profile={profile} input={input} output={output} connected={Boolean(status?.midi)} onActiveChange={setHardwareTesting} /> : null}
           </section>
           <section hidden={devicePage === 'midi'}>
-            <div className="desktopToolbar"><h3>{devicePage === 'stream_deck' ? 'Elgato Stream Deck' : 'Phones, tablets & computers'}</h3>
-              <button className="textButton" onClick={() => onPairDevice(devicePage === 'stream_deck' ? 'stream_deck' : 'browser')}><QrCode aria-hidden="true" /> Pair device</button></div>
+            <div className="deviceIntro"><DeviceIllustration kind={devicePage} /><div>
+              <h3>{devicePage === 'stream_deck' ? 'Elgato Stream Deck' : 'Phones, tablets & computers'}</h3>
+              <p>{devicePage === 'stream_deck' ? 'Elgato plugin · LCD keys' : 'Virtual Pad · Paired browser'}</p>
+              <button className="textButton" onClick={() => onPairDevice(devicePage === 'stream_deck' ? 'stream_deck' : 'browser')}><QrCode aria-hidden="true" /> Pair device</button>
+            </div></div>
             {devicePage === 'stream_deck' ? <dl className="deviceSetupFacts">
               <div><dt>Integration</dt><dd>Experimental plugin</dd></div>
               <div><dt>Key configuration</dt><dd>Elgato Stream Deck software</dd></div>
-              <div><dt>Starter layout</dt><dd>15 keys: 8 sessions + 3 actions</dd></div>
+              <div><dt>Starter layouts</dt><dd>15-key, XL, and Neo</dd></div>
               <div><dt>Hardware test</dt><dd>Not yet available</dd></div>
             </dl> : null}
             <div className="desktopActions">
@@ -268,6 +274,15 @@ export function DesktopControls({audioEnabled, onAudio, settingsOpen, onSettings
               <BookOpen /> {devicePage === 'stream_deck' ? 'Plugin setup guide' : 'Browser setup guide'}</button>
             </div>
             {page === 'devices' && devicePage !== 'midi' ? <PairedDevices key={devicePage} state={paired} kind={devicePage} /> : null}
+            {devicePage === 'browser' ? <>
+              <label className="desktopCheckbox"><input type="checkbox" aria-describedby="browserQuestionSharingHelp" checked={Boolean(status?.settings.share_browser_questions)} disabled={busy}
+                onChange={event => {const checked = event.currentTarget.checked;
+                  setStatus(previous => previous ? {...previous, settings: {...previous.settings, share_browser_questions: checked}} : previous);
+                  void run(async () => {try {await desktopRequest('settings', {share_browser_questions: checked}); await refresh();}
+                    catch (reason) {await refresh(); throw reason;}});}} />
+                Share Codex questions with paired browsers</label>
+              <p className="desktopNotice" id="browserQuestionSharingHelp">Optional, off by default. Paired browsers can still show status, switch chats, and approve, reject, or stop when available. Enable only to read and answer multiple-choice questions there. Question text travels over an unencrypted local connection; use only a trusted network.</p>
+            </> : null}
             {status?.network_url ? <div className="networkReady" role="status"><strong>Network access enabled</strong><span>{status.network_url}</span></div>
               : <p className="desktopNotice">Network access is off. Pairing is available on this computer only.</p>}
             <details className="networkSetup" open={!status?.network_url && devicePage !== 'stream_deck'}><summary>{devicePage === 'stream_deck' ? 'Other computer or VM' : 'Network setup'}</summary>

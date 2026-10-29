@@ -85,6 +85,7 @@ function stage(manifest: DemoManifest, id: string): DemoStage {
 }
 
 export const stateLabels: Record<AgentState, string> = {
+  idle: 'Ready',
   running: 'Running',
   waiting_for_reply: 'Waiting for reply',
   user_typing: 'User typing',

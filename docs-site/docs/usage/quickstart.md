@@ -14,20 +14,24 @@ installed and authenticated on the same computer.
 
 ## 2. Connect a Conversation
 
-1. Open Codex CLI in your project as you normally do.
+1. Open Codex CLI normally, or resume a saved chat, on the same computer.
 2. Open **Pad-Lattice**. Its local service starts automatically.
-3. Find the chat under **Open Codex conversations** and select **Connect**.
+3. Find the chat under **Codex conversations** and select **Connect**.
 4. Note its **Scene number and color**. Use the same process for other open chats.
 
 You do not need to restart Codex, launch another terminal from Pad-Lattice, or
 install hooks for this connection. Names and working folders come from Codex.
 Use **Refresh chats** if a newly opened conversation is missing.
+If a closed chat remains listed, disconnect it or use its trash icon to remove
+it from Pad-Lattice. This does not delete Codex history.
 
 ## 3. Use the Pad
 
 <StateLegend />
 
-The right-side numbered buttons select conversations. The large symbol shows
+Choose **Grid**, **Stream Deck**, **XL**, or **Neo** above the pad. These are
+on-screen layouts; no physical controller is required.
+In Grid, the right-side numbered buttons select conversations. The large symbol shows
 the selected conversation's state. When Codex asks for permission:
 
 1. Read the request in the Codex terminal.
@@ -46,6 +50,8 @@ See [Control Codex](./control-codex.md) for the symbols and action limits.
 See the [Device Catalog](./device-catalog.md) for supported and experimental hardware.
 
 - **Launchpad:** connect it over USB, then use **Settings > Devices > MIDI controllers > Connect**.
+- **Elgato Stream Deck, XL, or Neo:** install the experimental plugin and pair
+  once through **Settings > Devices > Stream Deck**. Follow [Stream Deck setup](./stream-deck.md#connect).
 - **Phone or tablet:** use **Settings > Devices > Browsers** to enable network access on
   your trusted private network. Follow [Connect Screens](./connect-browsers.md).
 

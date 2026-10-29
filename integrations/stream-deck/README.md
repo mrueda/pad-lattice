@@ -8,7 +8,9 @@ keys control; those action keys also show its name.
 
 An editable **Pad-Lattice - 15 keys** starter profile places eight sessions
 above Approve, Reject, and Stop. It installs separately without switching your
-current profile. Other deck sizes need a manual layout. The plugin does not emulate an
+current profile. XL has an eight-session profile; Neo has two pages (sessions
+1-5 and 6-8), each with Approve, Reject, and Stop. All profiles are experimental
+and require hardware testing. Other deck sizes need a manual layout. The plugin does not emulate an
 8x8 controller across the keys or run Demo/Show.
 
 ## Install
@@ -38,7 +40,7 @@ Linux, but the official Stream Deck host application cannot.
 
 1. Run Pad-Lattice Desktop (or `pad-lattice web`) and connect your Codex sessions.
 2. Choose **Settings > Devices > Stream Deck > Pair device**. Note its address and PIN.
-3. In Elgato's profile menu, choose **Pad-Lattice - 15 keys**. Select any
+3. In Elgato's profile menu, choose the **Pad-Lattice** profile for your device. Select any
    Pad-Lattice key, enter the address and PIN, and press **Pair**.
 4. For a custom layout, add **Session** keys with different slot numbers and
    **Approve**, **Reject**, and **Stop** keys. Pairing is shared; do not pair every key.

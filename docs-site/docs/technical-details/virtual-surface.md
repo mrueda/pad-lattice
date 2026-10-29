@@ -33,20 +33,23 @@ are sent. Light/dark appearance is saved in this browser; sound is opt-in.
 ### Device Layouts
 
 The public **Surface** selector offers Virtual Pad, Launchpad Pro Mk1, and a
-15-key Stream Deck example. Switching keeps the same sessions, selection,
-scenario history, and Demo playback position. The Demo pointer follows the
+15-key, XL, and Neo Stream Deck examples. Switching keeps the same sessions, selection,
+scenario history, Demo playback position, and Show playback. The Demo pointer follows the
 matching control in each layout. Links can select a view with
 `?surface=launchpad` or `?surface=stream-deck`.
 
 `VirtualSurface.tsx` renders both grid layouts; `StreamDeckSurface.tsx` puts one
 session glyph in each LCD key. Both use `surfaceModel.ts`, the visual compiler
-and palette also used by the real Stream Deck plugin. The preview exposes only
-its three plugin actions: Approve, Reject, and Stop. It does not add Retry or
-Show support to the plugin. Show remains available on grid layouts.
+and palette also used by the real Stream Deck plugin. In Show, the brightest
+grid color in each region maps to one key. This is a reduced visual
+interpretation, not a 1:1 rendering. Desktop also offers Retry in its virtual
+Stream Deck layouts; on Neo it appears outside the eight-key illustration.
+Neither feature changes the physical plugin.
 
 These are interactive illustrations, not MIDI/USB emulators or hardware tests.
-The surface selector is absent in live mode; pairing and device ownership are
-unchanged. The actual plugin's key positions are user-configurable.
+The desktop selector changes only its local layout; paired browsers, MIDI
+controllers, and the physical plugin remain connected. The actual plugin's
+key positions are user-configurable.
 
 ### Playground Scenarios
 

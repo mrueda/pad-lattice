@@ -39,7 +39,7 @@ class ControlPlaneError(ValueError):
 @dataclass
 class AgentSession:
     identity: AgentIdentity
-    state: AgentState = AgentState.WAITING_FOR_REPLY
+    state: AgentState = AgentState.IDLE
     slot: int | None = None
     accent: str | None = None
     last_seen: int = 0
@@ -398,7 +398,7 @@ class ControlPlane:
                 session.terminal_state_until is not None
                 and now >= session.terminal_state_until
             ):
-                session.state = AgentState.WAITING_FOR_REPLY
+                session.state = AgentState.IDLE
                 session.state_since = now
                 session.terminal_state_until = None
                 changed = True

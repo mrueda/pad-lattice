@@ -21,7 +21,7 @@
   "$defs": {
     "state": {
       "enum": [
-        "running", "waiting_for_reply", "user_typing",
+        "idle", "running", "waiting_for_reply", "user_typing",
         "waiting_for_approval", "success", "error", "cancelled"
       ]
     },

@@ -24,7 +24,7 @@ class ControlPlaneTest(TestCase):
         self.assertEqual(session.state_since, 60)
         plane.tick(now=62)
         self.assertEqual(session.state_since, 62)
-        self.assertEqual(session.state, AgentState.WAITING_FOR_REPLY)
+        self.assertEqual(session.state, AgentState.IDLE)
 
     def plane(self, **kwargs) -> ControlPlane:
         return ControlPlane(4, ACCENTS, **kwargs)
@@ -155,9 +155,29 @@ class ControlPlaneTest(TestCase):
         plane.tick(now=2.9)
         self.assertIs(plane.state, AgentState.SUCCESS)
         plane.tick(now=3.0)
-        self.assertIs(plane.state, AgentState.WAITING_FOR_REPLY)
+        self.assertIs(plane.state, AgentState.IDLE)
         plane.tick(now=11.0)
         self.assertNotIn(identity, plane._sessions)
+
+    def test_removing_middle_scene_preserves_other_positions_and_accents(self):
+        plane = self.plane()
+        agents = [AgentIdentity("codex", str(index)) for index in range(4)]
+        for index, agent in enumerate(agents[:3]):
+            plane.register_lease(index, str(index), agent=agent, metadata={}, now=1)
+        before = {s.identity: (s.slot, s.accent) for s in plane.sessions}
+        self.assertTrue(all(s.state == AgentState.IDLE for s in plane.sessions))
+        plane.select_slot(1, now=2)
+        plane.disconnect(1)
+        self.assertIsNone(plane.selected_agent)
+        self.assertEqual(plane.available_actions(), frozenset())
+        self.assertIsNone(plane._slots[1])
+        self.assertFalse(plane.select_slot(1, now=3))
+        for session in plane.sessions:
+            self.assertEqual((session.slot, session.accent), before[session.identity])
+        plane.update_agent(agents[3], AgentState.RUNNING, now=4)
+        self.assertEqual(plane._sessions[agents[3]].slot, 1)
+        self.assertEqual(plane._sessions[agents[2]].slot, 2)
+        self.assertIsNone(plane.selected_agent)
 
     def test_seeded_event_trace_preserves_core_invariants(self) -> None:
         randomizer = random.Random(20260718)

@@ -1,8 +1,8 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {desktopRequest, isDesktop} from './desktop';
 
-export function useDesktopPreference(key: 'pad_focused' | 'audio_enabled' | 'light_theme') {
-  const [value, setValue] = useState(false);
+function usePreference<T>(key: string, initial: T, valid: (value: unknown) => value is T) {
+  const [value, setValue] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const touched = useRef(false);
   const revision = useRef(0);
@@ -10,11 +10,11 @@ export function useDesktopPreference(key: 'pad_focused' | 'audio_enabled' | 'lig
     if (!isDesktop()) return;
     let disposed = false;
     desktopRequest<Record<string, unknown>>('settings').then(settings => {
-      if (!disposed && !touched.current && typeof settings[key] === 'boolean') setValue(settings[key]);
+      if (!disposed && !touched.current && valid(settings[key])) setValue(settings[key]);
     }).catch(reason => { if (!disposed) setError(`Could not load preferences: ${String(reason)}`); });
     return () => { disposed = true; };
-  }, [key]);
-  const save = useCallback((next: boolean) => {
+  }, [key, valid]);
+  const save = useCallback((next: T) => {
     touched.current = true;
     setValue(next);
     setError(null);
@@ -24,4 +24,17 @@ export function useDesktopPreference(key: 'pad_focused' | 'audio_enabled' | 'lig
     });
   }, [key]);
   return {value, save, error};
+}
+
+const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
+export type SurfaceLayout = 'grid' | 'stream-deck' | 'stream-deck-xl' | 'stream-deck-neo';
+const isSurfaceLayout = (value: unknown): value is SurfaceLayout =>
+  value === 'grid' || value === 'stream-deck' || value === 'stream-deck-xl' || value === 'stream-deck-neo';
+
+export function useDesktopPreference(key: 'pad_focused' | 'audio_enabled' | 'light_theme') {
+  return usePreference(key, false, isBoolean);
+}
+
+export function useSurfacePreference() {
+  return usePreference<SurfaceLayout>('surface_layout', 'grid', isSurfaceLayout);
 }

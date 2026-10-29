@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from concurrent.futures import Future
+from concurrent.futures import Future, ThreadPoolExecutor
 import io
 import json
 import os
@@ -25,6 +25,7 @@ class EngineHarness:
     def __init__(self, command: list[str], root: Path):
         self.socket = str(root / "agent.sock")
         self.messages: queue.Queue = queue.Queue()
+        self.events: list[dict] = []
         self.process = subprocess.Popen(command + ["service", "--settings-dir", str(root / "settings"),
                                                  "--socket", self.socket],
                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -51,6 +52,8 @@ class EngineHarness:
                 if "error" in message:
                     raise ValueError(message["error"])
                 return message["result"]
+            if "event" in message:
+                self.events.append(message)
 
     def close(self):
         if not self.process.stdin.closed:
@@ -117,10 +120,10 @@ class DesktopServiceTest(TestCase):
         settings = self.root / "settings/settings.json"
         self.assertEqual(json.loads(settings.read_text())["codex"], "/some path/codex")
         self.assertEqual(settings.stat().st_mode & 0o777, 0o600)
-        self.engine.request("settings", {"pad_focused": True})
+        self.engine.request("settings", {"pad_focused": True, "surface_layout": "stream-deck-neo"})
         values = self.engine.request("settings")
-        self.assertEqual(values, {"codex": "/some path/codex", "audio_enabled": True, "pad_focused": True})
-        for invalid in ({"audio_enabled": "yes"}, {"pad_focused": 1}, {"terminal": "xterm"}, {"token": "secret"}):
+        self.assertEqual(values, {"codex": "/some path/codex", "audio_enabled": True, "pad_focused": True, "surface_layout": "stream-deck-neo"})
+        for invalid in ({"audio_enabled": "yes"}, {"pad_focused": 1}, {"surface_layout": "unknown"}, {"terminal": "xterm"}, {"token": "secret"}):
             with self.assertRaises(ValueError):
                 self.engine.request("settings", invalid)
         self.assertEqual(self.engine.request("settings"), values)
@@ -149,6 +152,45 @@ class DesktopServiceTest(TestCase):
 
 
 class DesktopToolsTest(TestCase):
+    def test_queued_surface_selection_blocks_an_answer(self):
+        from unittest.mock import Mock
+        from pad_lattice.devices.base import SessionIndicator, SessionSelected, SurfaceView
+        with TemporaryDirectory() as directory:
+            surface = DesktopSurface(Path(directory), '/tmp/pad.sock', lambda _: None, threading.Event())
+            self.addCleanup(surface.close)
+            surface.last_view = SurfaceView(AgentState.WAITING_FOR_REPLY, sessions=(
+                SessionIndicator(slot=0, state=AgentState.WAITING_FOR_REPLY, selected=True),), control_revision=7)
+            surface.attachments.answer_question = Mock()
+            surface._enqueue_event(SessionSelected(1, 7))
+            with self.assertRaisesRegex(ValueError, 'selected conversation'):
+                surface.answer_question({'slot': 0, 'revision': 7, 'token': 'a' * 32, 'answers': {'choice': 0}})
+            self.assertEqual(surface.poll_events(), [SessionSelected(1, 7)])
+            surface.attachments.answer_question.assert_not_called()
+
+    def test_revoked_browser_cannot_submit_a_queued_answer(self):
+        from unittest.mock import Mock
+        from pad_lattice.devices.base import SessionIndicator, SurfaceView
+        from pad_lattice.web_protocol import QuestionCommand
+        with TemporaryDirectory() as directory:
+            surface = DesktopSurface(Path(directory), '/tmp/pad.sock', lambda _: None, threading.Event())
+            self.addCleanup(surface.close)
+            surface.command('settings', {'share_browser_questions': True})
+            surface.last_view = SurfaceView(AgentState.WAITING_FOR_REPLY, sessions=(
+                SessionIndicator(slot=0, state=AgentState.WAITING_FOR_REPLY, selected=True),), control_revision=7)
+            surface.attachments.answer_question = Mock()
+            checks = iter([True, False])
+            command = QuestionCommand('1', 'answer', 0, 7, 'a' * 32, {'choice': 0})
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(surface.browser_question, command, lambda: next(checks, False))
+                for _ in range(100):
+                    if not surface.remote_questions.empty():
+                        break
+                    threading.Event().wait(0.01)
+                surface.poll_browser_questions()
+                with self.assertRaisesRegex(ValueError, 'revoked'):
+                    future.result(timeout=2)
+            surface.attachments.answer_question.assert_not_called()
+
     def test_theme_preference_persists_and_rejects_non_boolean_values(self):
         with TemporaryDirectory() as directory:
             surface = DesktopSurface(Path(directory), "/tmp/pad.sock", lambda _: None, threading.Event())

@@ -29,11 +29,11 @@ trust the commands. A materially changed definition requires another review.
 
 | Codex hook | Pad-Lattice state |
 | --- | --- |
-| `SessionStart` | `waiting_for_reply` |
+| `SessionStart` | `idle` (Ready) |
 | `UserPromptSubmit` | `running` |
 | `PermissionRequest` | `waiting_for_approval`; wait for a surface decision |
 | `PostToolUse` | `running` |
-| `Stop` | `success`, then `waiting_for_reply` |
+| `Stop` | `success`, then `idle` (Ready) |
 | `Interrupt` | `cancelled` |
 | `SessionEnd` | Remove the session |
 

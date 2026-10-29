@@ -36,6 +36,7 @@ export interface LiveSurfaceState {
   pair: (pin: string) => void;
   selectSession: (slot: number) => void;
   sendAction: (action: ControlAction) => void;
+  questionRequest: (operation: 'status' | 'answer', params?: object) => Promise<unknown>;
   createPairing: () => void;
   revokeRemote: () => void;
   startExperience: (kind: ExperienceKind) => void;
@@ -59,8 +60,18 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
   const authenticatedRef = useRef(false);
   const authenticationRejectedRef = useRef(false);
   const stoppedRef = useRef(false);
+  const questionPending = useRef(new Map<string, {resolve: (value: unknown) => void; reject: (error: Error) => void; timer: number}>());
+  const questionSequence = useRef(0);
+  const cancelQuestions = useCallback(() => {
+    for (const pending of questionPending.current.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error('Connection closed. Reconnect and try again.'));
+    }
+    questionPending.current.clear();
+  }, []);
 
   const connect = useCallback((credential?: string | null) => {
+    cancelQuestions();
     stoppedRef.current = false;
     setPaused(false);
     if (credential !== undefined) credentialRef.current = credential;
@@ -110,8 +121,19 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
         setSurface(message);
         return;
       }
+      if (message.type === 'question_response') {
+        const pending = questionPending.current.get(message.request_id);
+        if (pending) {
+          questionPending.current.delete(message.request_id);
+          clearTimeout(pending.timer);
+          if (message.error) pending.reject(new Error(message.error));
+          else pending.resolve(message.result);
+        }
+        return;
+      }
       if (message.type === 'device_disconnected') {
         stoppedRef.current = true;
+        cancelQuestions();
         setPaused(true);
         setConnection('disconnected');
         setSurface(null);
@@ -146,6 +168,7 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
       if (message.type === 'error') {
         setError(message.error);
         if (message.code === 'forbidden' || message.code === 'authentication_timeout') {
+          cancelQuestions();
           authenticatedRef.current = false;
           authenticationRejectedRef.current = true;
           window.localStorage.removeItem(tokenKey);
@@ -161,6 +184,7 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
     socket.onerror = () => setError('Cannot reach the local Pad-Lattice bridge.');
     socket.onclose = () => {
       if (socketRef.current !== socket) return;
+      cancelQuestions();
       socketRef.current = null;
       setSurface(null);
       setExperience(null);
@@ -190,13 +214,14 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
         window.localStorage.setItem(tokenKey, message.session_token);
       }
     }
-  }, []);
+  }, [cancelQuestions]);
 
   useEffect(() => {
     stoppedRef.current = false;
     connect();
     return () => {
       stoppedRef.current = true;
+      cancelQuestions();
       const socket = socketRef.current;
       socketRef.current = null;
       if (socket) {
@@ -204,7 +229,7 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
         socket.close();
       }
     };
-  }, [connect]);
+  }, [connect, cancelQuestions]);
 
   const send = useCallback((message: object) => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
@@ -223,6 +248,23 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
     if (!controlsReady || !authenticatedRef.current || stoppedRef.current) return;
     send({...message, ...(hasRevision ? {expected_revision: revision} : {})});
   };
+  const questionRequest = useCallback((operation: 'status' | 'answer', params: object = {}) => new Promise<unknown>((resolve, reject) => {
+    if (!authenticatedRef.current || stoppedRef.current || socketRef.current?.readyState !== WebSocket.OPEN) {
+      reject(new Error('The surface is disconnected.')); return;
+    }
+    const requestId = String(++questionSequence.current);
+    const timer = window.setTimeout(() => {
+      questionPending.current.delete(requestId);
+      reject(new Error('Question request timed out.'));
+    }, 5000);
+    questionPending.current.set(requestId, {resolve, reject, timer});
+    try {socketRef.current.send(JSON.stringify({protocol: 1, type: 'question_request', request_id: requestId, operation, ...params}));}
+    catch {
+      clearTimeout(timer);
+      questionPending.current.delete(requestId);
+      reject(new Error('Could not send the question request.'));
+    }
+  }), []);
 
   return {
     connection,
@@ -237,6 +279,7 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
     reconnect: () => connect(),
     disconnect: () => {
       stoppedRef.current = true;
+      cancelQuestions();
       const socket = socketRef.current;
       socketRef.current = null;
       if (socket) {
@@ -257,6 +300,7 @@ export function useLiveSurface(onAudioCue?: (cue: string, slot: number | null) =
     pair: (pin) => connect(pin.replace(/\s/g, '')),
     selectSession: (slot) => sendControl({type: 'select_session', slot}),
     sendAction: (action) => sendControl({type: 'action', action}),
+    questionRequest,
     createPairing: () => {setPairing(null); setError(null); send({type: 'create_pairing'});},
     revokeRemote: () => send({type: 'revoke_remote'}),
     startExperience: (kind) => send({type: 'start_experience', kind}),

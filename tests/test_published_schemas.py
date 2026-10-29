@@ -84,6 +84,16 @@ class SchemaSurface:
 
 @skipUnless(Draft202012Validator is not None, "install pad-lattice[schema]")
 class PublishedSchemaTest(TestCase):
+    def test_every_agent_state_is_accepted_by_socket_and_web_contracts(self):
+        socket_validator = Draft202012Validator(load_protocol_schema())
+        web_validator = Draft202012Validator(load_web_protocol_schema())
+        for state in AgentState:
+            with self.subTest(state=state):
+                socket_validator.validate(state_message(state))
+                web_validator.validate(surface_message(SurfaceView(state, sessions=(
+                    SessionIndicator(0, state, selected=True, accent="cyan", label="Contract test"),
+                )), 8))
+
     def test_published_schemas_and_builtin_profiles_validate(self) -> None:
         schemas = (
             load_profile_schema(),
@@ -194,6 +204,12 @@ class PublishedSchemaTest(TestCase):
             web_message("remote_revoked"),
             web_message("audio_cue", cue="approval", slot=0),
             web_message("device_disconnected"),
+            web_message("question_response", request_id="1", result={"question": None, "slot": None, "revision": 1}),
+            web_message("question_response", request_id="2", error="Question sharing is off"),
+            web_message("question_response", request_id="3", result={"question": {"token": "a" * 32,
+                "questions": [{"id": "choice", "header": "Tests", "question": "Which?",
+                               "options": [{"label": "Focused", "description": "Fast"}]}]}, "slot": 0, "revision": 2}),
+            web_message("question_response", request_id="4", result={}),
             web_error(WebProtocolError("bad request")),
         )
         validator = Draft202012Validator(load_web_protocol_schema())

@@ -47,7 +47,7 @@ class CodexHookTest(TestCase):
 
     def test_maps_supported_lifecycle_events(self) -> None:
         expected = {
-            "SessionStart": AgentState.WAITING_FOR_REPLY,
+            "SessionStart": AgentState.IDLE,
             "UserPromptSubmit": AgentState.RUNNING,
             "PermissionRequest": AgentState.WAITING_FOR_APPROVAL,
             "PostToolUse": AgentState.RUNNING,

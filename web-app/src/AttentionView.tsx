@@ -1,12 +1,12 @@
 import {useEffect, useState, type ReactNode} from 'react';
-import {CircleAlert, CircleHelp, ShieldAlert, MessagesSquare, Bell} from 'lucide-react';
+import {CircleAlert, CircleHelp, ShieldAlert, MessagesSquare, Bell, ArrowRight} from 'lucide-react';
 import {desktopRequest} from './desktop';
 import {tokenColor} from './surfaceModel';
 import type {SessionView} from './types';
 
 interface AttentionSnapshot {
   revision: number;
-  sessions: Array<SessionView & {age_seconds: number}>;
+  sessions: Array<SessionView & {age_seconds: number; child_attention_count?: number}>;
   overflow_count: number;
 }
 
@@ -62,6 +62,11 @@ export function AttentionView({children, disabled, revision}: {
       <button id="attention-tab" role="tab" tabIndex={tab === 'attention' ? 0 : -1} aria-controls="attention-panel" aria-selected={tab === 'attention'} onClick={() => setTab('attention')}>
         <Bell aria-hidden="true" /><span>Needs attention{snapshot ? ` (${snapshot.sessions.length})` : ''}</span></button>
     </div>
+    {snapshot && snapshot.sessions.length > 0 ? <button className="textButton nextAttention" disabled={disabled || selecting || snapshot.revision !== revision}
+      title="Select the next conversation that needs attention" onClick={() => {
+        const index = snapshot.sessions.findIndex(session => session.selected);
+        void select(snapshot.sessions[(index + 1) % snapshot.sessions.length].slot);
+      }}><ArrowRight aria-hidden="true" />Next needing attention <span>{snapshot.sessions.length}</span></button> : null}
     <div id="all-conversations-panel" role="tabpanel" aria-labelledby="all-conversations-tab" hidden={tab !== 'all'}>{children}</div>
     <div id="attention-panel" role="tabpanel" aria-labelledby="attention-tab" hidden={tab !== 'attention'}>
       {error ? <p className="desktopError" role="status">{error}</p> : null}
@@ -73,7 +78,8 @@ export function AttentionView({children, disabled, revision}: {
         return <button key={session.slot} className="attentionRow" disabled={disabled || selecting || snapshot.revision !== revision}
           aria-pressed={session.selected} title={`Select ${session.label}`} onClick={() => void select(session.slot)}>
           <i aria-hidden="true" style={{background: tokenColor(`accent:${session.accent}:selected`)}} />
-          <span><strong>{session.label}</strong><small>Scene {session.slot + 1} · {label}</small></span>
+          <span><strong>{session.label}</strong><small>Scene {session.slot + 1} · {label}</small>
+            {session.child_attention_count ? <small>{session.child_attention_count} child agent{session.child_attention_count === 1 ? '' : 's'} need{session.child_attention_count === 1 ? 's' : ''} attention</small> : null}</span>
           <Icon aria-hidden="true" /><time aria-label={`In this state for ${elapsedLabel(session.age_seconds)}`}>{elapsedLabel(session.age_seconds)}</time>
         </button>;
       })}</div>

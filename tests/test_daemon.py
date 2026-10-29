@@ -261,11 +261,13 @@ class DaemonTest(TestCase):
         identity = {"backend": "codex", "session_id": "session-1"}
 
         for state in (
+            "idle",
             "running",
             "waiting_for_reply",
             "waiting_for_reply",
             "waiting_for_approval",
             "success",
+            "idle",
         ):
             daemon.handle_message(
                 client,
@@ -676,10 +678,10 @@ class DaemonTest(TestCase):
 
         daemon._render_if_needed()
 
-        self.assertIs(daemon.control.state, AgentState.WAITING_FOR_REPLY)
+        self.assertIs(daemon.control.state, AgentState.IDLE)
         self.assertIs(
             daemon.surface.views[-1].selected_state,
-            AgentState.WAITING_FOR_REPLY,
+            AgentState.IDLE,
         )
 
     def test_surface_view_exposes_only_selected_capabilities(self) -> None:

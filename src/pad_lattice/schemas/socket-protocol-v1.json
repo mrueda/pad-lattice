@@ -26,6 +26,7 @@
     "identifier": {"type": "string", "minLength": 1},
     "state": {
       "enum": [
+        "idle",
         "running",
         "waiting_for_reply",
         "user_typing",

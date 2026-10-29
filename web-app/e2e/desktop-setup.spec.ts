@@ -30,7 +30,7 @@ test('first-use setup distinguishes missing Codex, empty discovery, and unconnec
     throw Error(`Unexpected method: ${method}`);
   });
   await page.goto('/');
-  const list = page.getByRole('region', {name: 'Open Codex conversations'});
+  const list = page.getByRole('region', {name: 'Codex conversations'});
   await expect(list.getByText('Codex CLI not available')).toBeVisible();
   await page.getByRole('button', {name: 'Codex settings', exact: true}).click();
   const panel = page.locator('#settings-panel');
@@ -49,10 +49,11 @@ test('first-use setup distinguishes missing Codex, empty discovery, and unconnec
   await expect(panel.getByRole('status')).toContainText('Codex CLI available');
   await page.getByRole('button', {name: 'Back to pad', exact: true}).click();
   await page.getByRole('button', {name: 'Refresh chats', exact: true}).click();
-  await expect(list.getByText('No open Codex conversations')).toBeVisible();
+  await expect(list.getByText('No available Codex conversations')).toBeVisible();
   open = true;
   await page.getByRole('button', {name: 'Refresh chats', exact: true}).click();
-  await expect(list.getByText('2 open · 1 connected to the pad')).toBeVisible();
+  await expect(list.getByText('2 available · 1 on pad')).toBeVisible();
+  await list.getByRole('button', {name: /Codex conversations/}).click();
   await page.getByRole('button', {name: 'Connect Review', exact: true}).click();
   await expect(list.getByRole('alert')).toContainText('Conversation is no longer available');
   await list.getByRole('button', {name: 'Diagnostics', exact: true}).click();

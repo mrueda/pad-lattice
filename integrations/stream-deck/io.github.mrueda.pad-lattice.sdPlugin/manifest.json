@@ -36,6 +36,20 @@
       "AutoInstall": true,
       "DontAutoSwitchWhenInstalled": true,
       "Readonly": false
+    },
+    {
+      "Name": "profiles/pad-lattice-xl",
+      "DeviceType": 2,
+      "AutoInstall": true,
+      "DontAutoSwitchWhenInstalled": true,
+      "Readonly": false
+    },
+    {
+      "Name": "profiles/pad-lattice-neo",
+      "DeviceType": 9,
+      "AutoInstall": true,
+      "DontAutoSwitchWhenInstalled": true,
+      "Readonly": false
     }
   ],
   "Actions": [

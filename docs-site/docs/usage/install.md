@@ -52,7 +52,7 @@ Preferences are stored separately from the installed app:
 - **Linux:** `~/.local/share/com.mrueda.pad-lattice/`, or `$XDG_DATA_HOME/com.mrueda.pad-lattice/` when configured. Use **Ctrl+H** in the file manager to show hidden folders.
 - **macOS:** `~/Library/Application Support/com.mrueda.pad-lattice/`. In Finder, use **Go > Go to Folder** to enter the path.
 
-`settings.json` stores theme, sound, pad size, MIDI selections, the Codex executable
+`settings.json` stores theme, sound, surface layout, pad size, MIDI selections, the Codex executable
 path, and network addresses. Connections, pairing PINs, and the service's device
 credentials live in memory and are cleared when Desktop closes. A paired browser
 keeps its own credential in site storage.

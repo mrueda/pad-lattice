@@ -80,6 +80,17 @@ class VisualProtocolTest(TestCase):
             {(2, 4): IDLE, (3, 4): IDLE, (4, 4): IDLE},
         )
 
+    def test_ready_has_a_quiet_dash_without_question_or_actions(self):
+        frame = compile_visual_frame(SurfaceView(AgentState.IDLE, sessions=(
+            SessionIndicator(2, AgentState.IDLE, selected=True, accent="lime"),
+        ), activity_motion=True), 8)
+        self.assertEqual(sum(frame.state, ()).count("state:idle:primary"), 3)
+        self.assertNotIn(ACTIVITY, sum(frame.state, ()))
+        self.assertNotEqual(frame.state, compile_visual_frame(SurfaceView(AgentState.WAITING_FOR_REPLY), 8).state)
+        self.assertEqual(frame.selectors[2], "accent:lime:selected")
+        self.assertEqual(frame.statuses[2], "state:idle:summary")
+        self.assertTrue(all(token == OFF for token in frame.actions.values()))
+
     def test_waiting_reply_and_approval_are_distinct(self) -> None:
         reply = compile_visual_frame(
             SurfaceView(AgentState.WAITING_FOR_REPLY),

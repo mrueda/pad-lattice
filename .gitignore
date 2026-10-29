@@ -1,4 +1,6 @@
 .venv/
+/SESSIONS*
+/SESSION_NOTES.md
 __pycache__/
 *.py[cod]
 *.egg-info/

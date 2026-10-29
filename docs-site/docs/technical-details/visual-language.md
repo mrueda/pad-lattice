@@ -135,7 +135,10 @@ The selected-agent canvas is 7x8. These examples use the same renderer as the ap
 
 <StateLegend all />
 
-With no selection, the pad shows a dim three-pad dash.
+**Ready** (`idle`) is a dim three-pad dash: no question or approval is pending.
+Success, error, and cancellation settle back to Ready after their brief display.
+Only an actual input request uses the white question mark. With no selection,
+the pad also shows a dim dash, but no Scene is highlighted.
 
 Rapid flashing and pulsing are not used. Optional running motion is disabled
 unless the daemon starts with `--activity-motion`.
@@ -163,6 +166,9 @@ the daemon may move the least recently active unselected, non-approval session
 to overflow. Selected and approval-waiting sessions are protected. Ending the
 selected session clears selection and shows the idle dash; another agent is
 never silently targeted.
+
+Removing Scene 2 leaves its slot empty; Scene 3 retains its number and accent.
+New connections can reuse free slots without renumbering existing sessions.
 
 The common Launchpad mapping is a reference topology, not a requirement that
 every implementation look like a Launchpad. Another browser presentation or

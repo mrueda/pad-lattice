@@ -4,7 +4,8 @@ import {readFileSync} from 'node:fs';
 import {compileVisualFrame} from '../src/surfaceModel';
 import type {DemoManifest, SurfaceView} from '../src/types';
 
-test('desktop demo has one mode chooser and highlights each requested control', async ({page}) => {
+for (const model of ['Stream Deck', 'Stream Deck XL', 'Stream Deck Neo']) {
+test(`desktop demo guides both decisions on ${model}`, async ({page}) => {
   const manifest = JSON.parse(readFileSync(new URL('../public/experiences/demo-v1.json', import.meta.url), 'utf8')) as DemoManifest;
   let index = -1;
   const view = (): SurfaceView => {
@@ -33,8 +34,14 @@ test('desktop demo has one mode chooser and highlights each requested control', 
     if (method === 'surface') {
       if (params.type === 'start_experience') index = 0;
       else if (params.type === 'stop_experience') index = -1;
-      else if (params.type === 'select_session') {expect(params.slot).toBe(0); index = 1;}
-      else if (params.type === 'action') {expect(params.action).toBe('approve'); index = 3;}
+      else if (params.type === 'select_session') {
+        if (index === 0) {expect(params.slot).toBe(0); index = 1;}
+        else {expect(index).toBe(3); expect(params.slot).toBe(1); index = 4;}
+      }
+      else if (params.type === 'action') {
+        if (index === 1) {expect(params.action).toBe('approve'); index = 3;}
+        else {expect(index).toBe(4); expect(params.action).toBe('reject'); index = 5;}
+      }
       await emit(); return {};
     }
     throw Error(`Unexpected method: ${method}`);
@@ -44,9 +51,23 @@ test('desktop demo has one mode chooser and highlights each requested control', 
   await page.getByRole('menuitem', {name: 'Demo', exact: true}).click();
   await expect(page.getByRole('button', {name: 'Demo & Show', exact: true})).toHaveText('Demo');
   await expect(page.getByText('INTERACTIVE DEMO', {exact: true})).toBeVisible();
+  const back = page.getByRole('button', {name: 'Back to live pad', exact: true});
+  expect(await back.evaluate(element => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const content = range.getBoundingClientRect();
+    const button = element.getBoundingClientRect();
+    return content.left >= button.left && content.right <= button.right
+      && content.top >= button.top && content.bottom <= button.bottom;
+  })).toBe(true);
   await expect(page.getByRole('button', {name: 'Start Show'})).toHaveCount(0);
   await expect(page.getByRole('button', {name: 'Start Demo'})).toHaveCount(0);
   await expect(page.locator('.liveDemoCue')).toContainText('Select Reviewer');
+  await page.getByRole('button', {name: 'Try a sample Codex question'}).click();
+  const sample = page.getByRole('region', {name: 'Sample Codex question'});
+  await expect(sample).toContainText('SIMULATION');
+  await sample.getByRole('button', {name: /Focused tests/}).click();
+  await expect(page.getByText('Sample answer sent. No Codex session was changed.')).toBeVisible();
   await expect(page.locator('.sessionRow')).toHaveCount(2);
   await expect(page.locator('.liveDemoCue')).toContainText('Scene 1 on the right');
   const reviewer = page.locator('.sceneRail').getByRole('button', {name: 'Select Reviewer'});
@@ -56,17 +77,27 @@ test('desktop demo has one mode chooser and highlights each requested control', 
   const cueBounds = await page.locator('.liveDemoCue').boundingBox();
   const padBounds = await page.locator('.virtualSurface').boundingBox();
   expect(cueBounds!.y + cueBounds!.height).toBeLessThanOrEqual(padBounds!.y);
-  await expect(page.getByRole('region', {name: 'Open Codex conversations'})).toBeHidden();
+  await expect(page.getByRole('region', {name: 'Codex conversations'})).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({path: test.info().outputPath('demo-select.png'), fullPage: true});
-  await reviewer.click();
+  await page.getByRole('group', {name: 'Surface layout'}).getByRole('button', {name: model, exact: true}).click();
+  const deck = page.getByLabel('Stream Deck-style control surface');
+  await expect(page.locator('.liveDemoCue')).toContainText('Session key 1');
+  await expect(deck.getByRole('button', {name: 'Select Reviewer'})).toHaveClass(/guidedControl/);
+  await deck.getByRole('button', {name: 'Select Reviewer'}).click();
   await expect(page.locator('.liveDemoCue')).toContainText('Approve Reviewer');
-  await expect(page.locator('.topRail').getByRole('button', {name: 'Approve', exact: true})).toHaveClass(/guidedControl/);
-  await expect(page.locator('.topRail').getByRole('button', {name: 'Stop', exact: true}).locator('svg')).toBeVisible();
+  await expect(page.locator('.liveDemoCue')).toContainText('Approve key for the selected session');
+  await expect(deck.getByRole('button', {name: 'Approve', exact: true})).toHaveClass(/guidedControl/);
   await page.screenshot({path: test.info().outputPath('demo-approve.png'), fullPage: true});
-  await page.locator('.topRail').getByRole('button', {name: 'Approve', exact: true}).click();
+  await deck.getByRole('button', {name: 'Approve', exact: true}).click();
   await expect(page.locator('.liveDemoCue')).toContainText('Select Tests');
+  await deck.getByRole('button', {name: 'Select Tests', exact: true}).click();
+  await expect(page.locator('.liveDemoCue')).toContainText('Reject Tests');
+  await expect(deck.getByRole('button', {name: 'Reject', exact: true})).toHaveClass(/guidedControl/);
+  await deck.getByRole('button', {name: 'Reject', exact: true}).click();
+  await expect(page.locator('.liveDemoCue')).toHaveCount(0);
   await page.getByRole('button', {name: 'Back to live pad', exact: true}).click();
   await expect(page.locator('.liveDemoCue')).toHaveCount(0);
   await expect(page.getByText('INTERACTIVE DEMO', {exact: true})).toHaveCount(0);
 });
+}

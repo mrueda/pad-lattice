@@ -4,12 +4,12 @@
 
 - Desktop app for Linux and macOS: connect existing Codex CLI conversations,
   MIDI controllers, and paired browsers without launching another terminal.
-- Experimental Elgato Stream Deck plugin with an installer, editable 15-key
-  starter layout, and shared pairing; hardware testing pending.
+- Experimental Elgato Stream Deck plugin with editable 15-key, XL, and Neo
+  layouts and shared pairing; hardware testing pending.
 - Light/dark themes, live audio, saved preferences, QR/PIN pairing, and device
   disconnect/reconnect controls.
-- Updated Codex CLI integration; fixed stale inputs, sessions, and Demo/Show interference
-  with live controls.
+- Numbered Codex questions, child-agent attention, and manual conversation
+  disconnect/removal; fixed stale controls and Demo/Show interference.
 - Safe diagnostics, bundled dependency notices, and simpler visual documentation.
 - Desktop hardware-test wizard with exportable reports, and an attention view
   for approvals, errors, and waiting conversations.

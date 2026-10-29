@@ -75,7 +75,8 @@ test('uses the shared visual compiler for all eight Stream Deck session keys', a
   await page.getByLabel('Scenario', {exact: true}).selectOption('vocabulary');
   const deck = page.getByLabel('Stream Deck simulation', {exact: true});
   await expect(deck.locator('.deckSessionKey')).toHaveCount(8);
-  for (const [index, state] of [...agentStates, 'waiting_for_reply' as const].entries()) {
+  expect(agentStates).toHaveLength(8);
+  for (const [index, state] of agentStates.entries()) {
     const expected = compileVisualFrame({selected_state: state, sessions: [], frame: 0,
       available_actions: [], overflow_count: 0, activity_motion: false});
     const pixels = expected.state.flatMap((row, y) => row.flatMap((token, x) => token === 'off' ? [] :
@@ -89,6 +90,27 @@ test('uses the shared visual compiler for all eight Stream Deck session keys', a
   await expect(deck.getByRole('button', {name: 'Reject', exact: true})).toContainText('Agent 8');
   await deck.getByRole('button', {name: 'Reject', exact: true}).click();
   await expect(page.getByLabel('Agent 8 state')).toHaveValue('cancelled');
+});
+
+test('XL and Neo previews keep the selected target and expose all eight sessions', async ({page}) => {
+  await page.goto('/?surface=stream-deck-xl');
+  await page.getByRole('button', {name: 'Sandbox', exact: true}).click();
+  await page.getByLabel('Scenario', {exact: true}).selectOption('vocabulary');
+  const deck = page.getByLabel('Stream Deck simulation', {exact: true});
+  await expect(deck.locator('.deckKey')).toHaveCount(32);
+  await deck.getByRole('button', {name: 'Select Agent 8', exact: true}).click();
+  await page.getByLabel('Surface', {exact: true}).selectOption('stream-deck-neo');
+  await expect(deck.locator('.deckKey')).toHaveCount(8);
+  await expect(deck.getByText('Page 2 / 2')).toBeVisible();
+  await expect(deck.getByRole('button', {name: 'Select Agent 8', exact: true})).toHaveAttribute('aria-pressed', 'true');
+  await page.getByLabel('Agent 8 state').selectOption('waiting_for_approval');
+  await expect(deck.getByRole('button', {name: 'Approve', exact: true})).toContainText('Agent 8');
+  await deck.getByRole('button', {name: 'Reject', exact: true}).click();
+  await expect(page.getByLabel('Agent 8 state')).toHaveValue('cancelled');
+  await deck.getByRole('button', {name: 'Previous page'}).click();
+  await expect(deck.getByText('Page 1 / 2')).toBeVisible();
+  await expect(deck.getByRole('button', {name: 'Select Agent 5', exact: true})).toBeVisible();
+  await expect(deck.getByRole('button', {name: 'Approve', exact: true})).toContainText('Agent 8');
 });
 
 test('autoplay points at the matching hardware control without restarting on layout changes', async ({page}) => {
@@ -118,22 +140,26 @@ test('autoplay points at the matching hardware control without restarting on lay
   await expect(page.locator('.deckKey:enabled')).toHaveCount(0);
 });
 
-test('Show is confined to grid layouts and leaves reserved Launchpad buttons dark', async ({page}) => {
+test('Show plays across layouts without exposing action controls', async ({page}) => {
+  await page.clock.install();
   await page.goto('/?surface=stream-deck');
-  await expect(page.getByRole('button', {name: 'Show', exact: true})).toBeDisabled();
-  await page.getByLabel('Surface', {exact: true}).selectOption('launchpad');
   await page.getByRole('button', {name: 'Show', exact: true}).click();
-  await expect(page.getByLabel('Surface', {exact: true}).locator('option[value="stream-deck"]')).toBeDisabled();
+  await expect(page.locator('.deckShowKey')).toHaveCount(15);
+  await expect(page.locator('.deckKey')).toHaveCount(0);
   await page.getByRole('button', {name: 'Start Show', exact: true}).click();
+  await page.clock.runFor(7000);
   await expect(page.locator('.performanceStory')).toBeVisible();
+  expect(await page.locator('.deckShowKey').evaluateAll(keys => keys.some(key => getComputedStyle(key).backgroundColor !== 'rgb(0, 0, 0)'))).toBe(true);
+  await page.getByLabel('Surface', {exact: true}).selectOption('launchpad');
   await expect(page.locator('.launchpadSurface')).toBeVisible();
+  await expect(page.getByText('PLAYING', {exact: true})).toBeVisible();
   const colors = await page.locator('.reservedRail > span').evaluateAll(buttons => buttons.map(button => getComputedStyle(button).backgroundColor));
   expect(colors).toEqual(Array(16).fill('rgb(17, 23, 28)'));
   await expect(page.locator('.railControl:enabled, .sceneControl:enabled')).toHaveCount(0);
   await page.locator('.experiencePanel').getByRole('button', {name: 'Stop', exact: true}).click();
   await page.getByRole('button', {name: 'Sandbox', exact: true}).click();
   await page.getByLabel('Surface', {exact: true}).selectOption('stream-deck');
-  await expect(page.getByRole('button', {name: 'Show', exact: true})).toBeDisabled();
+  await expect(page.getByRole('button', {name: 'Show', exact: true})).toBeEnabled();
 });
 
 test('device layouts fit the viewport and retain protocol colors in both themes', async ({page}) => {
@@ -146,6 +172,18 @@ test('device layouts fit the viewport and retain protocol colors in both themes'
     if (surface === 'launchpad') {
       // Wait for the selection's color transition before comparing themes.
       await expect(housing.locator('.matrixPad').nth(3)).toHaveCSS('background-color', 'rgb(240, 182, 63)');
+      const alignment = await housing.locator('.surfaceBody').evaluate(body => {
+        const cells = [...body.querySelectorAll('.matrixPad')].map(el => el.getBoundingClientRect());
+        return [...body.querySelectorAll('.sceneControl')].map((el, index) => {
+          const circle = el.getBoundingClientRect(), cell = cells[index * 8];
+          return {width: Math.abs(circle.width - cell.width),
+            center: Math.abs(circle.top + circle.height / 2 - cell.top - cell.height / 2)};
+        });
+      });
+      for (const row of alignment) {
+        expect(row.width).toBeLessThan(1);
+        expect(row.center).toBeLessThan(1);
+      }
     }
     const colors = () => housing.locator('.matrixPad, .deckGlyph rect').evaluateAll(pixels => pixels.map(pixel =>
       pixel.tagName === 'rect' ? pixel.getAttribute('fill') : getComputedStyle(pixel).backgroundColor));

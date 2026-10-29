@@ -1,4 +1,5 @@
 export const agentStates = [
+  'idle',
   'running',
   'waiting_for_reply',
   'user_typing',
@@ -165,6 +166,7 @@ export interface ErrorMessage {
 }
 
 export type ServerMessage =
+  | {protocol: 1; type: 'question_response'; request_id: string; result?: unknown; error?: string}
   | {protocol: 1; type: 'device_disconnected'}
   | {protocol: 1; type: 'audio_cue'; cue: string; slot: number | null}
   | SurfaceMessage

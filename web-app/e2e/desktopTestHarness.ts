@@ -8,6 +8,8 @@ export async function desktopBridge(page: Page, request: (method: string, params
     const listeners = new Map<number, string>();
     Object.assign(window, {__emitSurface: (payload: unknown) => {
       for (const [handler, event] of listeners) if (event === 'pad-lattice-surface') callbacks.get(handler)?.({payload});
+    }, __emitDesktopEvent: (name: string, payload: unknown) => {
+      for (const [handler, event] of listeners) if (event === name) callbacks.get(handler)?.({payload});
     }});
     Object.assign(window, {__TAURI_INTERNALS__: {
       transformCallback: (callback: (event: unknown) => void) => { callbacks.set(++id, callback); return id; },
@@ -20,6 +22,12 @@ export async function desktopBridge(page: Page, request: (method: string, params
       },
     }});
   });
+}
+
+export async function emitDesktopEvent(page: Page, name: string, payload: unknown) {
+  await page.evaluate(({name, payload}) => {
+    (window as unknown as {__emitDesktopEvent: (name: string, message: unknown) => void}).__emitDesktopEvent(name, payload);
+  }, {name, payload});
 }
 
 export async function emitSurface(page: Page, message: unknown) {

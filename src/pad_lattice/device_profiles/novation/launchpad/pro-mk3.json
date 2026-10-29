@@ -93,6 +93,7 @@
     "idle": 1,
     "activity": 3,
     "states": {
+      "idle": {"primary": 1, "summary": 1},
       "running": {"primary": 45, "summary": 47},
       "waiting_for_reply": {"primary": 3, "summary": 1},
       "user_typing": {"primary": 37, "summary": 39},

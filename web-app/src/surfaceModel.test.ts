@@ -14,6 +14,16 @@ function view(state: SurfaceView['selected_state']): SurfaceView {
 }
 
 describe('compileVisualFrame', () => {
+  it('renders Ready as a dim dash, not a question', () => {
+    const source = view('idle');
+    source.sessions = [{slot: 2, state: 'idle', selected: true, accent: 'lime', label: 'Reviewer'}];
+    const frame = compileVisualFrame(source);
+    expect(frame.state.flat().filter(token => token !== 'off')).toEqual(Array(3).fill('state:idle:primary'));
+    expect(frame.statuses[2]).toBe('state:idle:summary');
+    expect(frame.selectors[2]).toBe('accent:lime:selected');
+    expect(Object.values(frame.actions)).toEqual(Array(4).fill('off'));
+  });
+
   it('renders the protocol question mark', () => {
     const frame = compileVisualFrame(view('waiting_for_reply'));
     const lit = frame.state.flat().filter((token) => token !== 'off');

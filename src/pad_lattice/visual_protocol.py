@@ -53,6 +53,7 @@ class VisualFrame:
 
 
 STATE_GLYPHS: dict[AgentState, tuple[tuple[int, int], ...]] = {
+    AgentState.IDLE: ((2, 4), (3, 4), (4, 4)),
     AgentState.RUNNING: tuple(
         (x, y)
         for x in (1, 3, 5)

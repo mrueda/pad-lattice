@@ -1,8 +1,13 @@
-import {Check, Square, X, type LucideIcon} from 'lucide-react';
+import {useEffect, useState} from 'react';
+import {Check, ChevronLeft, ChevronRight, RotateCcw, Square, X, type LucideIcon} from 'lucide-react';
 import {DemoPointer, type Demonstration} from './DemoPointer';
 import {stateLabels} from './demo';
 import {compileVisualFrame, tokenColor} from './surfaceModel';
-import type {ControlAction, SessionView, SurfaceView} from './types';
+import {deckShowColors} from './deckShow';
+import layouts from '../../integrations/stream-deck/layouts.json';
+import type {ControlAction, FullSurfaceFrame, SessionView, SurfaceView} from './types';
+
+export const deckModel = (surface: string) => surface === 'stream-deck-xl' ? 'xl' : surface === 'stream-deck-neo' ? 'neo' : 'standard';
 
 interface Props {
   view: SurfaceView;
@@ -10,15 +15,24 @@ interface Props {
   guidedAction?: ControlAction | null;
   guidedSlot?: number | null;
   demonstration?: Demonstration | null;
+  live?: boolean;
+  includeRetry?: boolean;
+  model?: keyof typeof layouts;
+  showMode?: boolean;
+  performanceFrame?: FullSurfaceFrame | null;
+  performanceAct?: string | null;
+  performanceCaption?: string | null;
   onSelect: (slot: number) => void;
   onAction: (action: ControlAction) => void;
 }
 
-const actions: {action: 'approve' | 'reject' | 'stop'; label: string; Icon: LucideIcon}[] = [
+const actions: {action: ControlAction; label: string; Icon: LucideIcon}[] = [
   {action: 'approve', label: 'Approve', Icon: Check},
   {action: 'reject', label: 'Reject', Icon: X},
   {action: 'stop', label: 'Stop', Icon: Square},
+  {action: 'retry', label: 'Retry', Icon: RotateCcw},
 ];
+const attentionStates = new Set(['waiting_for_approval', 'waiting_for_reply', 'error']);
 
 function SessionGlyph({session}: {session: SessionView}) {
   const frame = compileVisualFrame({selected_state: session.state, sessions: [],
@@ -30,17 +44,43 @@ function SessionGlyph({session}: {session: SessionView}) {
 }
 
 export function StreamDeckSurface({view, disabled = false, guidedAction, guidedSlot,
-  demonstration, onSelect, onAction}: Props) {
+  demonstration, live = false, includeRetry = false, model = 'standard', showMode = false, performanceFrame = null,
+  performanceAct, performanceCaption, onSelect, onAction}: Props) {
   const selected = view.sessions.find(session => session.selected);
   const target = selected?.label ?? 'No session';
-  return <div className="streamDeckSurface" aria-label="Stream Deck simulation">
-    <div className="hardwareBrand"><span>elgato</span><strong>Stream Deck</strong></div>
-    <div className="deckGroupLabel" id="deck-session-label">Sessions</div>
-    <div className="deckSessionKeys" role="group" aria-labelledby="deck-session-label">
-      {Array.from({length: 10}, (_, slot) => {
-        if (slot >= 8) return <div key={slot} className="deckKey unusedDeckKey" aria-hidden="true" />;
+  const layout = layouts[model];
+  const [page, setPage] = useState(() => model === 'neo' && (selected?.slot ?? 0) >= 5 ? 1 : 0);
+  useEffect(() => {setPage(model === 'neo' && (selected?.slot ?? 0) >= 5 ? 1 : 0);}, [model, selected?.slot]);
+  useEffect(() => {if (model === 'neo' && guidedSlot != null) setPage(guidedSlot >= 5 ? 1 : 0);}, [model, guidedSlot]);
+  const currentPage = Math.min(page, layout.pages.length - 1);
+  const slots = layout.pages[currentPage];
+  const attentionOnPage = (index: number) => {
+    if (live && disabled) return 0;
+    const pageSlots = layout.pages[index];
+    return pageSlots ? view.sessions.filter(session => pageSlots.includes(session.slot) && attentionStates.has(session.state)).length : 0;
+  };
+  const previousAttention = currentPage > 0 ? attentionOnPage(currentPage - 1) : 0;
+  const nextAttention = currentPage < layout.pages.length - 1 ? attentionOnPage(currentPage + 1) : 0;
+  const pageLabel = (direction: 'Previous' | 'Next', pageNumber: number, count: number) => count
+    ? `${direction} page, page ${pageNumber}: ${count} ${count === 1 ? 'conversation needs' : 'conversations need'} attention`
+    : `${direction} page`;
+  return <div className={`streamDeckSurface deckLayout-${model}`} aria-label={live ? 'Stream Deck-style control surface' : 'Stream Deck simulation'}
+    style={{'--deck-columns': layout.columns} as React.CSSProperties}>
+    <div className="hardwareBrand"><span>{live ? 'PAD-LATTICE' : 'elgato'}</span><strong>{layout.label}{live ? '-style' : ''}</strong></div>
+    {showMode ? <>
+      <div className="performanceStory"><span>{performanceAct ?? 'VISUAL SHOW'}</span><strong>{performanceCaption ?? 'Ready'}</strong></div>
+      <div className="deckShowKeys" role="img" aria-label={`Visual Show animation on ${layout.columns * layout.rows} keys`}>
+        {deckShowColors(performanceFrame, layout.columns, layout.rows).map((color, index) => <span key={index} className="deckShowKey"
+          style={{'--pad-color': color} as React.CSSProperties} />)}
+      </div>
+    </> : <>
+    <div className="deckGroupLabel"><span>Sessions and actions</span><span>Selected: {target}</span></div>
+    <div className="deckGrid" role="group" aria-label="Session and action keys">
+      {slots.map((slot, index) => {
+        if (slot === null || slot === 'retry' && !includeRetry) return <div key={index} className="deckKey unusedDeckKey" aria-hidden="true" />;
+        if (typeof slot === 'number') {
         const session = view.sessions.find(item => item.slot === slot);
-        return <button key={slot}
+        return <button key={index}
           className={`deckKey deckSessionKey ${session?.selected ? 'selected' : ''} ${guidedSlot === slot ? 'guidedControl' : ''}`}
           disabled={disabled || !session} aria-pressed={Boolean(session?.selected)}
           aria-label={session ? `Select ${session.label}` : `Empty Session ${slot + 1}`}
@@ -53,13 +93,12 @@ export function StreamDeckSurface({view, disabled = false, guidedAction, guidedS
           </> : <span className="deckEmptyLabel">{slot + 1}</span>}
           {demonstration && guidedSlot === slot ? <DemoPointer {...demonstration} /> : null}
         </button>;
-      })}
-    </div>
-    <div className="deckGroupLabel" id="deck-action-label">Actions <span>for {target}</span></div>
-    <div className="deckActionKeys" role="group" aria-labelledby="deck-action-label">
-      {actions.map(({action, label, Icon}) => {
+        }
+        const item = actions.find(action => action.action === slot);
+        if (!item) return null;
+        const {action, label, Icon} = item;
         const available = Boolean(selected) && view.available_actions.includes(action);
-        return <button key={action}
+        return <button key={index}
           className={`deckKey deckActionKey ${guidedAction === action ? 'guidedControl' : ''}`}
           disabled={disabled || !available} aria-label={label} title={`${label}: ${target}${available ? '' : ' (unavailable)'}`}
           style={{'--key-accent': available && selected ? tokenColor(`accent:${selected.accent}:selected`) : '#38444e',
@@ -71,8 +110,23 @@ export function StreamDeckSurface({view, disabled = false, guidedAction, guidedS
           {demonstration && guidedAction === action ? <DemoPointer {...demonstration} /> : null}
         </button>;
       })}
-      <div className="deckKey unusedDeckKey" aria-hidden="true" />
-      <div className="deckKey unusedDeckKey" aria-hidden="true" />
     </div>
+    {layout.pages.length > 1 ? <div className="deckPages" aria-label="Stream Deck pages">
+      <button className="textButton" aria-label={pageLabel('Previous', currentPage, previousAttention)} title={pageLabel('Previous', currentPage, previousAttention)}
+        disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}><ChevronLeft />
+        {previousAttention > 0 ? <span className="deckPageAttention" aria-hidden="true">{previousAttention}</span> : null}</button>
+      <span>Page {currentPage + 1} / {layout.pages.length}</span>
+      <button className="textButton" aria-label={pageLabel('Next', currentPage + 2, nextAttention)} title={pageLabel('Next', currentPage + 2, nextAttention)}
+        disabled={currentPage >= layout.pages.length - 1} onClick={() => setPage(currentPage + 1)}><ChevronRight />
+        {nextAttention > 0 ? <span className="deckPageAttention" aria-hidden="true">{nextAttention}</span> : null}</button>
+      <span className="deckPageStatus" role="status">{previousAttention || nextAttention
+        ? `Page ${previousAttention ? currentPage : currentPage + 2}: ${previousAttention || nextAttention} ${(previousAttention || nextAttention) === 1 ? 'conversation needs' : 'conversations need'} attention`
+        : ''}</span>
+    </div> : null}
+    {live && model === 'neo' && selected && view.available_actions.includes('retry') ? <div className="deckExtraAction">
+      <button className="textButton" disabled={disabled} aria-label={`Retry ${selected.label}`} title={`Retry ${selected.label}`}
+        onClick={() => onAction('retry')}><RotateCcw aria-hidden="true" /> Retry</button>
+    </div> : null}
+    </>}
   </div>;
 }

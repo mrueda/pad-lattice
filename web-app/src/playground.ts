@@ -43,7 +43,7 @@ export const playgroundScenarios: readonly Scenario[] = [
   },
   {
     id: 'vocabulary', title: 'All states / eight sessions',
-    sessions: [...agentStates, 'waiting_for_reply' as const].map((state, slot) => session(slot, `Agent ${slot + 1}`, state, slot === 0)),
+    sessions: agentStates.map((state, slot) => session(slot, `Agent ${slot + 1}`, state, slot === 0)),
     events: [],
   },
 ];

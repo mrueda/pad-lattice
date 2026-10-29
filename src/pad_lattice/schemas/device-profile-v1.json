@@ -130,6 +130,7 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
+            "idle",
             "running",
             "waiting_for_reply",
             "user_typing",
@@ -139,6 +140,7 @@
             "cancelled"
           ],
           "properties": {
+            "idle": {"$ref": "#/$defs/stateColors"},
             "running": {"$ref": "#/$defs/stateColors"},
             "waiting_for_reply": {"$ref": "#/$defs/stateColors"},
             "user_typing": {"$ref": "#/$defs/stateColors"},

@@ -64,6 +64,16 @@ class StopExperienceCommand:
     pass
 
 
+@dataclass(frozen=True)
+class QuestionCommand:
+    request_id: str
+    operation: str
+    slot: int | None = None
+    revision: int | None = None
+    token: str | None = None
+    answers: dict[str, int] | None = None
+
+
 WebCommand: TypeAlias = (
     AuthenticateCommand
     | ActionCommand
@@ -72,6 +82,7 @@ WebCommand: TypeAlias = (
     | RevokeRemoteCommand
     | StartExperienceCommand
     | StopExperienceCommand
+    | QuestionCommand
 )
 
 
@@ -141,6 +152,25 @@ def parse_web_command(message: dict[str, Any]) -> WebCommand:
     if message_type == "stop_experience":
         _require_keys(message, required={"protocol", "type"})
         return StopExperienceCommand()
+    if message_type == "question_request":
+        operation, request_id = message.get("operation"), message.get("request_id")
+        if not isinstance(request_id, str) or not 1 <= len(request_id) <= 64:
+            raise WebProtocolError("invalid request identifier")
+        if operation == "status":
+            _require_keys(message, required={"protocol", "type", "request_id", "operation"})
+            return QuestionCommand(request_id, operation)
+        if operation == "answer":
+            _require_keys(message, required={"protocol", "type", "request_id", "operation", "slot", "revision", "token", "answers"})
+            slot, revision, token, answers = (message.get("slot"), message.get("revision"),
+                                               message.get("token"), message.get("answers"))
+            if (type(slot) is not int or not 0 <= slot < 8 or type(revision) is not int or revision < 0
+                    or not isinstance(token, str) or len(token) != 32 or any(c not in "0123456789abcdef" for c in token)
+                    or not isinstance(answers, dict) or not 1 <= len(answers) <= 3
+                    or any(not isinstance(k, str) or not 1 <= len(k) <= 128 or type(v) is not int or not 0 <= v < 9
+                           for k, v in answers.items())):
+                raise WebProtocolError("invalid question answer")
+            return QuestionCommand(request_id, operation, slot, revision, token, answers)
+        raise WebProtocolError("unknown question operation")
     raise WebProtocolError("unknown message type")
 
 

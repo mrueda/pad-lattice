@@ -156,7 +156,7 @@ try {
     html, body {background:#edf2f5!important; overflow:hidden; color-scheme:light;}
     .desktopApp {position:fixed; left:26px; top:135px; width:1030px; height:840px; border:1px solid #8d9aa5; border-radius:8px; box-shadow:0 8px 30px #19354322; color-scheme:dark;}
     .desktopApp .workspace {grid-template-columns:minmax(0,1.2fr) minmax(290px,.8fr);}
-    .desktopApp .virtualSurface {width:min(100%,235px);}
+    .desktopApp .virtualSurface {width:min(100%,400px,calc(100cqh - 56px));}
     .desktopApp .contextPane {padding:20px;}
     .desktopApp .desktopNotice {font-size:12px;}
     #filmCaption {position:fixed;left:30px;top:26px;color:#152735;font:600 30px/1.25 system-ui; margin:0; max-width:1220px;}
@@ -235,11 +235,16 @@ try {
   };
   await pause(2200);
   for (const label of ['Implementation', 'Review', 'Tests']) {
+    const picker = page.getByRole('button', {name: /Codex conversations/});
+    if (await picker.getAttribute('aria-expanded') === 'false') await clickCue(picker, 'Open conversations', 500);
     await clickCue(page.getByRole('button', {name: `Connect ${label}`, exact: true}), `Connect ${label}`, 900);
-    await page.getByRole('button', {name: `Disconnect ${label}`, exact: true}).waitFor();
+    await page.waitForFunction(label => [...document.querySelectorAll('.openConversationList button')]
+      .some(button => button.getAttribute('aria-label') === `Disconnect ${label}`), label);
     await pause(500);
   }
   await caption('Keep several sessions in view.', 'Each session has a color. The large symbol shows the selected session.');
+  const picker = page.getByRole('button', {name: /Codex conversations/});
+  if (await picker.getAttribute('aria-expanded') === 'true') await picker.click();
   await pause(3000);
   await clickCue(page.getByRole('button', {name: 'Settings', exact: true}), 'Open settings', 800);
   await clickCue(page.getByRole('tab', {name: 'Devices', exact: true}), 'Devices', 600);

@@ -11,7 +11,20 @@ import {
 
 type Coordinate = readonly [number, number];
 
+export function emptySurface(): {view: SurfaceView; frame: VisualFrame} {
+  const view: SurfaceView = {
+    selected_state: null,
+    frame: 0,
+    sessions: [],
+    available_actions: [],
+    overflow_count: 0,
+    activity_motion: false,
+  };
+  return {view, frame: compileVisualFrame(view)};
+}
+
 const glyphs: Record<AgentState, readonly Coordinate[]> = {
+  idle: [[2, 4], [3, 4], [4, 4]],
   running: [
     [1, 3], [1, 4], [3, 3], [3, 4], [5, 3], [5, 4],
   ],
@@ -87,6 +100,7 @@ export const accentRgb: Record<AccentName, readonly [number, number, number]> = 
 };
 
 const stateColors: Record<AgentState, {primary: string; summary: string}> = {
+  idle: {primary: '#46535c', summary: '#46535c'},
   running: {primary: '#3389e8', summary: '#245f9d'},
   waiting_for_reply: {primary: '#f2f5f7', summary: '#8e99a2'},
   user_typing: {primary: '#14bcc7', summary: '#087b83'},

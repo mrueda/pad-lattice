@@ -206,6 +206,33 @@ select:focus-visible {
 .playgroundAgentPicker { margin-bottom: 16px; }
 .playgroundAgentPicker .sectionTitle { gap: 10px; flex-wrap: wrap; }
 .agentChoices { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; }
+.codexQuestion, .sampleQuestion { margin: 12px 0; padding: 12px; border: 1px solid #45515d; border-radius: 6px; background: #20282d; }
+.browserQuestionBar { width: min(calc(100% - 32px), 720px); margin: 0 auto; }
+.approvalContext { margin: 0; padding: 12px; border: 1px solid #846d3b; border-radius: 6px; background: #252822; min-width: 0; }
+.approvalContext .sectionTitle span { display: inline-flex; align-items: center; gap: 5px; }
+.approvalContext .sectionTitle svg { width: 15px; height: 15px; }
+.approvalContext pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 220px; overflow: auto; padding: 10px; background: #151b1b; border-radius: 4px; }
+.approvalContext p { margin: 8px 0 0; overflow-wrap: anywhere; }
+.approvalContext p small, .approvalContext p code { display: block; }
+.approvalContext .approvalWarning { color: #f0cc7f; }
+[data-theme="light"] .approvalContext { background: #fffaf0; border-color: #c5a569; }
+[data-theme="light"] .approvalContext pre { background: #f1f2ee; }
+[data-theme="light"] .approvalContext .approvalWarning { color: #765219; }
+.codexQuestion .sectionTitle span { display: inline-flex; align-items: center; gap: 5px; }
+.codexQuestion .sectionTitle svg { width: 15px; height: 15px; }
+.codexQuestion fieldset { min-width: 0; margin: 12px 0; padding: 0; border: 0; }
+.codexQuestion legend { margin-bottom: 8px; font-weight: 600; overflow-wrap: anywhere; }
+.questionOption { display: flex; align-items: flex-start; gap: 9px; width: 100%; margin: 5px 0; padding: 8px; text-align: left; color: inherit; background: transparent; border: 1px solid #45515d; border-radius: 5px; cursor: pointer; }
+.questionOption[aria-pressed="true"] { border-color: #55c8b3; background: #27483f; }
+.questionOption strong, .questionOption small { display: block; overflow-wrap: anywhere; }
+.questionOption small { margin-top: 3px; opacity: .8; }
+.questionNumber { flex: 0 0 24px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 4px; background: #3d4a4f; font-weight: 700; }
+.questionSubmit { margin-top: 4px; }
+.questionSession { margin: 8px 0 0; overflow-wrap: anywhere; }
+[data-theme="light"] .codexQuestion, [data-theme="light"] .sampleQuestion { background: #fff; border-color: #b8c4cd; }
+[data-theme="light"] .questionOption { border-color: #b8c4cd; }
+[data-theme="light"] .questionOption[aria-pressed="true"] { background: #d7f1e9; border-color: #13846e; }
+[data-theme="light"] .questionNumber { background: #dce5e5; }
 .agentChoice {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   min-width: 0; min-height: 40px; padding: 8px;
@@ -262,13 +289,14 @@ select:focus-visible {
 }
 
 .virtualSurface {
+  --session-accent: #60717c;
   width: min(100%, 720px);
   min-width: 0;
   padding: 24px;
-  border: 1px solid #2c353d;
+  border: 1px solid #46515a;
   border-radius: 8px;
   background: #171d22;
-  box-shadow: 0 24px 80px rgb(0 0 0 / 32%);
+  box-shadow: inset 0 1px 0 #ffffff0a, 0 4px 0 #080b0e, 0 16px 36px #0003;
 }
 
 .surfaceCaption {
@@ -276,7 +304,7 @@ select:focus-visible {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 10px;
-  color: #717e87;
+  color: #9aa8b2;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 10px;
 }
@@ -314,15 +342,18 @@ select:focus-visible {
 .surfaceFooter span:last-child {
   max-width: 60%;
   overflow: hidden;
-  color: #aeb8be;
+  color: #edf2f5;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.surfaceFooter span:first-child { color: var(--session-accent); }
+.surfaceFooter span:last-child { font: 600 12px/18px ui-sans-serif, system-ui, sans-serif; }
+
 .surfaceTop,
 .surfaceBody {
   display: grid;
-  grid-template-columns: minmax(0, 8fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, calc((100% - 50px) / 9));
   gap: 8px;
 }
 
@@ -352,7 +383,7 @@ select:focus-visible {
     inset 0 -3px 6px rgb(0 0 0 / 35%),
     0 0 12px color-mix(in srgb, var(--pad-color) 55%, transparent);
   cursor: pointer;
-  transition: transform 120ms ease, filter 120ms ease;
+  transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease;
 }
 
 .railControl:disabled,
@@ -363,8 +394,15 @@ select:focus-visible {
 
 .railControl:not(:disabled):active,
 .sceneControl:not(:disabled):active {
-  transform: scale(.9);
+  transform: translateY(2px) scale(.96);
+  box-shadow: inset 0 3px 8px #0007;
 }
+
+.railControl:not(:disabled):hover, .sceneControl:not(:disabled):hover { filter: brightness(1.12); }
+.sceneControl[aria-pressed="true"] { outline: 2px solid var(--session-accent); outline-offset: 3px; }
+.sceneControl:focus-visible { outline: 3px solid #f4f8fa; outline-offset: 4px; }
+.railControl.litControl, .sceneControl.litControl { box-shadow: inset 0 1px 2px #ffffff60, inset 0 -3px 5px #0004, 0 0 9px color-mix(in srgb, var(--pad-color) 35%, transparent); }
+.railControl:disabled:not(.litControl), .sceneControl:disabled:not(.litControl) { box-shadow: inset 0 2px 5px #0004; }
 
 .guidedControl {
   z-index: 1;
@@ -408,13 +446,16 @@ select:focus-visible {
   min-width: 0;
   aspect-ratio: 1;
   border: 1px solid color-mix(in srgb, var(--pad-color) 52%, #394249);
-  border-radius: 7px;
+  border-radius: min(7px, 12%);
   background: var(--pad-color);
   box-shadow:
-    inset 0 -4px 7px rgb(0 0 0 / 32%),
-    0 0 11px color-mix(in srgb, var(--pad-color) 45%, transparent);
+    inset 0 2px 5px #0004,
+    inset 0 -1px 0 #ffffff05;
   transition: background-color 150ms ease, box-shadow 150ms ease;
 }
+
+.litPad { box-shadow: inset 0 1px 3px #ffffff50, inset 0 -3px 6px #0003, 0 0 9px color-mix(in srgb, var(--pad-color) 32%, transparent); }
+.performanceSurface .matrixPad { box-shadow: inset 0 -4px 7px #0005, 0 0 11px color-mix(in srgb, var(--pad-color) 45%, transparent); }
 
 .matrixPad.statusPad {
   border-color: color-mix(in srgb, var(--pad-color) 68%, #65717a);
@@ -430,7 +471,7 @@ select:focus-visible {
 .sceneControl span {
   color: #f8fbfc;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   text-shadow: 0 1px 3px #000;
 }
@@ -439,18 +480,24 @@ select:focus-visible {
 .hardwareBrand span { font-weight: 700; }
 .hardwareBrand strong { font-weight: 500; }
 .virtualSurface.launchpadSurface { border: 2px solid #4a535b; background: #252c32; box-shadow: 0 6px 0 #080b0e; }
-.launchpadSurface :is(.surfaceTop, .surfaceBody, .launchpadBottom) { grid-template-columns: minmax(0, 1fr) minmax(0, 8fr) minmax(0, 1fr); }
+.launchpadSurface :is(.surfaceTop, .surfaceBody, .launchpadBottom) { grid-template-columns: minmax(0, calc((100% - 58px) / 10)) minmax(0, 1fr) minmax(0, calc((100% - 58px) / 10)); }
 .launchpadSurface .surfaceCaption { color: #aab5bd; }
 .reservedRail { display: grid; grid-template-rows: repeat(8, minmax(0, 1fr)); gap: 6px; min-width: 0; }
 .reservedRail > span { aspect-ratio: 1; width: 100%; border: 1px solid #4b555e; border-radius: 50%; background: #11171c; }
 .launchpadBottom { display: grid; gap: 8px; margin-top: 8px; }
 .launchpadBottom .reservedRail { grid-template-rows: auto; grid-template-columns: repeat(8, minmax(0, 1fr)); }
 
-.streamDeckSurface { width: 100%; min-width: 0; padding: 20px; border: 2px solid #4a535b; border-radius: 8px; color: #edf2f5; background: #252c32; color-scheme: dark; box-shadow: 0 6px 0 #080b0e; }
+.streamDeckSurface { width: 100%; min-width: 0; padding: 20px; border: 2px solid #4a535b; border-radius: 8px; color: #edf2f5; background: #252c32; color-scheme: dark; box-shadow: 0 6px 0 #080b0e; container-type: inline-size; }
 .streamDeckSurface .hardwareBrand { margin-bottom: 18px; }
 .deckGroupLabel { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 12px 0 8px; font-size: 11px; color: #b2bec6; }
 .deckGroupLabel span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.deckSessionKeys, .deckActionKeys { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.deckGrid, .deckShowKeys { display: grid; grid-template-columns: repeat(var(--deck-columns), minmax(0, 1fr)); gap: 10px; }
+.deckPages { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 14px; font-size: 12px; color: #b2bec6; }
+.deckPages .textButton { position: relative; width: 36px; min-height: 36px; padding: 8px; }
+.deckPageAttention { position: absolute; top: -6px; right: -6px; display: grid; place-items: center; width: 18px; height: 18px; border: 1px solid #674a14; border-radius: 50%; background: #f0b63f; color: #211704; font-size: 10px; font-weight: 700; line-height: 1; }
+.deckPageStatus { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.deckExtraAction { display: flex; justify-content: center; margin-top: 12px; }
+.deckShowKey { display: block; aspect-ratio: 1; min-width: 0; border: 2px solid #38444e; border-radius: 7px; background: var(--pad-color); box-shadow: inset 0 -3px 6px #0006, 0 0 10px color-mix(in srgb, var(--pad-color) 35%, transparent); transition: background-color 150ms ease, box-shadow 150ms ease; }
 .deckKey { position: relative; display: grid; min-width: 0; width: 100%; aspect-ratio: 1; border: 2px solid #38444e; border-radius: 7px; padding: 5px; background: #10151a; color: #edf2f5; cursor: pointer; }
 .deckKey:disabled { cursor: default; }
 .deckKey:not(:disabled):active { box-shadow: inset 0 0 0 2px #dce3e8; }
@@ -465,13 +512,22 @@ select:focus-visible {
 .unusedDeckKey { cursor: default; background: #171d22; }
 .deckActionKey { grid-template-rows: minmax(0, 1fr) 16px 14px; gap: 2px; border-color: var(--key-accent); }
 .deckActionIcon { width: 58%; height: 100%; min-height: 0; justify-self: center; color: var(--action-color); }
-.deckActionLabel { color: var(--action-color); font-size: 12px; line-height: 16px; }
+.deckActionLabel { min-width: 0; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--action-color); font-size: 12px; line-height: 16px; }
+.deckGrid { container-type: inline-size; }
+@container (max-width: 480px) {
+  .deckLayout-xl .deckSessionKey { grid-template-rows: 2px minmax(0, 1fr) 10px; gap: 1px; padding: 2px; }
+  .deckLayout-xl .deckActionKey { grid-template-rows: minmax(0, 1fr) 10px; gap: 1px; padding: 2px; }
+  .deckLayout-xl .deckAccent { height: 2px; }
+  .deckLayout-xl .deckKeyLabel { font-size: 9px; line-height: 10px; }
+  .deckLayout-xl .deckActionKey .deckKeyLabel { display: none; }
+  .deckLayout-xl .deckActionLabel { font-size: 9px; line-height: 10px; }
+}
 
 @media (max-width: 560px) {
   .surfacePicker { width: 100%; }
   .surfacePicker select { flex: 1; }
   .streamDeckSurface { padding: 8px; }
-  .deckSessionKeys, .deckActionKeys { gap: 4px; }
+  .deckGrid, .deckShowKeys { gap: 4px; }
   .deckKey { padding: 2px 0; border-radius: 5px; }
   .deckSessionKey { grid-template-rows: 3px minmax(0, 1fr) 14px; gap: 1px; }
   .deckAccent { height: 3px; }
@@ -572,7 +628,8 @@ select:focus-visible {
 }
 
 .sessionRow.selected {
-  background: #171e24;
+  background: color-mix(in srgb, var(--session-accent) 8%, #10151a);
+  box-shadow: inset 3px 0 var(--session-accent);
 }
 
 .sessionRow.guidedRow {
@@ -620,8 +677,8 @@ select:focus-visible {
 .emptySessions small,
 .connectionSummary small {
   margin-top: 3px;
-  color: #71808a;
-  font-size: 10px;
+  color: #9aa8b2;
+  font-size: 12px;
 }
 
 .stateLabel {
@@ -968,10 +1025,15 @@ select:focus-visible {
   .surfaceTop,
   .surfaceBody {
     gap: 5px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, calc((100% - 26px) / 9));
+  }
+  .launchpadSurface :is(.surfaceTop, .surfaceBody, .launchpadBottom) {
+    grid-template-columns: minmax(0, calc((100% - 31px) / 10)) minmax(0, 1fr) minmax(0, calc((100% - 31px) / 10));
+    gap: 5px;
   }
 
   .matrixPad {
-    border-radius: 5px;
+    border-radius: min(5px, 12%);
   }
 
   .surfaceCaption {
@@ -1039,19 +1101,46 @@ select:focus-visible {
 :root { --desktop-border: #39414b; --ui-body: 14px; --ui-small: 12px; --ui-section: 16px; --ui-title: 18px; color-scheme: dark; }
 .desktopApp { height: 100vh; min-height: 0; overflow: hidden; }
 .desktopApp .appHeader, .desktopApp .appFooter { flex-shrink: 0; }
-.desktopApp .desktopControls { flex-shrink: 0; margin: 0; padding: 12px 24px 18px; max-height: 58vh; overflow: auto; }
-.desktopApp .workspace { min-height: 0; overflow: auto; }
-.desktopApp .surfaceWorkspace { padding: 20px; align-items: flex-start; }
+.desktopApp .desktopControls { flex-shrink: 0; margin: 0; padding: 10px 24px; max-height: 48vh; overflow: auto; }
+.desktopApp .workspace { min-height: 0; overflow: hidden; grid-template-columns: minmax(0, 1.4fr) minmax(340px, .8fr); grid-template-rows: minmax(0, 1fr); }
+.desktopApp .surfaceWorkspace { padding: 24px; align-items: center; container-type: size; }
+.desktopApp:not(.padOnly) .surfaceWorkspace { background: #172123; }
+.desktopApp:not(.padOnly) .surfaceWorkspace .virtualSurface:not(.performanceSurface) {
+  background: #344548; border-color: #657a79;
+  box-shadow: inset 0 1px 0 #ffffff24, 0 5px 0 #172325, 0 16px 32px #0005;
+}
+.desktopApp:not(.padOnly) .surfaceWorkspace .virtualSurface:not(.performanceSurface) .surfaceCaption { color: #c3d1cf; font-weight: 700; }
+.desktopApp:not(.padOnly) .surfaceWorkspace .virtualSurface:not(.performanceSurface) .surfaceFooter span { color: #f2f8f6; }
 .desktopDemoWorkspace .surfaceWorkspace, .desktopApp .desktopDemoWorkspace .surfaceWorkspace { flex-direction: column; align-items: center; justify-content: flex-start; }
-.liveDemoCue { width: min(100%, 500px); box-sizing: border-box; min-height: 86px; }
-.desktopApp .virtualSurface { width: min(100%, 500px, calc(100vh - 440px)); }
-.desktopApp .contextPane { padding: 20px 24px; gap: 20px; }
+.liveDemoCue { width: min(100%, 640px); box-sizing: border-box; min-height: 86px; }
+.desktopApp .virtualSurface { width: min(100%, 640px, calc(100cqh - 56px)); flex-shrink: 0; }
+.desktopApp .surfaceWorkspace .streamDeckSurface { width: min(100%, 640px, calc(155cqh - 200px)); flex-shrink: 0; }
+.desktopApp .desktopDemoWorkspace .virtualSurface { width: min(100%, 600px, calc(100cqh - 164px)); }
+.desktopApp .desktopDemoWorkspace .streamDeckSurface { width: min(100%, 600px, calc(155cqh - 300px)); }
+.desktopApp .surfaceWorkspace:has(.performanceSurface) .virtualSurface { width: min(100%, 640px, calc(100cqh - 100px)); }
+.desktopApp .contextPane { padding: 28px 24px; gap: 24px; overflow: auto; }
+.desktopApp .contextPane > .selectedConversation { flex-shrink: 0; }
+.desktopApp .attentionView { display: flex; flex-direction: column; flex: 1; min-height: min(320px, 50vh); }
+.desktopApp .attentionTabs { flex-shrink: 0; }
+.desktopApp .nextAttention { flex-shrink: 0; }
+.desktopApp .attentionView > [role="tabpanel"] { min-height: 0; overflow: auto; }
+.desktopApp .attentionView .sessionRow { min-height: 52px; }
+.desktopApp .attentionView .sessionRow > button { min-height: 51px; }
+.desktopApp .contextPane :is(.sessionRow strong, .textButton) { font-size: 14px; }
+.desktopApp .contextPane .stateLabel { font-size: 12px; }
+.desktopApp .contextPane .selectedConversation > .stateLabel { font-size: 14px; }
 .desktopControls { margin: 0 0 22px; border-bottom: 1px solid var(--desktop-border); padding: 0 0 20px; }
 .desktopToolbar, .desktopInputGroup, .desktopActions { display: flex; align-items: center; gap: 8px; }
 .desktopToolbar { justify-content: space-between; margin-bottom: 12px; }
 .desktopToolbar h2 { margin: 0; font-size: 18px; }
 .openConversations .desktopToolbar { margin-bottom: 6px; }
-.openConversations .desktopToolbar h2 { font-size: 15px; }
+.openConversations .desktopToolbar h2 { min-width: 0; flex: 1; font-size: 15px; }
+.conversationPicker { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; width: 100%; min-height: 38px; padding: 6px 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; font-size: 14px; }
+.conversationPicker > svg { width: 18px; height: 18px; flex-shrink: 0; color: #aab6c0; }
+.conversationPicker .conversationCounts { color: #aab6c0; font-size: 12px; font-weight: 400; margin: 0; }
+.conversationPicker .pickerChevron { margin-left: auto; transition: transform 150ms ease; }
+.conversationPicker[aria-expanded="true"] .pickerChevron { transform: rotate(180deg); }
+.openConversations .desktopToolbar > .textButton { width: 36px; min-height: 36px; padding: 8px; }
 .openConversationList { margin: 0; padding: 0; list-style: none; max-height: 158px; overflow: auto; }
 .openConversationList li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--desktop-border); }
 .openConversationList li > svg { flex-shrink: 0; width: 20px; color: #aab6c0; }
@@ -1075,6 +1164,10 @@ select:focus-visible {
 .desktopNotice, .desktopControls .muted { color: #aab6c0; }
 .desktopSettings { padding: 20px 0 0; }
 .deviceSettingsHeading { margin-bottom: 24px; }
+.deviceIntro { display: grid; grid-template-columns: 190px minmax(0, 1fr); align-items: center; gap: 24px; margin: 0 0 24px; }
+.deviceIllustration { width: 100%; max-width: 224px; height: auto; }
+.deviceIntro h3 { margin: 0 0 8px; }
+.deviceIntro p { color: #aab6c0; font-size: 13px; line-height: 1.5; margin: 0 0 16px; }
 .deviceTabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; border-bottom: 1px solid var(--desktop-border); }
 .deviceTabs button { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; min-height: 48px; padding: 10px 6px; border: 0; border-bottom: 2px solid transparent; background: transparent; font-size: 14px; line-height: 1.4; cursor: pointer; }
 .deviceTabs button[aria-selected="true"] { border-bottom-color: #41c6cd; background: #17252b; }
@@ -1111,7 +1204,8 @@ select:focus-visible {
 .attentionRow[aria-pressed="true"] { background: #1d2933; }
 .attentionRow:disabled { opacity: .65; cursor: default; }
 .attentionRow i { width: 12px; height: 12px; border-radius: 2px; }
-.attentionRow strong { display: block; font-size: 14px; overflow-wrap: anywhere; }
+.attentionRow > span { min-width: 0; }
+.attentionRow strong { display: block; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .attentionRow small { display: block; font-size: 12px; line-height: 1.5; color: #a6b4bf; }
 .attentionRow svg { width: 18px; height: 18px; }
 .attentionRow time { font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
@@ -1173,7 +1267,6 @@ select:focus-visible {
 .conversationEmpty { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 16px 0; font-size: 13px; }
 .conversationEmpty > svg { width: 20px; height: 20px; }
 .conversationEmpty code { color: #aab6c0; }
-.conversationCounts { margin: 4px 0 12px; }
 .codexCheck { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; font-size: var(--ui-body); }
 .codexCheck > svg { width: 18px; height: 18px; flex: 0 0 18px; color: #f0b63f; }
 .codexCheck.ready > svg { color: #55c76a; }
@@ -1201,7 +1294,15 @@ select:focus-visible {
 .desktopSetup:has(.desktopSettings) { flex: 1; min-height: 0; overflow: auto; }
 .desktopApp .desktopSetup:has(.desktopSettings) .desktopControls { max-height: none; overflow: visible; }
 .desktopViews { align-items: center; justify-content: flex-end; }
+.desktopSurfaceSelector { display: inline-flex; align-items: center; padding: 3px; border: 1px solid #45515d; border-radius: 6px; gap: 3px; }
+.desktopViews .desktopSurfaceSelector button { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 6px 10px; border: 0; border-radius: 4px; font-size: 13px; white-space: nowrap; }
+.desktopSurfaceSelector button svg { width: 16px; height: 16px; }
+.desktopViews .desktopSurfaceSelector button[aria-pressed="true"] { background: #304247; color: #f2f7f7; }
 .simulationBar { display: flex; align-items: center; justify-content: space-between; flex: 1; gap: 16px; }
+.desktopViews .simulationBar { min-width: 0; flex-wrap: wrap; }
+.desktopViews .simulationBar > .textButton { flex: 0 0 auto; width: auto; height: auto; padding: 8px 12px; white-space: normal; }
+.desktopViews .simulationBar > .textButton svg { flex-shrink: 0; }
+.openConversationList .removeConversation { flex: 0 0 36px; width: 36px; padding: 8px; }
 .simulationBar > span { color: #e9bf65; font-size: 12px; font-weight: 700; }
 .exploreMenu { position: relative; z-index: 30; }
 .exploreMenu > button { font-size: 13px; }
@@ -1209,24 +1310,38 @@ select:focus-visible {
 .exploreChoices button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px; border: 0; background: transparent; color: #eef2f5; font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
 .exploreChoices button:hover, .exploreChoices button:focus-visible { background: #303b43; outline: none; }
 .exploreChoices svg { width: 18px; height: 18px; }
-.desktopViews .padFocusButton { width: 40px; height: 44px; padding: 8px; flex-shrink: 0; }
+.desktopViews .padFocusButton { width: 36px; height: 32px; padding: 7px; flex-shrink: 0; }
 .desktopViewActions { display: flex; flex-shrink: 0; gap: 8px; }
 .padOnly .appHeader, .padOnly .appFooter { display: none; }
 .padOnly .desktopViews { justify-content: flex-end; padding: 0 8px; border: 0; }
 .desktopApp .padFocusWorkspace { grid-template-columns: minmax(0, 1fr); }
 .padFocusWorkspace .contextPane { display: none; }
 .desktopApp .padFocusWorkspace .surfaceWorkspace { align-items: center; padding: 8px; border: 0; }
-.desktopApp .padFocusWorkspace .virtualSurface { width: min(100%, calc(100dvh - 120px)); padding: 0; border: 0; background: transparent; box-shadow: none; }
+.desktopApp .padFocusWorkspace .virtualSurface { width: min(100%, calc(100dvh - 120px)); padding: 8px; border: 0; background: transparent; box-shadow: none; }
+.desktopApp .padFocusWorkspace .streamDeckSurface { width: min(100%, 850px, calc(155cqh - 170px)); }
+.desktopApp .padFocusWorkspace .surfaceWorkspace:has(:is(.codexQuestion, .approvalContext, .approvalFallback)) { gap: 16px; }
+.desktopApp .padFocusWorkspace :is(.codexQuestion, .approvalContext, .approvalFallback) { width: 320px; max-width: 40%; max-height: 80cqh; overflow: auto; flex-shrink: 0; }
+.desktopApp .padFocusWorkspace .surfaceWorkspace:has(:is(.codexQuestion, .approvalContext, .approvalFallback)) .virtualSurface { width: min(calc(100% - 350px), calc(100cqh - 50px)); }
+.desktopApp .padFocusWorkspace .surfaceWorkspace:has(:is(.codexQuestion, .approvalContext, .approvalFallback)) .streamDeckSurface { width: min(calc(100% - 350px), 850px, calc(155cqh - 170px)); }
 .openConversationScene { display: grid; place-items: center; width: 28px; height: 28px; flex-shrink: 0; border: 1px solid currentColor; border-radius: 50%; font-size: 13px; font-weight: 700; }
 .padFocusWorkspace .surfaceCaption:not(.surfaceFooter) { display: none; }
-.selectedConversation { border-bottom: 1px solid var(--desktop-border); padding-bottom: 18px; }
-.selectedConversation h2 { display: flex; align-items: center; gap: 10px; margin: 12px 0 6px; font-size: 18px; overflow-wrap: anywhere; }
+.selectedConversation { border-bottom: 1px solid var(--desktop-border); padding-bottom: 24px; }
+.selectedConversation.hasSelection { border-top: 4px solid var(--session-accent); padding-top: 20px; }
+.selectedConversation .sectionTitle { font-size: 11px; color: #aab6c0; }
+.selectedConversation .sectionTitle > span:last-child { color: var(--session-accent); }
+.selectedConversation h2 { display: flex; align-items: center; gap: 12px; margin: 16px 0 8px; font-size: 22px; line-height: 1.25; overflow-wrap: anywhere; }
 .selectedConversation h2 i { width: 12px; height: 12px; border-radius: 2px; flex: 0 0 12px; }
 .selectedConversation p { margin: 0; font-size: 14px; color: #c9d2db; }
+.selectedConversation > .stateLabel { display: flex; max-width: none; padding: 4px 0 0; font-size: 14px; }
 .conversationActions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
 .conversationActions:empty { display: none; }
 .conversationActions .action-approve { color: #7ce69a; }
 .conversationActions .action-reject, .conversationActions .action-stop { color: #ffaaa0; }
+.conversationActions .textButton { min-height: 42px; padding: 10px 16px; }
+.conversationActions .action-approve { background: #1d4930; border-color: #3a8b58; }
+.conversationActions .action-reject, .conversationActions .action-stop { background: #48292d; border-color: #9e5158; }
+.conversationActions .action-approve:hover { background: #285c3d; }
+.conversationActions .action-reject:hover, .conversationActions .action-stop:hover { background: #5b3238; }
 
 html[data-theme="light"] { color-scheme: light; color: #202a32; background: #f4f6f8; --desktop-border: #cbd3d9; }
 html[data-theme="dark"] { color-scheme: dark; }
@@ -1244,6 +1359,13 @@ html[data-theme="dark"] { color-scheme: dark; }
 [data-theme="light"] .publicToolbar .modeSwitch button { color: #52616c; }
 [data-theme="light"] .publicToolbar .modeSwitch button.active { background: #dcecf2; color: #174c61; }
 [data-theme="light"] :is(.appPage, .surfaceWorkspace, .settingsHeader) { background: #f4f6f8; }
+[data-theme="light"] .desktopApp:not(.padOnly) .surfaceWorkspace { background: #e4eceb; }
+[data-theme="light"] .desktopApp:not(.padOnly) .surfaceWorkspace .virtualSurface:not(.performanceSurface) {
+  background: #c5d0d0; border-color: #e2e8e6;
+  box-shadow: inset 0 1px 0 #fff9, 0 5px 0 #667577, 0 16px 32px #0003;
+}
+[data-theme="light"] .desktopApp:not(.padOnly) .surfaceWorkspace .virtualSurface:not(.performanceSurface) .surfaceCaption { color: #45595b; }
+[data-theme="light"] .desktopApp:not(.padOnly) .surfaceWorkspace .virtualSurface:not(.performanceSurface) .surfaceFooter span { color: #172d30; }
 [data-theme="light"] :is(.appHeader, .appFooter, .contextPane) { background: #fff; border-color: #d4dbe0; }
 [data-theme="light"] .surfaceWorkspace { border-color: #d4dbe0; }
 [data-theme="light"] .brand { color: #202a32; }
@@ -1262,13 +1384,19 @@ html[data-theme="dark"] { color-scheme: dark; }
   .conversationActions .action-reject, .conversationActions .action-stop) { color: #a32639; }
 [data-theme="light"] :is(.connectionBadge.connected, .networkReady) { background: #e4f4e9; color: #176536; border-color: #398654; }
 [data-theme="light"] :is(.openConversationStatus .chatConnected, .conversationActions .action-approve) { color: #176536; }
+[data-theme="light"] .conversationActions .action-approve { color: #14572d; background: #d8f1df; border-color: #75b98a; }
+[data-theme="light"] :is(.conversationActions .action-reject, .conversationActions .action-stop) { color: #8b2433; background: #fbe2e3; border-color: #d49298; }
+[data-theme="light"] .conversationActions .action-approve:hover { background: #c5e8d0; }
+[data-theme="light"] :is(.conversationActions .action-reject, .conversationActions .action-stop):hover { background: #f3cdcf; }
 [data-theme="light"] .connectionSummary { background: #eaf0f3; }
-[data-theme="light"] .sessionRow.selected { background: #e7eef2; }
+[data-theme="light"] .sessionRow.selected { background: color-mix(in srgb, var(--session-accent) 8%, #fff); }
 [data-theme="light"] .sessionRow.guidedRow { background: #e0eff7; }
 [data-theme="light"] :is(.pairingContent strong, .pairForm h1, .experiencePanel .experienceCaption) { color: #202a32; }
 [data-theme="light"] :is(.pairForm > span, .pairingContent > div > span) { color: #126789; }
 [data-theme="light"] :is(.experiencePanel .experienceWarning, .simulationBar > span) { color: #84550c; }
 [data-theme="light"] .exploreChoices { background: #fff; border-color: #b8c4cd; }
+[data-theme="light"] .desktopSurfaceSelector { border-color: #b8c4cd; background: #fff; }
+[data-theme="light"] .desktopViews .desktopSurfaceSelector button[aria-pressed="true"] { background: #dcecf2; color: #174c61; }
 [data-theme="light"] .exploreChoices button { color: #202a32; }
 [data-theme="light"] .exploreChoices button:is(:hover, :focus-visible) { background: #e8eef2; }
 [data-theme="light"] .themeOptions { border-color: #b8c4cd; background: #fff; }
@@ -1278,6 +1406,7 @@ html[data-theme="dark"] { color-scheme: dark; }
 [data-theme="light"] .settingsNavigation button[aria-selected="true"] { background: #dcecf2; color: #174c61; border-color: #9dbcc8; }
 [data-theme="light"] .pairedDeviceIdentity small { color: #52616c; }
 [data-theme="light"] .pairedDeviceIdentity .deviceOnline { color: #176536; }
+[data-theme="light"] :is(.conversationPicker .conversationCounts, .conversationPicker > svg, .selectedConversation .sectionTitle, .deviceIntro p) { color: #52616c; }
 [data-theme="light"] .pairingDialog { background: #fff; color: #202a32; border-color: #b8c4cd; }
 @media (max-width: 680px) {
   .settingsLayout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
@@ -1289,3 +1418,42 @@ html[data-theme="dark"] { color-scheme: dark; }
 [data-theme="light"] .virtualSurface { color: #edf2f5; color-scheme: dark; }
 [data-theme="light"] .padFocusWorkspace .virtualSurface { background: #171d22; }
 @media (max-width: 680px) { .desktopSettingsColumns { grid-template-columns: 1fr; } }
+@media (max-width: 759px) {
+  .desktopApp .workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; overflow: auto; }
+  .desktopApp .workspace:not(.padFocusWorkspace) { display: flex; flex-direction: column; }
+  .desktopApp .surfaceWorkspace { container-type: normal; }
+  .desktopApp .surfaceWorkspace, .desktopApp .contextPane { flex-shrink: 0; }
+  .desktopApp .contextPane, .desktopApp .attentionView > [role="tabpanel"] { overflow: visible; }
+  .desktopApp .virtualSurface, .desktopApp .desktopDemoWorkspace .virtualSurface,
+  .desktopApp .surfaceWorkspace:has(.performanceSurface) .virtualSurface { width: min(100%, 560px); }
+  .desktopApp .surfaceWorkspace .streamDeckSurface, .desktopApp .desktopDemoWorkspace .streamDeckSurface { width: min(100%, 560px); }
+  .desktopApp .padFocusWorkspace { grid-template-rows: minmax(0, 1fr); }
+  .desktopApp .padFocusWorkspace .virtualSurface { width: min(100%, calc(100dvh - 120px)); }
+  .desktopApp .padFocusWorkspace .streamDeckSurface { width: min(100%, calc(155dvh - 170px)); }
+  .desktopApp .padFocusWorkspace .surfaceWorkspace:has(:is(.codexQuestion, .approvalContext, .approvalFallback)) { flex-direction: column; justify-content: flex-start; overflow: auto; }
+  .desktopApp .padFocusWorkspace :is(.codexQuestion, .approvalContext, .approvalFallback) { width: 100%; max-width: 560px; max-height: none; }
+  .desktopApp .padFocusWorkspace .surfaceWorkspace:has(:is(.codexQuestion, .approvalContext, .approvalFallback)) .virtualSurface,
+  .desktopApp .padFocusWorkspace .surfaceWorkspace:has(:is(.codexQuestion, .approvalContext, .approvalFallback)) .streamDeckSurface { width: min(100%, 560px); }
+}
+@media (max-width: 560px) {
+  .desktopApp .appHeader { position: relative; flex-wrap: wrap; gap: 10px; }
+  .desktopApp .headerStatus { width: 100%; justify-content: space-between; }
+  .desktopApp .headerStatus > span:last-child { position: absolute; right: 16px; top: 24px; font-size: 10px; }
+  .desktopApp .connectionBadge { margin-left: auto; white-space: nowrap; }
+  .desktopApp .exploreMenu > button { white-space: nowrap; }
+  .desktopApp .desktopControls { padding: 8px 16px; }
+  .desktopApp .desktopControls > .desktopToolbar { flex-wrap: wrap; }
+  .desktopApp .desktopConnections { flex: 1 1 100%; gap: 8px 14px; }
+  .desktopApp .desktopControls > .desktopToolbar > .desktopActions { margin-left: auto; }
+  .desktopApp .desktopActions .textButton { white-space: nowrap; }
+  .desktopViews { flex-wrap: wrap; gap: 8px; }
+  .desktopViews .simulationBar { flex: 1 1 100%; }
+  .desktopViews .simulationBar > button { white-space: nowrap; }
+  .desktopViewActions { flex-wrap: wrap; justify-content: flex-end; width: 100%; }
+  .conversationPicker .conversationCounts { flex: 1 1 70%; padding-left: 30px; }
+  .conversationPicker .pickerChevron { position: absolute; right: 0; top: 10px; }
+  .conversationPicker { position: relative; padding-right: 24px; }
+  .deviceIntro { grid-template-columns: 112px minmax(0, 1fr); gap: 16px; }
+  .deviceIntro h3 { font-size: 15px; }
+  .deviceIntro p { font-size: 12px; }
+}

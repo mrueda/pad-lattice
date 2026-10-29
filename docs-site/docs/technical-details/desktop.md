@@ -66,23 +66,63 @@ Desktop attachment needs no Pad-Lattice hooks. The independent
 <details>
 <summary>Discovery and routing safeguards</summary>
 
+`codex_state.py` interprets thread events and child-agent attention without I/O.
+`codex_attachment.py` owns the connection worker, subscriptions, and action delivery.
+The desktop picker uses `useConversationDiscovery.ts` for polling and native
+disconnect events; its component owns presentation and explicit user actions.
+`App.tsx` chooses the application mode: `LiveApp.tsx` connects to the local
+service, while `PublicApp.tsx` runs the standalone simulation. Both reuse the
+same session, pairing, and experience panels where applicable.
+
 Discovery checks ownership of the WebSocket-over-Unix-socket endpoint under
 `$CODEX_HOME` (normally `~/.codex/app-server-control/app-server-control.sock`).
 It pages `thread/loaded/list` and reads summaries with `includeTurns: false`,
-bounded to 64 threads and six seconds. Only IDs, names, folders, and normalized
-states reach the UI. Transcripts and tool output are not retained or forwarded.
+bounded to 64 threads and six seconds. Discovery returns IDs, names, folders,
+and normalized states; it does not retain transcripts or tool output.
 
-Refresh replaces the discovered list; active attachments can supplement it
-during discovery failure. Codex may retain threads after their terminal closes.
+Discovery reports loaded CLI threads, not verified terminal windows. Retained
+threads can be disconnected and hidden manually; it does not infer terminal
+presence from process arguments. State and actions remain scoped to the
+explicitly selected thread and its current request.
+
+Refresh replaces the discovered list. The trash control disconnects and hides
+entries in browser session storage; it never deletes Codex history.
 
 Connect sends `thread/resume` with only `threadId` and `excludeTurns: true`.
 An attachment may fetch one metadata-only turn to identify work already running.
 It fails if scoped hooks already own the thread or all eight slots are occupied.
 
-Approve/Reject requires exactly one pending request supporting `accept`/`decline`.
+Each connected CLI root also tracks its loaded descendants. It discovers
+`source.subAgent.thread_spawn.parent_thread_id` ancestry every two seconds
+(up to 256 loaded threads), joins verified children, and processes their live
+events. Child attention takes precedence over a running parent. Idle children
+do not request attention; closed children lose their controls. The family
+occupies one Scene, never one per child.
+
+Codex `idle` maps to `idle` (**Ready**), with no action capability or attention
+badge. `waiting_for_reply` is reserved for live input requests. Completed turns
+briefly show their outcome and settle to Ready. Closing, archiving, or deleting
+the root releases its Scene without renumbering the others or changing target.
+
+Metadata polling also reconciles stale requests if a resolution event is missed.
+Newer events win over an older status snapshot. State publishing uses the daemon's
+acknowledged state, so a closing approval subscription cannot leave the Scene
+stuck on approval.
+
+Approve/Reject requires exactly one pending request across that family supporting `accept`/`decline`.
+Waiting children whose request details are unavailable also block ambiguous actions.
 Each subscription has a fresh capability token. Server events are drained before
 dispatch; Codex decides whether another client already answered. Stop includes
-the current thread and turn IDs.
+the parent thread and turn IDs. Approval context identifies the child locally;
+it is not added to browser broadcasts.
+
+The attachment keeps selected approval details and supported multiple-choice
+questions in memory only until the request resolves. Desktop fetches these
+through private IPC. When browser question sharing is enabled, an authenticated
+browser may request the selected question through a bounded WebSocket command;
+responses are sent only to that browser. The attachment checks the request
+token and the daemon's selection revision before sending an answer. Nothing is
+retried automatically after a disconnect.
 
 See the [Codex app-server reference](https://learn.chatgpt.com/docs/app-server).
 
