@@ -149,6 +149,7 @@ const config: Config = {
               label: 'Repository',
               href: 'https://github.com/mrueda/pad-lattice',
             },
+            {label: 'Cite Pad-Lattice', to: '/docs/about/citation'},
             {
               label: 'License',
               href: 'https://github.com/mrueda/pad-lattice/blob/main/LICENSE',

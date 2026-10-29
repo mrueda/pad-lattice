@@ -12,6 +12,7 @@
 [![Documentation Status](https://github.com/mrueda/pad-lattice/actions/workflows/documentation.yml/badge.svg)](https://github.com/mrueda/pad-lattice/actions/workflows/documentation.yml)
 [![Python](https://img.shields.io/badge/python-%3E%3D3.10-blue)](https://github.com/mrueda/pad-lattice/blob/main/pyproject.toml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/mrueda/pad-lattice/blob/main/LICENSE)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23777302.svg)](https://doi.org/10.5281/zenodo.23777302)
 
 **🖥️ Desktop app:** <https://mrueda.github.io/pad-lattice/docs/usage/install>
 
@@ -45,7 +46,7 @@ Prefer a terminal? Install with `pipx install pad-lattice` and follow
 The public playground is a simulation. Hardware support and testing status are
 listed in the [Device Catalog](https://mrueda.github.io/pad-lattice/docs/usage/device-catalog).
 
-[Changelog](CHANGELOG.md) · [Citation](CITATION.cff) · [Technical guide](https://mrueda.github.io/pad-lattice/docs/technical-details/)
+[Changelog](CHANGELOG.md) · [Citation](https://mrueda.github.io/pad-lattice/docs/about/citation) · [Technical guide](https://mrueda.github.io/pad-lattice/docs/technical-details/)
 
 ## License
 
