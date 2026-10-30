@@ -10,12 +10,11 @@ Desktop bundles Python and the local service. You do not need Python, Node.js,
 or Rust to run an installer. **Codex CLI is installed and authenticated
 separately**, on the same computer as Pad-Lattice.
 
-### Choose a Build
+### Download the App
 
-1. Open [Build desktop installers](https://github.com/mrueda/pad-lattice/actions/workflows/build-desktop.yml).
-2. Choose a successful run and scroll to **Artifacts**. GitHub may ask you to sign in.
-3. Download the `pad-lattice-<platform>-<commit>` artifact matching your computer,
-   not the `desktop-checks` screenshots. Extract the archive.
+1. Open the [Pad-Lattice v0.2.0 release](https://github.com/mrueda/pad-lattice/releases/tag/v0.2.0).
+2. Under **Assets**, download the `.dmg` or `.AppImage` matching your computer.
+   No GitHub account is required.
 
 | Computer | Platform | Installer |
 | --- | --- | --- |
@@ -24,8 +23,8 @@ separately**, on the same computer as Pad-Lattice.
 | Linux with Intel/AMD processor | `linux-x64` | `.AppImage` |
 | Linux with ARM64 processor | `linux-arm64` | `.AppImage` |
 
-Each installer includes a matching `.sha256` checksum and a `source.json`
-record identifying its source commit. Native Windows installers are not yet
+Each installer has a matching `.sha256` checksum available in the release assets.
+Native Windows installers are not yet
 supported. In a VM, choose the guest operating system and processor type.
 
 ### Open the App

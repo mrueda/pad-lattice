@@ -20,6 +20,8 @@
 
 **📘 Documentation:** <https://mrueda.github.io/pad-lattice/>
 
+**🎬 Video walkthroughs:** <https://www.youtube.com/playlist?list=PLNX7c9WDBavo>
+
 **See which Codex CLI session needs you, then act on it.** Pad-Lattice uses
 colors and glyphs to show agent activity. Select a session to approve or reject
 a pending request, or stop a running turn. Prompts and replies stay in Codex.

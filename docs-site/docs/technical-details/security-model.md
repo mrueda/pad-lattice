@@ -113,7 +113,7 @@ when this condition is not satisfied.
 
 ## Operator Checklist
 
-1. Install Desktop from the official build artifacts, or the CLI in an isolated environment.
+1. Install Desktop from the [official release](https://github.com/mrueda/pad-lattice/releases/tag/v0.2.0), or the CLI in an isolated environment.
 2. Connect only intended chats in Desktop. For CLI hooks, review `/hooks` when using `pad-lattice codex`.
 3. Keep the default loopback browser unless phone or tablet access is required.
 4. Enable phone pairing or use `--lan` only on a trusted private network and never expose its port

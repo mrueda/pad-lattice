@@ -65,7 +65,7 @@ the page arrow. This indicator is not part of the physical Neo profile.
 ## Connect
 
 1. Download `pad-lattice-0.2.0.streamDeckPlugin` from the
-   [release assets](https://github.com/mrueda/pad-lattice/releases). Open it on the
+   [v0.2.0 release assets](https://github.com/mrueda/pad-lattice/releases/tag/v0.2.0). Open it on the
    computer running **Elgato Stream Deck 7.1+** to install it.
 2. Open Pad-Lattice and connect your Codex conversations.
 3. In Elgato's profile menu, choose the **Pad-Lattice** profile for your model, or add a

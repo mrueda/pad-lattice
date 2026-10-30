@@ -97,6 +97,11 @@ const config: Config = {
           label: 'Docs',
         },
         {
+          href: 'https://www.youtube.com/playlist?list=PLNX7c9WDBavo',
+          label: 'Videos',
+          position: 'right',
+        },
+        {
           href: 'https://github.com/mrueda/pad-lattice',
           label: 'GitHub',
           position: 'right',
@@ -150,6 +155,10 @@ const config: Config = {
               href: 'https://github.com/mrueda/pad-lattice',
             },
             {label: 'Cite Pad-Lattice', to: '/docs/about/citation'},
+            {
+              label: 'YouTube walkthroughs',
+              href: 'https://www.youtube.com/playlist?list=PLNX7c9WDBavo',
+            },
             {
               label: 'License',
               href: 'https://github.com/mrueda/pad-lattice/blob/main/LICENSE',
