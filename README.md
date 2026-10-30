@@ -14,13 +14,7 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/mrueda/pad-lattice/blob/main/LICENSE)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23777302.svg)](https://doi.org/10.5281/zenodo.23777302)
 
-**🖥️ Desktop app:** <https://mrueda.github.io/pad-lattice/docs/usage/install>
-
-**🎛️ Try the virtual pad:** <https://mrueda.github.io/pad-lattice/play/>
-
-**📘 Documentation:** <https://mrueda.github.io/pad-lattice/>
-
-**🎬 Video walkthroughs:** <https://www.youtube.com/playlist?list=PLNX7c9WDBavo>
+🖥️ [**Desktop app**](https://mrueda.github.io/pad-lattice/docs/usage/install) · 🎛️ [**Try the virtual pad**](https://mrueda.github.io/pad-lattice/play/) · 📘 [**Documentation**](https://mrueda.github.io/pad-lattice/) · 🎬 [**Videos**](https://www.youtube.com/playlist?list=PLNX7c9WDBavo)
 
 **See which Codex CLI session needs you, then act on it.** Pad-Lattice uses
 colors and glyphs to show agent activity. Select a session to approve or reject
