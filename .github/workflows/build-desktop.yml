@@ -180,3 +180,35 @@ jobs:
             /tmp/pl-desktop-smoke/*.png
             /tmp/pl-desktop-smoke/*.json
           if-no-files-found: ignore
+  release:
+    name: Collect and publish release assets
+    needs: [prepare, build, stream-deck]
+    if: inputs.ref != 'main' && inputs.platform == 'all'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pad-lattice-*-${{ needs.prepare.outputs.sha }}
+          path: build/release-input
+      - name: Generate and verify SHA256SUMS
+        run: python scripts/collect_release_assets.py build/release-input build/release-assets
+      - name: Upload installers and consolidated checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.ref }}
+        shell: bash
+        run: |
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName > build/releases.json
+          if ! python -c 'import json, os, sys; sys.exit(not any(r["tagName"] == os.environ["RELEASE_TAG"] for r in json.load(open("build/releases.json"))))'; then
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --draft --title "Pad-Lattice ${RELEASE_TAG#v}" --notes ""
+          fi
+          gh release upload "$RELEASE_TAG" build/release-assets/* --repo "$GITHUB_REPOSITORY"

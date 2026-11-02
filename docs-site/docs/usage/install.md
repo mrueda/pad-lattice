@@ -23,7 +23,8 @@ separately**, on the same computer as Pad-Lattice.
 | Linux with Intel/AMD processor | `linux-x64` | `.AppImage` |
 | Linux with ARM64 processor | `linux-arm64` | `.AppImage` |
 
-Each installer has a matching `.sha256` checksum available in the release assets.
+The release assets include one **SHA256SUMS** file covering all installers,
+including the Stream Deck plugin.
 Native Windows installers are not yet
 supported. In a VM, choose the guest operating system and processor type.
 
@@ -37,6 +38,22 @@ Linux builds use Ubuntu 24.04.
 
 Follow your operating system's security prompts; do not disable
 security protections or install a build from an unknown source.
+
+### Optional: Verify Your Download
+
+Download **SHA256SUMS** from the same release, then calculate your installer's
+checksum (replace `FILE` with its path):
+
+| Platform | Command |
+| --- | --- |
+| Linux | `sha256sum FILE` |
+| macOS | `shasum -a 256 FILE` |
+| Windows PowerShell | `Get-FileHash FILE -Algorithm SHA256` |
+
+Compare the result with the matching filename in **SHA256SUMS**; letter case
+does not matter. Checksums detect damaged or changed downloads; they do not
+replace code signing. The PowerShell command also applies to the Stream Deck
+plugin; the Desktop app does not have a Windows installer.
 
 Continue with [Quick Start](./quickstart.md) to connect your first chat.
 For source builds, see [Desktop Architecture](../technical-details/desktop.md#build-from-source).
