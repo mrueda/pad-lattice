@@ -1,0 +1,386 @@
+{
+  "schema_version": 1,
+  "visual_protocol": 1,
+  "id": "ableton/push/3",
+  "name": "Ableton Push 3",
+  "manufacturer": "Ableton",
+  "family": "Push",
+  "model": "3",
+  "status": "experimental",
+  "driver": "midi.palette-grid",
+  "ports": {
+    "input": [
+      "Push\\s*3.*User"
+    ],
+    "output": [
+      "Push\\s*3.*User"
+    ]
+  },
+  "grid": {
+    "kind": "note",
+    "channel": 0,
+    "rows": [
+      [
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99
+      ],
+      [
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91
+      ],
+      [
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83
+      ],
+      [
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75
+      ],
+      [
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67
+      ],
+      [
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59
+      ],
+      [
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51
+      ],
+      [
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43
+      ]
+    ]
+  },
+  "surface": {
+    "state_region": {
+      "x": 0,
+      "y": 0,
+      "width": 7,
+      "height": 8
+    },
+    "showcase": {
+      "top": [
+        {
+          "kind": "cc",
+          "number": 20
+        },
+        {
+          "kind": "cc",
+          "number": 21
+        },
+        {
+          "kind": "cc",
+          "number": 22
+        },
+        {
+          "kind": "cc",
+          "number": 23
+        },
+        {
+          "kind": "cc",
+          "number": 24
+        },
+        {
+          "kind": "cc",
+          "number": 25
+        },
+        {
+          "kind": "cc",
+          "number": 26
+        },
+        {
+          "kind": "cc",
+          "number": 27
+        }
+      ],
+      "right": [
+        {
+          "kind": "cc",
+          "number": 36
+        },
+        {
+          "kind": "cc",
+          "number": 37
+        },
+        {
+          "kind": "cc",
+          "number": 38
+        },
+        {
+          "kind": "cc",
+          "number": 39
+        },
+        {
+          "kind": "cc",
+          "number": 40
+        },
+        {
+          "kind": "cc",
+          "number": 41
+        },
+        {
+          "kind": "cc",
+          "number": 42
+        },
+        {
+          "kind": "cc",
+          "number": 43
+        }
+      ]
+    },
+    "actions": {
+      "approve": {
+        "kind": "cc",
+        "number": 20
+      },
+      "reject": {
+        "kind": "cc",
+        "number": 21
+      },
+      "retry": {
+        "kind": "cc",
+        "number": 26
+      },
+      "stop": {
+        "kind": "cc",
+        "number": 27
+      }
+    },
+    "agent_selectors": [
+      {
+        "kind": "cc",
+        "number": 36
+      },
+      {
+        "kind": "cc",
+        "number": 37
+      },
+      {
+        "kind": "cc",
+        "number": 38
+      },
+      {
+        "kind": "cc",
+        "number": 39
+      },
+      {
+        "kind": "cc",
+        "number": 40
+      },
+      {
+        "kind": "cc",
+        "number": 41
+      },
+      {
+        "kind": "cc",
+        "number": 42
+      },
+      {
+        "kind": "cc",
+        "number": 43
+      }
+    ],
+    "agent_statuses": [
+      {
+        "kind": "note",
+        "number": 99
+      },
+      {
+        "kind": "note",
+        "number": 91
+      },
+      {
+        "kind": "note",
+        "number": 83
+      },
+      {
+        "kind": "note",
+        "number": 75
+      },
+      {
+        "kind": "note",
+        "number": 67
+      },
+      {
+        "kind": "note",
+        "number": 59
+      },
+      {
+        "kind": "note",
+        "number": 51
+      },
+      {
+        "kind": "note",
+        "number": 43
+      }
+    ],
+    "indicators": {
+      "overflow": {
+        "kind": "cc",
+        "number": 24
+      }
+    }
+  },
+  "palette": {
+    "off": 0,
+    "idle": 119,
+    "activity": 120,
+    "states": {
+      "idle": {
+        "primary": 119,
+        "summary": 119
+      },
+      "running": {
+        "primary": 17,
+        "summary": 20
+      },
+      "waiting_for_reply": {
+        "primary": 120,
+        "summary": 122
+      },
+      "user_typing": {
+        "primary": 46,
+        "summary": 95
+      },
+      "waiting_for_approval": {
+        "primary": 8,
+        "summary": 79
+      },
+      "success": {
+        "primary": 11,
+        "summary": 85
+      },
+      "error": {
+        "primary": 1,
+        "summary": 65
+      },
+      "cancelled": {
+        "primary": 122,
+        "summary": 119
+      }
+    },
+    "actions": {
+      "approve": {
+        "enabled": 11
+      },
+      "reject": {
+        "enabled": 1
+      },
+      "retry": {
+        "enabled": 17
+      },
+      "stop": {
+        "enabled": 1
+      }
+    },
+    "system": {
+      "overflow": 8
+    }
+  },
+  "accents": [
+    {
+      "name": "cyan",
+      "selected": 46,
+      "unselected": 95
+    },
+    {
+      "name": "magenta",
+      "selected": 26,
+      "unselected": 24
+    },
+    {
+      "name": "lime",
+      "selected": 9,
+      "unselected": 81
+    },
+    {
+      "name": "orange",
+      "selected": 8,
+      "unselected": 79
+    },
+    {
+      "name": "violet",
+      "selected": 23,
+      "unselected": 34
+    },
+    {
+      "name": "teal",
+      "selected": 15,
+      "unselected": 93
+    },
+    {
+      "name": "rose",
+      "selected": 25,
+      "unselected": 65
+    },
+    {
+      "name": "sky",
+      "selected": 16,
+      "unselected": 33
+    }
+  ],
+  "conformance": [
+    "core-state",
+    "multi-agent",
+    "actions"
+  ],
+  "messages": {
+    "startup": [],
+    "clear": [],
+    "shutdown": []
+  },
+  "capabilities": {
+    "text_scroll": true
+  }
+}

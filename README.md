@@ -22,7 +22,9 @@ a pending request, or stop a running turn. Prompts and replies stay in Codex.
 
 Use the desktop app, a phone or tablet browser, a
 [Novation Launchpad](https://mrueda.github.io/pad-lattice/docs/usage/launchpad),
-or an [Elgato Stream Deck](https://mrueda.github.io/pad-lattice/docs/usage/stream-deck)
+an [Ableton Push 3](https://mrueda.github.io/pad-lattice/docs/usage/push)
+(experimental USB/User Mode profile, new in 0.2.1), or an
+[Elgato Stream Deck](https://mrueda.github.io/pad-lattice/docs/usage/stream-deck)
 (experimental plugin). All share the same visual language. **No hardware is required.**
 
 <div align="center">

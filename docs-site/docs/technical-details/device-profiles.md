@@ -31,8 +31,8 @@ Built-in files follow the same directory hierarchy:
 src/pad_lattice/device_profiles/<manufacturer>/<family>/<model>.json
 ```
 
-The [Launchpad catalog entry](../usage/launchpad.md#models) lists
-the built-in IDs and their hardware-validation status.
+The [Launchpad](../usage/launchpad.md#models) and [Push 3](../usage/push.md)
+catalog entries list built-in IDs and their hardware-validation status.
 
 User profiles are loaded recursively from:
 
@@ -156,9 +156,16 @@ The Launchpad Pro Mk1 profile opens the **Standalone Port**, switches to
 Standalone Programmer layout, and restores Live Session mode during clean
 shutdown. Mk3 profiles use Novation's documented Live/Programmer toggle. The
 Pro Mk3 profile targets its **MIDI** interface rather than the DAW or DIN
-interface. All bundled profiles keep actions on the common top rail; extra
+interface. All Launchpad profiles keep actions on the common top rail; extra
 left and bottom controls remain reserved. Explicit port overrides must select
 the same interface named by the profile.
+
+The experimental `ableton/push/3` profile reuses the same driver with Push
+addresses and palette indices. It requires manual User Mode and User ports;
+startup/shutdown contain no mode-switching messages. Actions use the row
+below the display, selectors use Scene buttons, and all other controls remain
+untouched. Show uses palette fallback, not Novation RGB SysEx. See the
+[Push mapping and research sources](../usage/push.md).
 
 The optional `capabilities.show_rgb` block applies only to standalone show
 frames. It declares an addressed SysEx prefix, the device's maximum channel

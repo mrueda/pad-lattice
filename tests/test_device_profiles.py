@@ -43,6 +43,7 @@ class DeviceProfileTest(TestCase):
         self.assertEqual(
             [profile.id for profile in catalog.profiles],
             [
+                "ableton/push/3",
                 "novation/launchpad/mini-mk3",
                 "novation/launchpad/pro-mk1",
                 "novation/launchpad/pro-mk3",
@@ -70,21 +71,22 @@ class DeviceProfileTest(TestCase):
                 self.assertEqual(profile.schema_version, 1)
                 self.assertEqual(profile.visual_protocol, 1)
                 self.assertEqual(profile.selector_capacity, 8)
+                push = profile.id == "ableton/push/3"
                 self.assertEqual(
                     [address.number for address in profile.selectors],
-                    [89, 79, 69, 59, 49, 39, 29, 19],
+                    list(range(36, 44)) if push else [89, 79, 69, 59, 49, 39, 29, 19],
                 )
                 self.assertEqual(
                     [address.number for address in profile.statuses],
-                    [88, 78, 68, 58, 48, 38, 28, 18],
+                    list(range(99, 42, -8)) if push else [88, 78, 68, 58, 48, 38, 28, 18],
                 )
                 self.assertEqual(
                     [address.number for address in profile.show_top],
-                    [91, 92, 93, 94, 95, 96, 97, 98],
+                    list(range(20, 28)) if push else [91, 92, 93, 94, 95, 96, 97, 98],
                 )
                 self.assertEqual(
                     [address.number for address in profile.show_right],
-                    [89, 79, 69, 59, 49, 39, 29, 19],
+                    list(range(36, 44)) if push else [89, 79, 69, 59, 49, 39, 29, 19],
                 )
                 self.assertEqual(profile.state_region.x, 0)
                 self.assertEqual(profile.state_region.y, 0)
@@ -94,6 +96,28 @@ class DeviceProfileTest(TestCase):
                     profile.conformance,
                     frozenset({"core-state", "multi-agent", "actions"}),
                 )
+
+    def test_push_requires_explicit_selection_and_user_ports(self) -> None:
+        catalog = ProfileCatalog.load(include_user=False)
+        ports = ["Ableton Push 3 Live Port", "Ableton Push 3 User Port",
+                 "Ableton Push 3 External Port"]
+        self.assertEqual(catalog.detect(ports, ports, include_experimental=False), ())
+        candidates = catalog.detect(ports, ports)
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0].input_name, ports[1])
+        self.assertEqual(candidates[0].output_name, ports[1])
+        self.assertEqual(catalog.detect([ports[0]], [ports[2]]), ())
+        profile = catalog.get("ableton/push/3")
+        self.assertEqual(profile.status, "experimental")
+        self.assertEqual(profile.grid_address(0, 7).number, 36)
+        self.assertEqual(profile.grid_address(7, 0).number, 99)
+        self.assertEqual({a: profile.controls[a].number for a in ControlAction}, {
+            ControlAction.APPROVE: 20, ControlAction.REJECT: 21,
+            ControlAction.RETRY: 26, ControlAction.STOP: 27,
+        })
+        self.assertFalse(profile.startup)
+        self.assertFalse(profile.shutdown)
+        self.assertIsNone(profile.show_rgb)
 
     def test_pro_profile_uses_standalone_programmer_mode(self) -> None:
         profile = ProfileCatalog.load(include_user=False).get(

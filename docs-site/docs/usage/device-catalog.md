@@ -27,6 +27,7 @@ to it or to the independent [CLI service](./cli.md).
 | [**Novation Launchpad Pro Mk1**](./launchpad.md) | Shared 8x8 grid, top action rail, right-side session selectors | Supported: physically tested |
 | [**Novation Launchpad Mini Mk3**](./launchpad.md) | Same visual layout, model-specific MIDI profile | Experimental: hardware testing needed |
 | [**Novation Launchpad Pro Mk3**](./launchpad.md) | Same visual layout, model-specific MIDI profile | Experimental: hardware testing needed |
+| [**Ableton Push 3**](./push.md) | USB User Mode: 8x8 grid, actions below the display, right-side session selectors | Experimental: hardware testing needed |
 | [**Elgato Stream Deck (15-key)**](./stream-deck.md) | Eight Session keys and separate actions | Experimental; hardware testing needed |
 | [**Elgato Stream Deck XL**](./stream-deck.md#stream-deck-xl) | Eight Session keys and separate actions, 32 keys total | Experimental; hardware testing needed |
 | [**Elgato Stream Deck Neo**](./stream-deck.md#stream-deck-neo) | Eight sessions across two pages, with actions on each | Experimental; hardware testing needed |
@@ -38,7 +39,7 @@ requirements, installation, and limitations.
 
 ## Add a MIDI Profile
 
-Built-in Launchpad profiles are included with Pad-Lattice; there is nothing to
+Built-in MIDI profiles are included with Pad-Lattice; there is nothing to
 download separately. For a new device, obtain a profile from a trusted author
 and validate it using the [CLI](./cli.md):
 

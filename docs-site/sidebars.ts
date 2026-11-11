@@ -44,6 +44,7 @@ const sidebars: SidebarsConfig = {
           label: 'Physical Controllers',
           items: [
             {type: 'doc', id: 'usage/launchpad', label: 'Novation Launchpad'},
+            {type: 'doc', id: 'usage/push', label: 'Ableton Push 3'},
             {type: 'doc', id: 'usage/stream-deck', label: 'Elgato Stream Deck'},
           ],
         },

@@ -480,6 +480,16 @@ select:focus-visible {
 .hardwareBrand span { font-weight: 700; }
 .hardwareBrand strong { font-weight: 500; }
 .virtualSurface.launchpadSurface { border: 2px solid #4a535b; background: #252c32; box-shadow: 0 6px 0 #080b0e; }
+.virtualSurface.pushSurface { border: 2px solid #555; background: #262626; color: #eee; box-shadow: 0 6px 0 #101010; padding-left: 7%; }
+.pushSurface .surfaceCaption { color: #bfc4c8; }
+.pushSurface :is(.railControl, .sceneControl) { border-radius: 3px; }
+.pushSurface .railControl { aspect-ratio: 2.5; }
+.pushSurface .matrixPad { border-radius: 3px; }
+.pushInstrumentHeader { width: 89%; margin-bottom: 12px; }
+.pushEncoders, .pushScreenButtons { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; margin-bottom: 8px; }
+.pushEncoders > span { width: 50%; aspect-ratio: 1; justify-self: center; border-radius: 50%; background: #151515; border: 2px solid #555; box-shadow: 0 3px 2px #111; }
+.pushScreenButtons > span { aspect-ratio: 4; border: 1px solid #595959; border-radius: 2px; background: #333; }
+.pushDisplay { aspect-ratio: 8; background: #101416; border: 2px solid #414547; border-radius: 2px; }
 .launchpadSurface :is(.surfaceTop, .surfaceBody, .launchpadBottom) { grid-template-columns: minmax(0, calc((100% - 58px) / 10)) minmax(0, 1fr) minmax(0, calc((100% - 58px) / 10)); }
 .launchpadSurface .surfaceCaption { color: #aab5bd; }
 .reservedRail { display: grid; grid-template-rows: repeat(8, minmax(0, 1fr)); gap: 6px; min-width: 0; }

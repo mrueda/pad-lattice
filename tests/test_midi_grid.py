@@ -78,6 +78,38 @@ def show_color(
 
 
 class MidiGridSurfaceTest(TestCase):
+    def test_push_actions_ignore_releases_encoders_user_and_aftertouch(self) -> None:
+        surface, output, input_port = surface_for("ableton/push/3")
+        input_port.pending.extend([
+            FakeMessage("control_change", control=20, value=127),
+            FakeMessage("control_change", control=37, value=127),
+            FakeMessage("control_change", control=20, value=0),
+            FakeMessage("control_change", control=59, value=127),
+            FakeMessage("control_change", control=71, value=1),
+            FakeMessage("aftertouch", value=127),
+        ])
+        self.assertEqual(surface.poll_events(), [
+            ActionPressed(ControlAction.APPROVE), SessionSelected(1),
+        ])
+        surface.render(SurfaceView(AgentState.SUCCESS))
+        self.assertTrue(any(m.type == "note_on" and m.velocity == 11 for m in output.messages))
+        surface.close()
+        self.assertFalse(any(m.type == "sysex" for m in output.messages))
+        self.assertFalse(any(m.type == "control_change" and m.control == 59 for m in output.messages))
+
+    def test_push_show_uses_palette_without_changing_reserved_controls(self) -> None:
+        surface, output, _ = surface_for("ableton/push/3")
+        color = show_color("accent:cyan:selected", (0, 220, 255))
+        surface.render_show_frame(ShowFrame(
+            grid=tuple((color,) * 8 for _ in range(8)),
+            top=(color,) * 8, right=(color,) * 8,
+        ))
+        self.assertEqual({m.note for m in output.messages if m.type == "note_on"}, set(range(36, 100)))
+        self.assertEqual({m.control for m in output.messages if m.type == "control_change"},
+                         set(range(20, 28)) | set(range(36, 44)))
+        self.assertTrue(all(m.type in {"note_on", "control_change"} and m.channel == 0
+                            for m in output.messages))
+
     def test_mk1_initialization_enters_standalone_programmer_mode(self) -> None:
         surface, output, _ = surface_for("novation/launchpad/pro-mk1")
 

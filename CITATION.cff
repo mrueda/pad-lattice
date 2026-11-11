@@ -6,7 +6,7 @@ authors:
   - family-names: Rueda
     given-names: Manuel
     orcid: "https://orcid.org/0000-0001-9280-058X"
-version: 0.2.0
+version: 0.2.1
 doi: "10.5281/zenodo.23777302"
 repository-code: "https://github.com/mrueda/pad-lattice"
 url: "https://mrueda.github.io/pad-lattice/"

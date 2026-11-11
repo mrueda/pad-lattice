@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 - 2026-11-11
+
+- Experimental Ableton Push 3 USB/User Mode profile, with a browser simulation
+  for Demo, Sandbox, and Show, plus setup and mapping documentation.
+
 ## 0.2.0 - 2026-10-29
 
 - Desktop app for Linux and macOS: connect existing Codex CLI conversations,

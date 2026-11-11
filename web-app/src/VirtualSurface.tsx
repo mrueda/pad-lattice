@@ -11,7 +11,7 @@ import {DemoPointer, type Demonstration} from './DemoPointer';
 import type {ControlAction, FullSurfaceFrame, SurfaceView, VisualFrame} from './types';
 
 interface Props {
-  variant?: 'virtual' | 'launchpad';
+  variant?: 'virtual' | 'launchpad' | 'push';
   frame: VisualFrame;
   performanceFrame?: FullSurfaceFrame | null;
   showMode?: boolean;
@@ -61,13 +61,22 @@ export function VirtualSurface({
 }: Props) {
   const performance = showMode || performanceFrame !== null;
   const launchpad = variant === 'launchpad';
+  const push = variant === 'push';
   const selected = performance ? undefined : view.sessions.find(session => session.selected);
   return (
     <div
-      className={`virtualSurface ${launchpad ? 'launchpadSurface' : ''} ${performance ? 'performanceSurface' : ''}`}
+      className={`virtualSurface ${launchpad ? 'launchpadSurface' : ''} ${push ? 'pushSurface' : ''} ${performance ? 'performanceSurface' : ''}`}
       style={selected ? {'--session-accent': tokenColor(`accent:${selected.accent}:selected`)} as React.CSSProperties : undefined}
-      aria-label={launchpad ? 'Launchpad Pro Mk1 simulation' : 'Pad-Lattice virtual control surface'}>
+      aria-label={push ? 'Ableton Push 3 simulation' : launchpad ? 'Launchpad Pro Mk1 simulation' : 'Pad-Lattice virtual control surface'}>
       {launchpad ? <div className="hardwareBrand"><span>novation</span><strong>Launchpad Pro Mk1</strong></div> : null}
+      {push ? <>
+        <div className="hardwareBrand"><span>Ableton</span><strong>Push 3</strong></div>
+        <div className="pushInstrumentHeader" aria-label="Display and encoders reserved">
+          <div className="pushEncoders" aria-hidden="true">{Array.from({length: 8}, (_, i) => <span key={i} />)}</div>
+          <div className="pushScreenButtons" aria-hidden="true">{Array.from({length: 8}, (_, i) => <span key={i} />)}</div>
+          <div className="pushDisplay" title="Display not controlled by Pad-Lattice" />
+        </div>
+      </> : null}
       {performance ? (
         <div className="performanceStory">
           <span>{performanceAct ?? 'VISUAL SHOW'}</span>

@@ -15,7 +15,7 @@ import {PageFrame, Loading, LoadFailure} from './AppFrame';
 import {SessionList} from './SessionList';
 import {ExperienceControls} from './ExperienceControls';
 
-type PlaygroundSurface = 'virtual' | 'launchpad' | 'stream-deck' | 'stream-deck-xl' | 'stream-deck-neo';
+type PlaygroundSurface = 'virtual' | 'launchpad' | 'push' | 'stream-deck' | 'stream-deck-xl' | 'stream-deck-neo';
 
 export function PublicApp() {
   const [assets, setAssets] = useState<ExperienceAssets | null>(null);
@@ -33,7 +33,7 @@ export function PublicApp() {
 function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
   const [surface, setSurface] = useState<PlaygroundSurface>(() => {
     const requested = new URLSearchParams(window.location.search).get('surface');
-    return requested === 'launchpad' || requested === 'stream-deck' || requested === 'stream-deck-xl' || requested === 'stream-deck-neo' ? requested : 'virtual';
+    return requested === 'push' || requested === 'launchpad' || requested === 'stream-deck' || requested === 'stream-deck-xl' || requested === 'stream-deck-neo' ? requested : 'virtual';
   });
   const [lightTheme, setLightTheme] = useState(() => {
     try { return localStorage.getItem('pad-lattice-playground-theme') === 'light'; }
@@ -147,6 +147,7 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
           <select id="playground-surface" value={surface} onChange={event => setSurface(event.target.value as PlaygroundSurface)}>
             <option value="virtual">Virtual Pad</option>
             <option value="launchpad">Launchpad Pro Mk1</option>
+            <option value="push">Ableton Push 3</option>
             <option value="stream-deck">Stream Deck</option>
             <option value="stream-deck-xl">Stream Deck XL</option>
             <option value="stream-deck-neo">Stream Deck Neo</option>
@@ -179,7 +180,7 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
               onAction={pressAction}
               onSelect={selectSession}
             /> : <VirtualSurface
-              variant={surface === 'launchpad' ? 'launchpad' : 'virtual'}
+              variant={surface === 'push' ? 'push' : surface === 'launchpad' ? 'launchpad' : 'virtual'}
               frame={frame}
               performanceFrame={fullFrame}
               showMode={mode === 'show'}
@@ -199,8 +200,8 @@ function PublicExperienceApp({assets}: {assets: ExperienceAssets}) {
               <span>{selected ? stateLabels[selected.state] : 'No action target'}</span>
             </div> : null}
             {surface !== 'virtual' ? <p className="hardwarePreviewNote">
-              <a href={`https://mrueda.github.io/pad-lattice/docs/usage/${surface === 'launchpad' ? 'launchpad' : 'stream-deck'}`} target="_top">
-                {surface === 'launchpad' ? 'Launchpad Pro Mk1' : 'Stream Deck (experimental)'}</a>
+              <a href={`https://mrueda.github.io/pad-lattice/docs/usage/${surface === 'push' ? 'push' : surface === 'launchpad' ? 'launchpad' : 'stream-deck'}`} target="_top">
+                {surface === 'push' ? 'Push 3 (experimental)' : surface === 'launchpad' ? 'Launchpad Pro Mk1' : 'Stream Deck (experimental)'}</a>
               {' '}&middot; Illustrated layout
             </p> : null}
           </div>
