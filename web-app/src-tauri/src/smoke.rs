@@ -8,6 +8,17 @@ pub fn directory() -> PathBuf {
 }
 
 #[tauri::command]
+pub fn smoke_progress(stage: String) -> Result<(), String> {
+    eprintln!("Native smoke: {stage}");
+    std::fs::create_dir_all(directory()).map_err(|e| e.to_string())?;
+    std::fs::write(
+        directory().join("progress.json"),
+        serde_json::to_vec_pretty(&json!({"stage": stage})).unwrap(),
+    )
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn smoke_checkpoint(
     app: tauri::AppHandle,
     label: String,
@@ -76,7 +87,16 @@ pub const SCRIPT: &str = r#"
 (async () => {
   const invoke = window.__TAURI_INTERNALS__.invoke;
   const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
-  const request = (method, params = {}) => invoke('desktop_request', {method, params});
+  const progress = stage => invoke('smoke_progress', {stage});
+  const request = async (method, params = {}) => {
+    let timer;
+    try {
+      return await Promise.race([
+        invoke('desktop_request', {method, params}),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(Error(`Native request timed out: ${method}`)), 10000); }),
+      ]);
+    } finally { clearTimeout(timer); }
+  };
   const until = async (check, message) => {
     const deadline = Date.now() + 15000;
     do {
@@ -87,6 +107,7 @@ pub const SCRIPT: &str = r#"
     throw Error(message);
   };
   try {
+    await progress('desktop startup and discovery');
     for (let i = 0; i < 100 && !document.querySelector('.desktopControls'); i++) await wait(100);
     if (!document.querySelector('.desktopControls')) throw Error('Desktop controls did not render');
     for (let i = 0; i < 100 && document.querySelector('.openConversations')?.getAttribute('aria-busy') === 'true'; i++) await wait(100);
@@ -97,6 +118,7 @@ pub const SCRIPT: &str = r#"
     if (document.querySelector('.openConversations')?.textContent.includes('discovery is already running')) throw Error('Concurrent discovery failed');
     const snapshot = await request('snapshot');
     if (!snapshot.messages.some(m => m.type === 'authenticated' && m.admin)) throw Error('Native transport failed');
+    await progress('bundled audio playback');
     const response = await fetch('./experiences/audio/earcon-success-none.wav');
     if (!response.ok) throw Error('Bundled audio asset is unavailable');
     const audioUrl = URL.createObjectURL(await response.blob());
@@ -120,6 +142,7 @@ pub const SCRIPT: &str = r#"
     if (document.querySelectorAll('.matrixPad').length !== 64) throw Error('Missing pad matrix');
     const header = document.querySelector('.appHeader').getBoundingClientRect();
     if (header.top < 0) throw Error('Session controls scrolled out of view');
+    await progress('idle screenshot');
     await invoke('smoke_checkpoint', {label: 'desktop-idle', details: {pads: 64, width: innerWidth, scrollWidth: document.documentElement.scrollWidth, headerTop: header.top}});
     const players = [];
     const NativeAudio = window.Audio;
@@ -129,10 +152,12 @@ pub const SCRIPT: &str = r#"
     if ([...document.querySelectorAll('button')].some(button => button.textContent.includes('Start Show'))) throw Error('Show controls leaked into the Codex sessions view');
     const sound = document.querySelector('button[aria-label="Sound"]');
     if (!sound) throw Error('Global sound control missing');
+    await progress('enable sound and open Show');
     if (sound.getAttribute('aria-pressed') !== 'true') sound.click();
     document.querySelector('button[aria-label="Demo & Show"]').click();
     await wait(100);
     [...document.querySelectorAll('[role="menuitem"]')].find(button => button.textContent === 'Show').click();
+    await progress('wait for Show frames');
     let active;
     try {
       await until(async () => {
@@ -143,6 +168,7 @@ pub const SCRIPT: &str = r#"
       await invoke('smoke_checkpoint', {label: 'desktop-show-failed', details: active ?? {}});
       throw error;
     }
+    await progress('Show audio playback');
     const playingAudio = await until(() => players.find(player => player.currentTime > 0 && !player.paused && !player.muted && player.volume > 0),
       'The Show player did not start audible playback');
     await invoke('smoke_checkpoint', {label: 'desktop-show-audio', details: {
@@ -150,6 +176,7 @@ pub const SCRIPT: &str = r#"
     }});
     if (!playingAudio) throw Error('The Show player did not start audible playback');
     await invoke('smoke_checkpoint', {label: 'desktop-show', details: {show: true}});
+    await progress('stop Show and open settings');
     await request('surface', {protocol: 1, type: 'stop_experience'});
     [...document.querySelectorAll('button')].find(button => button.textContent.includes('Back to live pad')).click();
     await wait(100);

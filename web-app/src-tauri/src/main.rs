@@ -127,6 +127,7 @@ fn main() {
             save_profile_report,
             open_project_link,
             smoke::smoke_checkpoint,
+            smoke::smoke_progress,
             smoke::smoke_finish
         ])
         .on_page_load(|window, payload| {

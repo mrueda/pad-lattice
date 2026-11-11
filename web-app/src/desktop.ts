@@ -48,6 +48,7 @@ export function surfaceSocket(url: string): SurfaceSocket {
     return bridge;
   }
   let closed = false;
+  let pending = Promise.resolve();
   const cleanup: Array<() => void> = [];
   const deliver = (message: unknown) => {
     if (!closed) bridge.onmessage?.({data: JSON.stringify(message)});
@@ -56,10 +57,16 @@ export function surfaceSocket(url: string): SurfaceSocket {
     readyState: 0, onopen: null, onmessage: null, onclose: null, onerror: null,
     send: (data) => {
       const message = JSON.parse(data) as {type: string};
-      const work = message.type === 'authenticate'
-        ? desktopRequest<{messages: unknown[]}>('snapshot').then(({messages}) => messages.forEach(deliver))
-        : desktopRequest('surface', message);
-      work.catch((error: unknown) => {
+      // Native invocations can arrive out of order; preserve WebSocket send ordering.
+      pending = pending.then(async () => {
+        if (closed) return;
+        if (message.type === 'authenticate') {
+          const {messages} = await desktopRequest<{messages: unknown[]}>('snapshot');
+          messages.forEach(deliver);
+        } else {
+          await desktopRequest('surface', message);
+        }
+      }).catch((error: unknown) => {
         deliver({protocol: 1, type: 'error', code: 'desktop_error', error: String(error)});
         if (message.type === 'authenticate' && !closed) {
           bridge.close();
