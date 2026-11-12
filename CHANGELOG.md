@@ -4,7 +4,6 @@
 
 - Experimental Ableton Push 3 USB/User Mode profile, with a browser simulation
   for Demo, Sandbox, and Show, plus setup and mapping documentation.
-- Preserve native command order when switching between Demo and Show.
 
 ## 0.2.0 - 2026-10-29
 
