@@ -12,7 +12,7 @@ separately**, on the same computer as Pad-Lattice.
 
 ### Download the App
 
-1. Open the [Pad-Lattice v0.2.0 release](https://github.com/mrueda/pad-lattice/releases/tag/v0.2.0).
+1. Open the [Pad-Lattice v0.2.1 release](https://github.com/mrueda/pad-lattice/releases/tag/v0.2.1).
 2. Under **Assets**, download the `.dmg` or `.AppImage` matching your computer.
    No GitHub account is required.
 

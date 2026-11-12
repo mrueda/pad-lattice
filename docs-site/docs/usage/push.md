@@ -4,7 +4,7 @@ Use Push 3 **connected to a computer over USB**, in User Mode. The same
 glyphs and session colors used on Launchpad fit its 8x8 grid.
 
 :::warning Experimental
-Planned for **0.2.1**; not included in the published 0.2.0 installers.
+Available in **0.2.1 or newer**.
 This profile has automated tests but has not been tested on a physical Push 3.
 Standalone operation, Push 1/2, the display, encoders, and touch strip are not supported.
 :::
